@@ -5,7 +5,7 @@
 
 #Region Declaration
 $ModulePath = 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
-Import-Module $ModulePath
+
 #Set-DeployRHost "http://localhost:7282"
 
 #Import Content for Steps
@@ -205,6 +205,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 if (Test-Path -Path $ModulePath) {
     Write-Host "Module found at: $ModulePath" -ForegroundColor Green
+    Import-Module $ModulePath
 } else {
     Write-Error "Module not found at: $ModulePath"
     exit 1
