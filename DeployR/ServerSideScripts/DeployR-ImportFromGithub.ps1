@@ -1,15 +1,19 @@
 # Requires -Version 7.0
 # Requires -RunAsAdministrator
 
-if ($PSVersionTable.PSVersion.Major -lt 7) {
-    Write-Error "This script requires PowerShell 7 or higher. Current version: $($PSVersionTable.PSVersion)"
-    exit 1
-}
 
-if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Error "This script must be run as Administrator."
-    exit 1
-}
+
+#Region Declaration
+$ModulePath = 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
+Import-Module $ModulePath
+#Set-DeployRHost "http://localhost:7282"
+
+#Import Content for Steps
+$DownloadPath = "D:\DeployRGitHubImports" #Update this path to your desired download location for the source before it's imported.
+$DownloadStepsPath = "$DownloadPath\CustomSteps"
+$DownloadTSModulesPath = "$DownloadPath\TaskSequences"
+#EndRegion
+
 
 #Region Functions
 Function Get-DeployRStepsFromGitHub {<#
@@ -187,18 +191,31 @@ Function Get-DeployRStepsFromGitHub {<#
 }
 #EndRegion Functions
 
+#Region Execution
+# Check PowerShell version
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+    Write-Error "This script requires PowerShell 7 or higher. Current version: $($PSVersionTable.PSVersion)"
+    exit 1
+}
+# Check for Administrator role
+if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Error "This script must be run as Administrator."
+    exit 1
+}
+
+if (Test-Path -Path $ModulePath) {
+    Write-Host "Module found at: $ModulePath" -ForegroundColor Green
+} else {
+    Write-Error "Module not found at: $ModulePath"
+    exit 1
+}
+
 <# for Import Reference
 dir c:\temp\ContentBackup -File | Import-DeployRContentItem 
 dir c:\temp\StepDefinitionBackup -File | Import-DeployRStepDefinition 
 dir c:\temp\TaskSequenceBackup -File | Import-DeployRTaskSequence
 #>
-Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
-#Set-DeployRHost "http://localhost:7282"
 
-#Import Content for Steps
-$DownloadPath = "D:\DeployRGitHubImports"
-$DownloadStepsPath = "$DownloadPath\CustomSteps"
-$DownloadTSModulesPath = "$DownloadPath\TaskSequences"
 #Download the Steps from GitHub
 
 try {
