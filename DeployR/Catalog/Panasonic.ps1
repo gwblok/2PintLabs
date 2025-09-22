@@ -26,7 +26,8 @@ $PanasonicModels = @(
 
 $JSON = @"
 {
-  "Manufacturer": "Panasonic",
+"LastDateModified": "2025-09-18T14:32:10Z",  
+"Manufacturer": "Panasonic",
   "Models": [
     {
       "Alias": "FZ55-3",
