@@ -57,13 +57,6 @@ I set 2PXE to override and create the cert based on the FQDN, then deleted the c
  I setup IIS to use the certificate in the
 ![Image01](media/DRCert01.png)
 
-## StifleR Config File Changes
-
-Under the IntegrationSettings area:
-
-- DeployR full URL: <https://FQDN:7281/v1> | https://214-DeployR.2p.garytown.com:7281/v1>
-  - Update because LOCALHOST doesn't match the cert. :-)
-- Everything else should just be standard settings for StifleR
 
 ## DeployR Config File Changes
 
