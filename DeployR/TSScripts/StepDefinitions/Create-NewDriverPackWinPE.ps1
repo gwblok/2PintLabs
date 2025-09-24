@@ -1598,7 +1598,7 @@ function Get-HPSoftPaqItems {
     }
     $BaseURL = ("https://hpia.hpcloud.hp.com/ref/$($MachinePlatform)/$($MachinePlatform)_$($Arch)_$($os).$($osver).cab").ToLower()
     Write-Verbose "Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing"
-    Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing
+    Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing -ErrorAction SilentlyContinue
     $Expand = expand $CabPath $XMLPath
     [xml]$XML = Get-Content $XMLPath
     $SoftpaqList = $XML.ImagePal.Solutions.UpdateInfo
