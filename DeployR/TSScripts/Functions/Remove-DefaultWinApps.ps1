@@ -175,3 +175,11 @@ Function Remove-DefaultWinApps {
     
     #endregion
 }
+
+Write-Host -ForegroundColor Green "Starting Function Remove-DefaultWinApps"
+try {
+    Remove-DefaultWinApps
+}
+catch {
+    Write-Host -ForegroundColor Red "Error in Remove-DefaultWinApps: $_"
+}
