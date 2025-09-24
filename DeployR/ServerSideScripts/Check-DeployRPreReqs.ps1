@@ -107,6 +107,7 @@ catch {
 }
 }
 
+Start-Transcript -Path "$($env:TEMP)\Check-DeployRPreReqs.log" -Force
 
 # Executing Script
 Write-Host "=========================================================================" -ForegroundColor DarkGray
@@ -743,3 +744,5 @@ if ($IISMimeTypeUpdateRequired) {
         Write-Host "✓ Missing IIS MIME types added successfully." -ForegroundColor Green
     }
 }
+
+Stop-Transcript

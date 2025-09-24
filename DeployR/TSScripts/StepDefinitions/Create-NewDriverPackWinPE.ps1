@@ -1538,7 +1538,7 @@ function Get-HPSoftpaqListLatest {
     $CabPath = "$env:TEMP\HPIA.cab"
     $XMLPath = "$env:TEMP\HPIA.xml"
     Write-Verbose "Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing"
-    Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing
+    Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing -ErrorAction SilentlyContinue
     $Expand = expand $CabPath $XMLPath
     [xml]$XML = Get-Content $XMLPath
     $SoftpaqList = $XML.ImagePal.Solutions.UpdateInfo
