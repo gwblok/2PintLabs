@@ -311,12 +311,7 @@ write-host "Using the following install commands: $arguments" #uncomment this li
 
 #Install the iPXE Webservice
 $install = start-process "msiexec.exe" -arg $arguments -Wait
-if ($install.ExitCode -ne 0) {
-    Write-Error "iPXE Webservice installation failed with exit code $($install.ExitCode). Check the log file at $env:windir\temp\iPXEWSInstall.log for details."
-    exit 0
-} else {
-    Write-Host "iPXE Webservice installed successfully."
-}
+
 
 # Copy the iPXEWS Scripts to the iPXEWS default install directory
 # The Scripts directory needs to be in the same directory as the installer script
