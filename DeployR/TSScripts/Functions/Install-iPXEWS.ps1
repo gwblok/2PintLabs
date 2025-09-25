@@ -118,7 +118,7 @@ $arguments = @(
 
     "/norestart"
 
-    "/l*v $env:TEMP\iPXEWSInstall.log"    #Optional logging for the install
+    "/l*v $env:windir\temp\iPXEWSInstall.log"    #Optional logging for the install
 
 )
 
