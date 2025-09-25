@@ -107,7 +107,11 @@ catch {
 }
 }
 
-Start-Transcript -Path "$($env:TEMP)\Check-DeployRPreReqs.log" -Force
+$TranscriptFilePath = "$($env:TEMP)\Check-DeployRPreReqs.log"
+if (Test-Path -Path $TranscriptFilePath) {
+    Remove-Item -Path $TranscriptFilePath -Force
+}   
+Start-Transcript -Path $TranscriptFilePath -Force
 
 # Executing Script
 Write-Host "=========================================================================" -ForegroundColor DarkGray
