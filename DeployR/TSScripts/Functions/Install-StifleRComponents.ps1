@@ -21,7 +21,7 @@ function Install-StifleRDashBoard {
 #>
 
 # Set path to MSI file
-$msifile = "$PSScriptRoot\StifleR-Dashboard-x64.msi"
+#$msifile = "$PSScriptRoot\StifleR-Dashboard-x64.msi"
 
 # Ensure the script runs with elevated privileges
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
