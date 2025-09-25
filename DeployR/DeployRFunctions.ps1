@@ -15,7 +15,13 @@ function Get-CMOSDGather {
     powershell.exe "$env:temp\CMOSD-Gather.ps1" -debug $true
 }
 write-host "===================================================================="
-write-Host "Install Pre-Reqs Functions" -ForegroundColor Green
+write-Host "DeployR Pre-Reqs Functions" -ForegroundColor Green
+write-Host ""
+Write-Host "Function: Test-DeployRPreReqs" -ForegroundColor Green
+function Test-DeployRPreReqs {
+    iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/ServerSideScripts/Check-DeployRPreReqs.ps1)
+}
+
 Write-Host -ForegroundColor Green "[+] Install-WindowsADK"
 function Install-WindowsADK {
     iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-WindowsADK.ps1)
