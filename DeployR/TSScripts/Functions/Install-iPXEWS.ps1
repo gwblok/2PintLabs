@@ -27,7 +27,7 @@ Function Get-ContentFromGitHub {<#
     
     
     param(
-    [string]$DownloadPath = "$env:Windows\Temp\iPXEScripts",
+    [string]$DownloadPath = "$env:Windows\Temp\iPXE\Scripts",
     [string]$GitHubRepo = "2pintsoftware/2Pint-iPXEAnywhere",
     [string]$GitHubPath = "Scripts"
     )
@@ -310,12 +310,10 @@ if ($install.ExitCode -ne 0) {
 # Copy the iPXEWS Scripts to the iPXEWS default install directory
 # The Scripts directory needs to be in the same directory as the installer script
 
-$DownloadPath = "$env:Windows\Temp\iPXEScripts"
+$DownloadPath = "$env:Windows\Temp\iPXE\Scripts"
 Get-ContentFromGitHub -DownloadPath $DownloadPath -GitHubRepo "2pintsoftware/2Pint-iPXEAnywhere" -GitHubPath "Scripts"
 try {
-    # Get the directory where the script is located
-    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-    
+
     # Define source and destination paths
     $sourcePath = $DownloadPath 
     $destPath = "C:\Program Files\2Pint Software\iPXE AnywhereWS"
@@ -349,7 +347,7 @@ try {
     # Check if the file exists
     if (-not (Test-Path $scriptPath)) {
         Write-Error "deployr.ps1 file not found at $scriptPath"
-        exit 1
+        exit 0
     }
 
     # Read the content of the file
