@@ -30,6 +30,11 @@ Write-Host -ForegroundColor Green "[+] Install-PowerShell74X"
 function Install-PowerShell74X {
     iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-PowerShell74X.ps1)
 }
+Write-Host -ForegroundColor Green "[+] Install-DotNetRuntimes80X"
+function Install-DotNetRuntimes80X {
+    iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-DotNetRuntimes80X.ps1)
+}
+
 
 Write-Host -ForegroundColor Green "[+] Install-WindowsADK"
 function Install-WindowsADK {
