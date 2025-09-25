@@ -1,4 +1,8 @@
 function Create-IIS443Binding {
+        param(
+        [string]$domain = $null,
+        [string]$fqdn = $null
+    )
 <#
 .SYNOPSIS
     PowerShell script to add an HTTPS site binding in IIS and assign the FQDN certificate issued by 2PintSoftware.com 
@@ -21,8 +25,20 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 # Parameters (update these as needed)
 # This will use the connection specific suffix for the fqdn - useful when system is not domain joined
-$domain = [string](Get-DnsClient | Select-Object -ExpandProperty ConnectionSpecificSuffix)
-$fqdn = "$($env:COMPUTERNAME.Trim()).$($domain.Trim())"
+if (!$domain) {
+    $domain = [string](Get-DnsClient | Select-Object -ExpandProperty ConnectionSpecificSuffix)
+}
+
+if ($($domain.Trim()) -eq ""){
+    Write-Host "No domain suffix found. Please provide a domain name."
+    #prompt user for domain name
+    $domain = Read-Host "Enter the domain name to use for FQDN (e.g., example.com)"
+}
+Write-Host "Using Domain: $domain"
+if (!$fqdn) {
+    $fqdn = "$($env:COMPUTERNAME.Trim()).$($domain.Trim())"
+}
+Write-Host "Using FQDN: $fqdn"
 $siteName = "Default Web Site"  # Name of the IIS website to add the binding to
 $hostName = $fqdn  # FQDN for the HTTPS binding
 $port = 443  # Standard HTTPS port
