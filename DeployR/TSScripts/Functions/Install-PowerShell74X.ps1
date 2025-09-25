@@ -41,22 +41,23 @@ function Install-PowerShell74X {
         Download-File -Url $url -OutputPath $tempFile
 
         Write-Host "Installing PowerShell..."
-        Start-Process -FilePath "msiexec.exe" -ArgumentList "/i $tempFile /quiet /norestart" -Wait -NoNewWindow
+        $Install = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i $tempFile /quiet /norestart" -Wait -NoNewWindow
 
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "Installation failed with exit code $LASTEXITCODE."
-            exit 1
+        if ($Install.ExitCode -ne 0) {
+            Write-Host "Installation failed with exit code $($Install.ExitCode)."
+        }
+        else {
+            Write-Host "PowerShell $Version installed successfully."
         }
 
-        Write-Host "PowerShell $Version installed successfully."
-        Remove-Item $tempFile -ErrorAction SilentlyContinue
+
     }
 
     # Main script
     $version = Get-LatestRelease
     if (-not $version) {
         Write-Host "Could not find a PowerShell 7.4.x release."
-        exit 1
+        exit 0
     }
 
     Install-Windows -Version $version
