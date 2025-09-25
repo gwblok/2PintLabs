@@ -17,9 +17,13 @@ function Get-CMOSDGather {
 write-host "===================================================================="
 write-Host "DeployR Pre-Reqs Functions" -ForegroundColor Green
 write-Host ""
-Write-Host "Function: Test-DeployRPreReqs" -ForegroundColor Green
+Write-Host -ForegroundColor Green "[+] Test-DeployRPreReqs"
 function Test-DeployRPreReqs {
     iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/ServerSideScripts/Check-DeployRPreReqs.ps1)
+}
+Write-Host -ForegroundColor Green "[+] Enable-RequiredWindowsOptionalFeatures"
+function Enable-RequiredWindowsOptionalFeatures {
+    Install-WindowsFeature -Name Web-Server, Web-Windows-Auth, BranchCache -IncludeManagementTools
 }
 
 Write-Host -ForegroundColor Green "[+] Install-WindowsADK"
