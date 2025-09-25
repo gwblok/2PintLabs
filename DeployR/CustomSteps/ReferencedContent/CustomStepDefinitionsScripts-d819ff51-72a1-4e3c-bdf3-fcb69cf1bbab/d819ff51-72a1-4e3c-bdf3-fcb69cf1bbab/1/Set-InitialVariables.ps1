@@ -23,13 +23,10 @@ Write-Host "====================================================================
 [String]$InitialProgressTimeout = ${TSEnv:InitialProgressTimeout}
 [String]$InitialPeering = ${TSEnv:InitialPeering}
 [String]$InitialFinishAction = ${TSEnv:InitialFinishAction}
-
 [String]$InitialSystemLocale = ${TSEnv:InitialSystemLocale}
 [String]$InitialUserLocale = ${TSEnv:InitialUserLocale}
 [String]$InitialUILanguage = ${TSEnv:InitialUILanguage}
 [String]$InitialInputLocale = ${TSEnv:InitialInputLocale}
-
-
 
 Write-Host "Recording initial variables for the Task Sequence environment"
 #Report Variables:

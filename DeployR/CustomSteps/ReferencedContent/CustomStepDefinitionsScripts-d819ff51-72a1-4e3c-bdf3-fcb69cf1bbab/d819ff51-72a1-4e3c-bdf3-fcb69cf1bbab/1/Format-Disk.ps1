@@ -181,7 +181,7 @@ if ($formatExtraDisks -ne "NO") {
 		if ($cd){
 			#Set CD to next available Drive Letter
 			$CDDriveLetter = "$(Get-NextAvailableDriveLetter):"
-			Write-Host "Changing CD Drive Letter to $CDDriveLetter"
+			Write-Host " Changing CD Drive Letter to $CDDriveLetter"
 			$DriveInfo = Get-CimInstance -class win32_volume | Where-Object {$_.DriveLetter -eq "A:"} |Set-CimInstance -Arguments @{DriveLetter=$CDDriveLetter}
 		}
 	}
