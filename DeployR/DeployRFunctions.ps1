@@ -70,6 +70,9 @@ iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/Depl
 Write-Host -ForegroundColor Green "[+] Create-FQDN2PXECert"
 iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Create-FQDN2PXECert.ps1)
 
+Write-Host -ForegroundColor Green "[+] Create-IIS443Binding"
+iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Create-IIS443Binding.ps1)
+
 Write-Host -ForegroundColor Green "[+] Install-iPXEWS"
 iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-iPXEWS.ps1)
 
