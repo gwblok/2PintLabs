@@ -195,7 +195,14 @@ Function Install-iPXEWS {
 
 # Set path to MSI file
 #$msifile = "$PSScriptRoot\iPXEAnywhere.WebService.Installer64.msi"
-
+if (-not $msifile) {
+    Write-Error "Please provide the path to the StifleR Dashboard MSI file."
+    exit 1
+}
+if (!(Test-Path $msifile)) {
+    Write-Error "MSI file not found at $msifile. Please provide the correct path to the StifleR Dashboard MSI."
+    exit 1
+}
 # This will use the connection specific suffix for the fqdn - useful when system is not domain joined
 if (!$domain) {
     $domain = [string](Get-DnsClient | Select-Object -ExpandProperty ConnectionSpecificSuffix)

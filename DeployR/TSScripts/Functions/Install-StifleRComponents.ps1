@@ -22,7 +22,14 @@ function Install-StifleRDashBoard {
 
 # Set path to MSI file
 #$msifile = "$PSScriptRoot\StifleR-Dashboard-x64.msi"
-
+if (-not $msifile) {
+    Write-Error "Please provide the path to the StifleR Dashboard MSI file."
+    exit 1
+}
+if (!(Test-Path $msifile)) {
+    Write-Error "MSI file not found at $msifile. Please provide the correct path to the StifleR Dashboard MSI."
+    exit 1
+}
 # Ensure the script runs with elevated privileges
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Error "This script requires administrative privileges. Please run PowerShell as Administrator."
