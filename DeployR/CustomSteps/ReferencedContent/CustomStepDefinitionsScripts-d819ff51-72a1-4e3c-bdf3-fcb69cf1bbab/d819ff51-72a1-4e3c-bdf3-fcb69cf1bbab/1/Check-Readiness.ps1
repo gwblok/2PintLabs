@@ -15,7 +15,7 @@ if (Get-Module -name "DeployR.Utility"){
     $CRTPM2 = ${TSEnv:CRTPM2}
     $CRMinWin11 = ${TSEnv:CRMinWin11}
     $HostValueOSType = if (${TSEnv:IsServerOS} -eq "true") { "Server" } else { "Client" }
-    $DebugLogging = ${TSEnv:DebugLogging}
+    $DebugLogging = ${TSEnv:CRDebugLogging}
 }
 else{
     $CRMinMemory = "4"

@@ -1,6 +1,9 @@
-
+#Connect to DeployR
 try {
     Import-Module DeployR.Utility
+}
+catch {}
+if (Get-Module -name "DeployR.Utility"){
     # Get the provided variables
     [String]$IncludeGraphics = ${TSEnv:IncludeGraphics}
     [String]$IncludeAudio = ${TSEnv:IncludeAudio}
@@ -14,7 +17,7 @@ try {
     [String]$ModelAlias = ${TSEnv:ModelAlias}
     [int]$OSImageBuild = ${TSEnv:OSImageBuild}
 }
-catch {
+else {
     <#Do this if a terminating exception happens#>
     [String]$IncludeGraphics = "False"
     [String]$IncludeAudio = "False"
@@ -1538,7 +1541,7 @@ function Get-HPSoftpaqListLatest {
     $CabPath = "$env:TEMP\HPIA.cab"
     $XMLPath = "$env:TEMP\HPIA.xml"
     Write-Verbose "Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing"
-    Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing
+    Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing -ErrorAction SilentlyContinue
     $Expand = expand $CabPath $XMLPath
     [xml]$XML = Get-Content $XMLPath
     $SoftpaqList = $XML.ImagePal.Solutions.UpdateInfo
@@ -1595,7 +1598,7 @@ function Get-HPSoftPaqItems {
     }
     $BaseURL = ("https://hpia.hpcloud.hp.com/ref/$($MachinePlatform)/$($MachinePlatform)_$($Arch)_$($os).$($osver).cab").ToLower()
     Write-Verbose "Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing"
-    Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing
+    Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing -ErrorAction SilentlyContinue
     $Expand = expand $CabPath $XMLPath
     [xml]$XML = Get-Content $XMLPath
     $SoftpaqList = $XML.ImagePal.Solutions.UpdateInfo
@@ -1624,9 +1627,13 @@ function Get-HPDriverPackLatest {
             [int]$Loop_Index = 0
             do {
                 Write-Verbose "Checking for Driver Pack for $OS $($SupportedWinXXBuilds[$loop_index])"
-                $DriverPack = Get-HPSoftPaqItems -osver $($SupportedWinXXBuilds[$loop_index]) -os $OS -Platform $MachinePlatform | Where-Object {$_.Category -match "Driver Pack"}
-                #$DriverPack = Get-SoftpaqList -Category Driverpack -OsVer $($SupportedWinXXBuilds[$loop_index]) -Os "Win11" -ErrorAction SilentlyContinue
-                
+                try {
+                    $DriverPack = Get-HPSoftPaqItems -osver $($SupportedWinXXBuilds[$loop_index]) -os $OS -Platform $MachinePlatform -ErrorAction SilentlyContinue  | Where-Object {$_.Category -match "Driver Pack"}
+                    #$DriverPack = Get-SoftpaqList -Category Driverpack -OsVer $($SupportedWinXXBuilds[$loop_index]) -Os "Win11" -ErrorAction SilentlyContinue
+                }
+                catch {
+                    <#Do this if a terminating exception happens#>
+                }
                 if (!($DriverPack)){$Loop_Index++;}
                 if ($DriverPack){
                     Write-Verbose "Windows 11 $($SupportedWinXXBuilds[$loop_index]) Driver Pack Found"
@@ -1646,8 +1653,13 @@ function Get-HPDriverPackLatest {
                 [int]$Loop_Index = 0
                 do {
                     Write-Verbose "Checking for Driver Pack for $OS $($SupportedWinXXBuilds[$loop_index])"
-                    $DriverPack = Get-HPSoftPaqItems -osver $($SupportedWinXXBuilds[$loop_index]) -os $OS  -Platform $MachinePlatform | Where-Object {$_.Category -match "Driver Pack"}
-                    #$DriverPack = Get-SoftpaqList -Category Driverpack -OsVer $($SupportedWinXXBuilds[$loop_index]) -Os "Win10" -ErrorAction SilentlyContinue
+                    try {
+                        $DriverPack = Get-HPSoftPaqItems -osver $($SupportedWinXXBuilds[$loop_index]) -os $OS  -Platform $MachinePlatform -ErrorAction SilentlyContinue | Where-Object {$_.Category -match "Driver Pack"}
+                        #$DriverPack = Get-SoftpaqList -Category Driverpack -OsVer $($SupportedWinXXBuilds[$loop_index]) -Os "Win10" -ErrorAction SilentlyContinue
+                    }
+                    catch {
+                        <#Do this if a terminating exception happens#>
+                    }
                     if (!($DriverPack)){$Loop_Index++;}
                     if ($DriverPack){
                         Write-Verbose "Windows 10 $($SupportedWinXXBuilds[$loop_index]) Driver Pack Found"
@@ -2278,7 +2290,9 @@ function Migrate-WinPEDrivers {
 
 #Region migrate active drivers from WinPE into Full OS
 Write-Host "Attempting to Migrate WInPE Drivers to Offline OS as fallback"
-Migrate-WinPEDrivers -OfflineOSPath "$($TargetSystemDrive)\"
+if ($env:SystemDrive -eq "X:"){
+    Migrate-WinPEDrivers -OfflineOSPath "$($TargetSystemDrive)\"
+}
 #endregion
 
 write-host "=============================================================="
