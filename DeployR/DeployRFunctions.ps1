@@ -77,7 +77,8 @@ iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/Depl
 Write-Host -ForegroundColor Green "[+] Install-iPXEWS"
 iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-iPXEWS.ps1)
 
-
+Write-Host -ForegroundColor Green "[+] Install-StifleRDashboard"
+iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-StifleRComponents.ps1)
 
 write-Host "===================================================================="
 write-host "Function: Invoke-DeployRTS" -ForegroundColor Green
