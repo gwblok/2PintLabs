@@ -202,8 +202,25 @@ if (!$domain) {
 }
 if ($($domain.Trim()) -eq ""){
     Write-Host "No domain suffix found. Please provide a domain name."
-    #prompt user for domain name
-    $domain = Read-Host "Enter the domain name to use for FQDN (e.g., example.com)"
+    
+    $configFilePath = "C:\Program Files\2Pint Software\2PXE\2Pint.2PXE.Service.exe.config"  # Update with the actual file path
+    if (Test-Path $configFilePath) {
+        [xml]$configXml = Get-Content $configFilePath
+        $appSettings = $configXml.configuration.appSettings
+        $fqdnSetting = $appSettings.add | Where-Object { $_.key -eq "ExternalFQDNOverride" }
+        $fqdn = $fqdnSetting.value
+        $domain = ($fqdn.Split(".") | Select-Object -Skip 1) -Join "."
+        if (-not $fqdnSetting) {
+            Write-Host "ExternalFQDNOverride key not found in appSettings section."
+            
+        }
+    } else {
+        Write-Warning "Configuration file not found at $configFilePath. Assuming not part of a domain."
+    }
+    if (-not $domain) {
+        Write-Host "Domain name could not be determined from 2PXE config. Please provide a domain name."
+        $domain = Read-Host "Enter the domain name to use for FQDN (e.g., example.com)"
+    }
 }
 Write-Host "Using Domain: $domain"
 if (!$fqdn) {
