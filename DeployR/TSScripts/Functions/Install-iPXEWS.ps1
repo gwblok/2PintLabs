@@ -197,8 +197,19 @@ Function Install-iPXEWS {
 #$msifile = "$PSScriptRoot\iPXEAnywhere.WebService.Installer64.msi"
 
 # This will use the connection specific suffix for the fqdn - useful when system is not domain joined
-$domain = [string](Get-DnsClient | Select-Object -ExpandProperty ConnectionSpecificSuffix)
-$fqdn = "$($env:COMPUTERNAME.Trim()).$($domain.Trim())"
+if (!$domain) {
+    $domain = [string](Get-DnsClient | Select-Object -ExpandProperty ConnectionSpecificSuffix)
+}
+if ($($domain.Trim()) -eq ""){
+    Write-Host "No domain suffix found. Please provide a domain name."
+    #prompt user for domain name
+    $domain = Read-Host "Enter the domain name to use for FQDN (e.g., example.com)"
+}
+Write-Host "Using Domain: $domain"
+if (!$fqdn) {
+    $fqdn = "$($env:COMPUTERNAME.Trim()).$($domain.Trim())"
+}
+Write-Host "Using FQDN: $fqdn"
 
 # Ensure the script runs with elevated privileges
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
