@@ -21,17 +21,8 @@ if ($downloadLink) {
     Write-Host "Downloading CU to $dest ..."
     Start-BitsTransfer -Source $downloadLink.href -Destination $dest
 
-    # Show splash screen while installing
-    $splash = Start-Process -FilePath powershell -ArgumentList "-NoProfile -WindowStyle Hidden -Command `"Add-Type -AssemblyName PresentationFramework;[System.Windows.MessageBox]::Show('Installing SQL 2022 CU...','SQL CU Installer')`"" -PassThru
-
-    Write-Host "Starting silent install..."
-    Start-Process -FilePath $dest -ArgumentList "/quiet /updateenabled=false /IAcceptSQLServerLicenseTerms" -Wait
-
-    # Close splash screen
-    if ($splash -and !$splash.HasExited) {
-        $splash.CloseMainWindow() | Out-Null
-        $splash | Stop-Process -Force
-    }
+    Write-Host "Starting install..."
+    Start-Process -FilePath $dest -ArgumentList "/qs /IAcceptSQLServerLicenseTerms /Action=Patch /AllInstances" -Wait
 
     Write-Host "SQL Server 2022 CU installation complete."
 } else {
