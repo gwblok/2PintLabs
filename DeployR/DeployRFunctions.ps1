@@ -67,6 +67,8 @@ Write-Host "2Pint Software Install Scripts, Requires you have the MSI Path" -For
 Write-Host -ForegroundColor Green "[+] Install-2PXE"
 iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-2PXE.ps1)
 
+Write-Host -ForegroundColor Green "[+] Create-FQDN2PXECert"
+iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Create-FQDN2PXECert.ps1)
 
 Write-Host -ForegroundColor Green "[+] Install-iPXEWS"
 iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-iPXEWS.ps1)
