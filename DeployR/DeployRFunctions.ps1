@@ -60,7 +60,16 @@ write-Host -ForegroundColor Green "[+] Install-SSMS21"
 function Install-SSMS21 {
     iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-SSMS21.ps1)
 }
+Write-Host ""
+Write-Host "===================================================================="
+Write-Host "2Pint Software Install Scripts, Requires you have the MSI Path" -ForegroundColor Green
 
+Write-Host -ForegroundColor Green "[+] Install-2PXE"
+iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-2PXE.ps1)
+
+
+Write-Host -ForegroundColor Green "[+] Install-iPXEWS"
+iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-iPXEWS.ps1)
 
 
 
