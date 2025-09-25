@@ -190,7 +190,7 @@ if ($MissingApps) {
     }
     Write-Host "Please install the missing applications and re-run this script." -ForegroundColor Yellow
     Write-Host "=========================================================================" -ForegroundColor DarkGray
-    return
+    #return
 }
 
 
