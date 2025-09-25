@@ -327,7 +327,6 @@ try {
     # Check if source directory exists
     if (-not (Test-Path $sourcePath)) {
         Write-Error "Scripts directory not found at $sourcePath"
-        exit 1
     }
     
     # Create destination directory if it doesn't exist
@@ -342,7 +341,6 @@ try {
 }
 catch {
     Write-Error "An error occurred while copying the directory: $_"
-    exit 1
 }
 
 # Update the deployr.ps1 iPXE WS script default location with the correct FQDN
@@ -353,7 +351,6 @@ try {
     # Check if the file exists
     if (-not (Test-Path $scriptPath)) {
         Write-Error "deployr.ps1 file not found at $scriptPath"
-        exit 0
     }
 
     # Read the content of the file
@@ -369,7 +366,6 @@ try {
 }
 catch {
     Write-Error "An error occurred while updating the file: $_"
-    exit 1
 }
 
 Write-Host "Script completed."
