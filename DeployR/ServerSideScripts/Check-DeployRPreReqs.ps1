@@ -176,6 +176,7 @@ foreach ($app in $PreReqApps) {
             }
         }
         
+        
         New-Variable -Name "Installed_$($app.Title.Replace(' ', '_'))" -Value $true -Scope Global -Force
         
     }
