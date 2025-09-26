@@ -24,9 +24,9 @@ Remediation at end will prompt to remediate:
 
 #PowerShell Table of Pre-Req Applications:
 $PreReqApps = @(
-    [PSCustomObject]@{Title = 'Microsoft .NET Runtime'; Installed = $false ; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
-    [PSCustomObject]@{Title = 'Microsoft Windows Desktop Runtime'; Installed = $false ; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
-    [PSCustomObject]@{Title = 'Microsoft ASP.NET Core'; Installed = $false ; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
+    [PSCustomObject]@{Title = 'Microsoft .NET Runtime'; Installed = $false ; MinVersion = '8.0.19'; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
+    [PSCustomObject]@{Title = 'Microsoft Windows Desktop Runtime'; Installed = $false ; MinVersion = '8.0.19'; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
+    [PSCustomObject]@{Title = 'Microsoft ASP.NET Core'; Installed = $false ; MinVersion = '8.0.19'; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
     [PSCustomObject]@{Title = 'Windows Assessment and Deployment Kit Windows Preinstallation Environment'; Installed = $false; URL = 'https://learn.microsoft.com/en-us/windows-hardware/get-started/adk-install'}
     [PSCustomObject]@{Title = 'PowerShell 7-x64'; Installed = $false; URL = 'https://aka.ms/powershell-release?tag=lts'}
     [PSCustomObject]@{Title = 'Microsoft SQL Server'; Installed = $false; URL = 'https://www.microsoft.com/en-us/download/details.aspx?id=104781'}
@@ -130,7 +130,7 @@ foreach ($app in $PreReqApps) {
             #Write-Host "Multiple versions of $($app.Title) found:" -ForegroundColor Yellow
             #$found | Select-Object -Unique DisplayName | ForEach-Object { Write-Host " - $($_.DisplayName) Version: $($_.DisplayVersion)" -ForegroundColor Yellow }
                 foreach ($appitem in $found) {
-            
+                
                 $PreReqAppsStatus += [PSCustomObject]@{
                     Title       = $app.Title
                     Installed   = $true
@@ -152,7 +152,7 @@ foreach ($app in $PreReqApps) {
                 DisplayName = $found.DisplayName
             }
         }
-
+        
         New-Variable -Name "Installed_$($app.Title.Replace(' ', '_'))" -Value $true -Scope Global -Force
 
     }
