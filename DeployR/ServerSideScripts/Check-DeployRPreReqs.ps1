@@ -107,7 +107,7 @@ catch {
 }
 }
 
-$TranscriptFilePath = "$($env:TEMP)\Check-DeployRPreReqs.log"
+$TranscriptFilePath = "$($env:windir)temp\Check-DeployRPreReqs.log"
 if (Test-Path -Path $TranscriptFilePath) {
     Remove-Item -Path $TranscriptFilePath -Force
 }   
@@ -353,11 +353,12 @@ if ($Installed_2Pint_Software_StifleR_Server){
     $StifleRRegPath = "HKLM:\SOFTWARE\2Pint Software\StifleR\Server\GeneralSettings"
     $StifleRRegData = Get-ItemProperty -Path $StifleRRegPath -ErrorAction SilentlyContinue
 
+    #Note, this is no longer used in newer releases
     if ($StifleRRegData -and $StifleRRegData.DeployRUrl) {
         Write-Host "DeployR API URL: $($StifleRRegData.DeployRUrl)" -ForegroundColor Green
     }
     else {
-        Write-Host "DeployR API URL is NOT configured." -ForegroundColor Red
+        #Write-Host "DeployR API URL is NOT configured." -ForegroundColor Red
     }
     $StifleRCertThumbprint = $StifleRRegData.WSCertificateThumbprint
     Write-Host "StifleR Using Certificate with Thumbprint: $($StifleRCertThumbprint)" -ForegroundColor Cyan

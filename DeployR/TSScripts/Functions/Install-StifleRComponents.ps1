@@ -41,7 +41,7 @@ if (!$domain) {
     $domain = [string](Get-DnsClient | Select-Object -ExpandProperty ConnectionSpecificSuffix)
 }
 if ($($domain.Trim()) -eq ""){
-    Write-Host "No domain suffix found. Please provide a domain name."
+    $partofdomain = $false
     
     $configFilePath = "C:\Program Files\2Pint Software\2PXE\2Pint.2PXE.Service.exe.config"  # Update with the actual file path
     if (Test-Path $configFilePath) {
