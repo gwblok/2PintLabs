@@ -14,6 +14,73 @@ function Get-CMOSDGather {
     $Script | Out-File -FilePath "$env:temp\CMOSD-Gather.ps1" -Force -Encoding UTF8
     powershell.exe "$env:temp\CMOSD-Gather.ps1" -debug $true
 }
+write-host "===================================================================="
+write-Host "DeployR Pre-Reqs Functions" -ForegroundColor Green
+write-Host ""
+Write-Host -ForegroundColor Green "[+] Test-DeployRPreReqs"
+function Test-DeployRPreReqs {
+    iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/ServerSideScripts/Check-DeployRPreReqs.ps1)
+}
+Write-Host -ForegroundColor Green "[+] Enable-RequiredWindowsOptionalFeatures"
+function Enable-RequiredWindowsOptionalFeatures {
+    Install-WindowsFeature -Name Web-Server, Web-Windows-Auth, BranchCache -IncludeManagementTools
+}
+
+Write-Host -ForegroundColor Green "[+] Install-PowerShell74X"
+function Install-PowerShell74X {
+    iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-PowerShell74X.ps1)
+}
+Write-Host -ForegroundColor Green "[+] Install-DotNetRuntimes80X"
+function Install-DotNetRuntimes80X {
+    iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-DotNetRuntimes80X.ps1)
+}
+
+
+Write-Host -ForegroundColor Green "[+] Install-WindowsADK"
+function Install-WindowsADK {
+    iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-WindowsADK.ps1)
+}
+Write-Host -ForegroundColor Green "[+] Install-WinPEAddOn"
+function Install-WinPEAddOn {
+    iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-WinPEAddOn.ps1)
+}
+Write-Host -ForegroundColor Green "[+] Install-VCRedist-x64"
+function Install-VCRedist-x64 {
+    iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-VCRedist-x64.ps1)
+}
+write-Host -ForegroundColor Green "[+] Install-SQLExpress2022"
+function Install-SQLExpress2022 {
+    iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-SQLExpress2022.ps1)
+}
+write-Host -ForegroundColor Green "[+] Configure-SQLExpress"
+function Configure-SQLExpress { 
+    iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Configure-SQLExpress.ps1)
+}
+write-Host -ForegroundColor Green "[+] Install-SSMS21"
+function Install-SSMS21 {
+    iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-SSMS21.ps1)
+}
+Write-Host ""
+Write-Host "===================================================================="
+Write-Host "2Pint Software Install Scripts, Requires you have the MSI Path" -ForegroundColor Green
+
+Write-Host -ForegroundColor Green "[+] Install-2PXE"
+Write-Host -ForegroundColor Green "[+] Import-2PXERootCA"
+iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-2PXE.ps1)
+
+Write-Host -ForegroundColor Green "[+] Create-FQDN2PXECert"
+iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Create-FQDN2PXECert.ps1)
+
+Write-Host -ForegroundColor Green "[+] Create-IIS443Binding"
+iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Create-IIS443Binding.ps1)
+
+Write-Host -ForegroundColor Green "[+] Install-iPXEWS"
+iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-iPXEWS.ps1)
+
+Write-Host -ForegroundColor Green "[+] Install-StifleRDashboard"
+iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-StifleRComponents.ps1)
+
+write-Host "===================================================================="
 write-host "Function: Invoke-DeployRTS" -ForegroundColor Green
 write-host " Common Servers I Use:" -ForegroundColor magenta
 write-host "  - 214-deployr.2p.garytown.com" -ForegroundColor Green
