@@ -1,3 +1,36 @@
+Function Get-FQDNFrom2PXEConfig {
+    param (
+        [string]$configFilePath = "C:\Program Files\2Pint Software\2PXE\2Pint.2PXE.Service.exe.config"
+    )
+
+    if (Test-Path $configFilePath) {
+        [xml]$configXml = Get-Content $configFilePath
+        $appSettings = $configXml.configuration.appSettings
+        $fqdnSetting = $appSettings.add | Where-Object { $_.key -eq "ExternalFQDNOverride" }
+        if ($fqdnSetting) {
+            return $fqdnSetting.value
+        } else {
+            Write-Warning "ExternalFQDNOverride key not found in appSettings section."
+            return $null
+        }
+    } else {
+        Write-Warning "Configuration file not found at $configFilePath."
+        return $null
+    }
+}
+
+Function Get-FQDNFromCertSAN {
+    #Loop Thought Certs in "MY" and get the SAN
+    $certs = Get-ChildItem -Path Cert:\LocalMachine\My
+    foreach ($cert in $certs) {
+        $DNSName = $cert.DnsNameList.Unicode
+        if ($DNSName) {
+            return $DNSName
+        }
+    }
+    return $null
+}
+
 function Install-StifleRDashBoard {
     [CmdletBinding()]
     param (
@@ -37,6 +70,19 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 }
 
 # This will use the connection specific suffix for the fqdn - useful when system is not domain joined
+if (!$fqdn) {
+    $fqdn = Get-FQDNFrom2PXEConfig
+}
+if (!$fqdn) {
+    $fqdn = Get-FQDNFromCertSAN
+}
+if ($fqdn) {
+    Write-Host "Using FQDN : $fqdn"
+    $domain = ($fqdn.Split(".") | Select-Object -Skip 1) -Join "."   
+} else {
+    Write-Host "No FQDN found"
+}
+
 if (!$domain) {
     $domain = [string](Get-DnsClient | Select-Object -ExpandProperty ConnectionSpecificSuffix)
 }
@@ -67,6 +113,7 @@ if (!$fqdn) {
     $fqdn = "$($env:COMPUTERNAME.Trim()).$($domain.Trim())"
 }
 Write-Host "Using FQDN: $fqdn"
+
 $STIFLERSERVER = "STIFLERSERVER=https://$($fqdn):1414"
 $STIFLERLOCSERVER = "STIFLERLOCSERVER=https://$($fqdn):9000"
 
