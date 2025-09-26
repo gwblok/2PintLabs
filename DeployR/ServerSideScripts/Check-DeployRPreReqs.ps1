@@ -22,32 +22,36 @@ Remediation at end will prompt to remediate:
 
 #Ensure Several things are installed, as well as configurations are done to help troubleshoot DeployR installations
 
+#Keep this updated as needed 
+$DotNetMinVersion = '8.0.19'
+
+
+
 #PowerShell Table of Pre-Req Applications:
 $PreReqApps = @(
-    [PSCustomObject]@{Title = 'Microsoft .NET Runtime'; Installed = $false ; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
-    [PSCustomObject]@{Title = 'Microsoft Windows Desktop Runtime'; Installed = $false ; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
-    [PSCustomObject]@{Title = 'Microsoft ASP.NET Core'; Installed = $false ; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
-    [PSCustomObject]@{Title = 'Windows Assessment and Deployment Kit Windows Preinstallation Environment'; Installed = $false; URL = 'https://learn.microsoft.com/en-us/windows-hardware/get-started/adk-install'}
-    [PSCustomObject]@{Title = 'PowerShell 7-x64'; Installed = $false; URL = 'https://aka.ms/powershell-release?tag=lts'}
-    [PSCustomObject]@{Title = 'Microsoft SQL Server'; Installed = $false; URL = 'https://www.microsoft.com/en-us/download/details.aspx?id=104781'}
-    [PSCustomObject]@{Title = 'SQL Server Management Studio'; Installed = $false; URL = 'https://learn.microsoft.com/en-us/ssms/install/install'}
-    [PSCustomObject]@{Title = 'Microsoft Visual C++ 2015-2022 Redistributable (x64)'; Installed = $false; URL = 'https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170'}
-    
-    [PSCustomObject]@{Title = '2Pint Software DeployR'; Installed = $false}
-    [PSCustomObject]@{Title = '2Pint Software StifleR Server'; Installed = $false}
-    [PSCustomObject]@{Title = '2Pint Software StifleR Dashboards'; Installed = $false}
-    [PSCustomObject]@{Title = '2Pint Software StifleR WmiAgent'; Installed = $false}
+[PSCustomObject]@{Title = 'Microsoft .NET Runtime'; Installed = $false ; MinVersion = $DotNetMinVersion; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
+[PSCustomObject]@{Title = 'Microsoft Windows Desktop Runtime'; Installed = $false ; MinVersion = $DotNetMinVersion; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
+[PSCustomObject]@{Title = 'Microsoft ASP.NET Core'; Installed = $false ; MinVersion = $DotNetMinVersion; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
+[PSCustomObject]@{Title = 'Windows Assessment and Deployment Kit Windows Preinstallation Environment'; Installed = $false; URL = 'https://learn.microsoft.com/en-us/windows-hardware/get-started/adk-install'}
+[PSCustomObject]@{Title = 'PowerShell 7-x64'; Installed = $false; URL = 'https://aka.ms/powershell-release?tag=lts'}
+[PSCustomObject]@{Title = 'Microsoft SQL Server'; Installed = $false; URL = 'https://www.microsoft.com/en-us/download/details.aspx?id=104781'}
+[PSCustomObject]@{Title = 'SQL Server Management Studio'; Installed = $false; URL = 'https://learn.microsoft.com/en-us/ssms/install/install'}
+[PSCustomObject]@{Title = 'Microsoft Visual C++ 2015-2022 Redistributable (x64)'; Installed = $false; URL = 'https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170'}
+[PSCustomObject]@{Title = '2Pint Software DeployR'; Installed = $false}
+[PSCustomObject]@{Title = '2Pint Software StifleR Server'; Installed = $false}
+[PSCustomObject]@{Title = '2Pint Software StifleR Dashboards'; Installed = $false}
+[PSCustomObject]@{Title = '2Pint Software StifleR WmiAgent'; Installed = $false}
 )
 $FirewallRules = @(
-    [PSCustomObject]@{DisplayName = '2Pint DeployR HTTPS 7281'; Port = 7281; Protocol = 'TCP'}
-    [PSCustomObject]@{DisplayName = '2Pint DeployR HTTP 7282'; Port = 7282; Protocol = 'TCP'}
-    [PSCustomObject]@{DisplayName = '2Pint Software StifleR API 9000'; Port = 9000; Protocol = 'TCP'}
-    [PSCustomObject]@{DisplayName = '2Pint Software StifleR SignalR 1414 TCP'; Port = 1414; Protocol = 'TCP'}
-    [PSCustomObject]@{DisplayName = '2Pint Software StifleR SignalR 1414 UDP'; Port = 1414; Protocol = 'UDP'}
-    [PSCustomObject]@{DisplayName = '2Pint iPXE WebService 8051'; Port = 8051; Protocol = 'TCP'}
-    [PSCustomObject]@{DisplayName = '2Pint iPXE WebService 8052'; Port = 8052; Protocol = 'TCP'}
-    [PSCustomObject]@{DisplayName = '2Pint 2PXE 8050'; Port = 8050; Protocol = 'TCP'}
-    [PSCustomObject]@{DisplayName = '2Pint 2PXE 4011'; Port = 4011; Protocol = 'UDP'}
+[PSCustomObject]@{DisplayName = '2Pint DeployR HTTPS 7281'; Port = 7281; Protocol = 'TCP'}
+[PSCustomObject]@{DisplayName = '2Pint DeployR HTTP 7282'; Port = 7282; Protocol = 'TCP'}
+[PSCustomObject]@{DisplayName = '2Pint Software StifleR API 9000'; Port = 9000; Protocol = 'TCP'}
+[PSCustomObject]@{DisplayName = '2Pint Software StifleR SignalR 1414 TCP'; Port = 1414; Protocol = 'TCP'}
+[PSCustomObject]@{DisplayName = '2Pint Software StifleR SignalR 1414 UDP'; Port = 1414; Protocol = 'UDP'}
+[PSCustomObject]@{DisplayName = '2Pint iPXE WebService 8051'; Port = 8051; Protocol = 'TCP'}
+[PSCustomObject]@{DisplayName = '2Pint iPXE WebService 8052'; Port = 8052; Protocol = 'TCP'}
+[PSCustomObject]@{DisplayName = '2Pint 2PXE 8050'; Port = 8050; Protocol = 'TCP'}
+[PSCustomObject]@{DisplayName = '2Pint 2PXE 4011'; Port = 4011; Protocol = 'UDP'}
 )
 
 function Get-InstalledApps
@@ -57,15 +61,15 @@ function Get-InstalledApps
     }
     else {
         $regpath = @(
-            'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*'
-            'HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+        'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*'
+        'HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
         )
     }
     Get-ItemProperty $regpath | .{process{if($_.DisplayName -and $_.UninstallString) { $_ } }} | Select DisplayName, Publisher, InstallDate, DisplayVersion, UninstallString |Sort DisplayName
 }
 function Test-Url {
     param (
-        [string]$Url
+    [string]$Url
     )
     
     try {
@@ -94,17 +98,17 @@ function Test-SQLConnection {
     param(
     [Parameter(Mandatory=$true)]
     [string]$ConnectionString
-)
-
-try {
-    $connection = New-Object System.Data.SqlClient.SqlConnection($ConnectionString)
-    $connection.Open()
-    Write-Host "Connection successful!" -ForegroundColor Green
-    $connection.Close()
-}
-catch {
-    Write-Host "Connection failed: $($_.Exception.Message)" -ForegroundColor Red
-}
+    )
+    
+    try {
+        $connection = New-Object System.Data.SqlClient.SqlConnection($ConnectionString)
+        $connection.Open()
+        Write-Host "Connection successful!" -ForegroundColor Green
+        $connection.Close()
+    }
+    catch {
+        Write-Host "Connection failed: $($_.Exception.Message)" -ForegroundColor Red
+    }
 }
 
 $TranscriptFilePath = "$($env:windir)temp\Check-DeployRPreReqs.log"
@@ -116,7 +120,7 @@ Start-Transcript -Path $TranscriptFilePath -Force
 # Executing Script
 Write-Host "=========================================================================" -ForegroundColor DarkGray
 #Test if Applications are installed
-$installedApps = Get-InstalledApps
+$installedApps = Get-InstalledApps | Where-Object {$_.DisplayName -notmatch " - Shared framework"}
 Write-Host "Checking for Pre-Requisite Applications..." -ForegroundColor Cyan
 $PreReqAppsStatus = @()
 foreach ($app in $PreReqApps) {
@@ -126,37 +130,56 @@ foreach ($app in $PreReqApps) {
     }
     
     if ($found) {
+        
         if (($found | Select-Object -Unique DisplayName | Measure-Object).Count -gt 1) {
             #Write-Host "Multiple versions of $($app.Title) found:" -ForegroundColor Yellow
             #$found | Select-Object -Unique DisplayName | ForEach-Object { Write-Host " - $($_.DisplayName) Version: $($_.DisplayVersion)" -ForegroundColor Yellow }
-                foreach ($appitem in $found) {
-            
+            foreach ($appitem in $found) {
+                $Version = $found.DisplayVersion
+                if ($app.Url -match "dotnet"){
+                    Write-Host "Testing $($found.DisplayName)"
+                    if ($found.DisplayName -match "\d+\.\d+\.\d+") {
+                        $Version = $matches[0]
+                        #Write-Host "   Found .NET version: $Version" -ForegroundColor DarkGray
+                    }
+                }
+                
                 $PreReqAppsStatus += [PSCustomObject]@{
                     Title       = $app.Title
                     Installed   = $true
                     URL         = $app.URL
                     InstallDate = $appitem.InstallDate
-                    Version     = $appitem.DisplayVersion
+                    Version     = $Version
                     DisplayName = $appitem.DisplayName
+                    MinVersion  = $app.MinVersion
                 }
             }
         }
         else{
             $found = $found | Select-Object -First 1
+            $Version = $found.DisplayVersion
+            if ($app.Url -match "dotnet"){
+                #Write-Host "Testing $($found.DisplayName)"
+                if ($found.DisplayName -match "\d+\.\d+\.\d+") {
+                    $Version = $matches[0]
+                    #Write-Host "   Found .NET version: $Version" -ForegroundColor DarkGray
+                }
+            }
             $PreReqAppsStatus += [PSCustomObject]@{
                 Title       = $app.Title
                 Installed   = $true
                 URL         = $app.URL
                 InstallDate = $found.InstallDate
-                Version     = $found.DisplayVersion
+                Version     = $Version
                 DisplayName = $found.DisplayName
+                MinVersion  = $app.MinVersion
             }
         }
-
+        
         New-Variable -Name "Installed_$($app.Title.Replace(' ', '_'))" -Value $true -Scope Global -Force
-
+        
     }
-
+    
     else {
         New-Variable -Name "Installed_$($app.Title.Replace(' ', '_'))" -Value $false -Scope Global -Force
         $PreReqAppsStatus += [PSCustomObject]@{
@@ -169,11 +192,18 @@ foreach ($app in $PreReqApps) {
 #Display App Status, Green Arrow next to Installed Apps and Red X next to Missing Apps
 
 foreach ($app in $PreReqAppsStatus) {
-    $appVersion = $app.Version
+    
     if ($app.Installed) {
-        Write-Host " ✓  $($app.Title)  " -ForegroundColor Green
-        Write-Host "   Version: $($app.Version)" -ForegroundColor DarkGray
-        Write-Host "   Display Name: $($app.DisplayName)" -ForegroundColor DarkGray
+        if ($app.MinVersion -and $app.Version -and ([version]$app.Version -lt [version]$app.MinVersion)) {
+            Write-Host " ✗  $($app.Title)  " -ForegroundColor Red
+            Write-Host "   Installed Version: $($app.Version)" -ForegroundColor DarkGray
+            Write-Host "   Minimum Required Version: $($app.MinVersion)" -ForegroundColor DarkGray
+        }
+        else {
+            Write-Host " ✓  $($app.Title)  " -ForegroundColor Green
+            Write-Host "   Installed Version: $($app.Version)" -ForegroundColor DarkGray
+            Write-Host "   Display Name: $($app.DisplayName)" -ForegroundColor DarkGray
+        }
     }
     else {
         Write-Host " ✗  $($app.Title)" -ForegroundColor Red
@@ -202,13 +232,13 @@ Write-Host "====================================================================
 Write-Host "Confirming Windows Features for DeployR" -ForegroundColor Cyan
 #Confirm Windows Components
 $RequiredWindowsComponents = @(
-    "BranchCache",
-    "Web-Server",
-    "Web-Http-Errors",
-    "Web-Static-Content",
-    "Web-Digest-Auth",
-    "Web-Windows-Auth",
-    "Web-Mgmt-Console"
+"BranchCache",
+"Web-Server",
+"Web-Http-Errors",
+"Web-Static-Content",
+"Web-Digest-Auth",
+"Web-Windows-Auth",
+"Web-Mgmt-Console"
 )
 
 foreach ($Component in $RequiredWindowsComponents) {
@@ -223,25 +253,25 @@ if ($MissingComponents) {
     Write-Host "The following required components are missing:" -ForegroundColor Red
     Write-Host "Remediation: Run following Command"
     write-host -ForegroundColor darkgray "Add-WindowsFeature Web-Server, Web-Http-Errors, Web-Static-Content, Web-Digest-Auth, Web-Windows-Auth, Web-Mgmt-Console, BranchCache"
-
+    
 }
 
 Write-Host "=========================================================================" -ForegroundColor DarkGray
 Write-Host "Confirm IIS MIME Types" -ForegroundColor Cyan
 # Table of required MIME types for iPXE and related boot files
 $RequiredMimeTypes = @(
-    [PSCustomObject]@{ Extension = ".efi";  MimeType = "application/octet-stream"; Description = "EFI loader files" },
-    [PSCustomObject]@{ Extension = ".com";  MimeType = "application/octet-stream"; Description = "BIOS boot loaders" },
-    [PSCustomObject]@{ Extension = ".n12";  MimeType = "application/octet-stream"; Description = "BIOS loaders without F12 key press" },
-    [PSCustomObject]@{ Extension = ".sdi";  MimeType = "application/octet-stream"; Description = "boot.sdi file" },
-    [PSCustomObject]@{ Extension = ".bcd";  MimeType = "application/octet-stream"; Description = "boot.bcd boot configuration files" },
-    [PSCustomObject]@{ Extension = ".";     MimeType = "application/octet-stream"; Description = "BCD file (with no extension)" },
-    [PSCustomObject]@{ Extension = ".wim";  MimeType = "application/octet-stream"; Description = "winpe images (optional)" },
-    [PSCustomObject]@{ Extension = ".pxe";  MimeType = "application/octet-stream"; Description = "iPXE BIOS loader files" },
-    [PSCustomObject]@{ Extension = ".kpxe"; MimeType = "application/octet-stream"; Description = "UNDIonly version of iPXE" },
-    [PSCustomObject]@{ Extension = ".iso";  MimeType = "application/octet-stream"; Description = ".iso file type" },
-    [PSCustomObject]@{ Extension = ".img";  MimeType = "application/octet-stream"; Description = ".img file type" },
-    [PSCustomObject]@{ Extension = ".ipxe"; MimeType = "text/plain";                Description = ".ipxe file" }
+[PSCustomObject]@{ Extension = ".efi";  MimeType = "application/octet-stream"; Description = "EFI loader files" },
+[PSCustomObject]@{ Extension = ".com";  MimeType = "application/octet-stream"; Description = "BIOS boot loaders" },
+[PSCustomObject]@{ Extension = ".n12";  MimeType = "application/octet-stream"; Description = "BIOS loaders without F12 key press" },
+[PSCustomObject]@{ Extension = ".sdi";  MimeType = "application/octet-stream"; Description = "boot.sdi file" },
+[PSCustomObject]@{ Extension = ".bcd";  MimeType = "application/octet-stream"; Description = "boot.bcd boot configuration files" },
+[PSCustomObject]@{ Extension = ".";     MimeType = "application/octet-stream"; Description = "BCD file (with no extension)" },
+[PSCustomObject]@{ Extension = ".wim";  MimeType = "application/octet-stream"; Description = "winpe images (optional)" },
+[PSCustomObject]@{ Extension = ".pxe";  MimeType = "application/octet-stream"; Description = "iPXE BIOS loader files" },
+[PSCustomObject]@{ Extension = ".kpxe"; MimeType = "application/octet-stream"; Description = "UNDIonly version of iPXE" },
+[PSCustomObject]@{ Extension = ".iso";  MimeType = "application/octet-stream"; Description = ".iso file type" },
+[PSCustomObject]@{ Extension = ".img";  MimeType = "application/octet-stream"; Description = ".img file type" },
+[PSCustomObject]@{ Extension = ".ipxe"; MimeType = "text/plain";                Description = ".ipxe file" }
 )
 
 
@@ -352,7 +382,7 @@ if ($Installed_2Pint_Software_StifleR_Server){
     Write-Host "Testing StifleR Registry Settings..." -ForegroundColor Cyan
     $StifleRRegPath = "HKLM:\SOFTWARE\2Pint Software\StifleR\Server\GeneralSettings"
     $StifleRRegData = Get-ItemProperty -Path $StifleRRegPath -ErrorAction SilentlyContinue
-
+    
     #Note, this is no longer used in newer releases
     if ($StifleRRegData -and $StifleRRegData.DeployRUrl) {
         Write-Host "DeployR API URL: $($StifleRRegData.DeployRUrl)" -ForegroundColor Green
@@ -373,10 +403,10 @@ if ($Installed_2Pint_Software_StifleR_Server){
     else {
         Write-Host "Certificate NOT found." -ForegroundColor Red
     }
-
+    
     Write-Host "=========================================================================" -ForegroundColor DarkGray
     Write-Host "Checking for StifleRDashboard Web Virtual Directory..." -ForegroundColor Cyan
-
+    
     try {
         $vdir = Get-WebVirtualDirectory -Site "Default Web Site" -Name "StifleRDashboard" -ErrorAction SilentlyContinue
         if ($vdir) {
@@ -392,11 +422,11 @@ if ($Installed_2Pint_Software_StifleR_Server){
         Write-Host "Error checking for StifleRDashboard Web Virtual Directory: $_" -ForegroundColor Red
     }
     Write-Host "=========================================================================" -ForegroundColor DarkGray
-
+    
     Write-Host "Testing Dashboard Registry Settings for URLs" -ForegroundColor Cyan
     $DashReg = "HKLM:\SOFTWARE\2Pint Software\StifleR\Dashboard"
     $DashRegData = Get-ItemProperty -Path $DashReg -ErrorAction SilentlyContinue
-
+    
     if ($DashRegData -and $DashRegData.HubUrl) {
         if ($($DashRegData.HubUrl) -match "localhost") {
             Write-Host " Hub URL is configured to use localhost." -ForegroundColor Red
@@ -435,7 +465,7 @@ if ($Installed_2Pint_Software_StifleR_Server){
         else {
             Write-Host " Hub URL is NOT configured." -ForegroundColor Red
         }
-
+        
         if ($ServerConfigJSON -and $ServerConfigJSON.server.controller) {
             if ($($ServerConfigJSON.server.controller) -match "localhost") {
                 Write-Host " Service URL is configured to use localhost." -ForegroundColor Red
@@ -469,7 +499,7 @@ if ($Installed_2Pint_Software_DeployR){
     
     $RegPath = "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"
     $DeployRRegData = Get-ItemProperty -Path $RegPath -ErrorAction SilentlyContinue
-
+    
     if ($DeployRRegData -and $DeployRRegData.ConnectionString) {
         Write-Host "Testing DeployR SQL Connection string from Registry... " -ForegroundColor Cyan
         write-host " $($DeployRRegData.ConnectionString)"
@@ -488,7 +518,7 @@ if ($Installed_2Pint_Software_DeployR){
     else {
         Write-Host "Certificate NOT found." -ForegroundColor Red
     }
-Write-Host "=========================================================================" -ForegroundColor DarkGray
+    Write-Host "=========================================================================" -ForegroundColor DarkGray
     #Test StifleR Server URL
     Write-Host "Testing Network Connections..." -ForegroundColor Cyan
     #StifleR Server URL = $DeployRRegData.StifleRServerApiUrl without Port Number
@@ -498,9 +528,9 @@ Write-Host "====================================================================
     $DeployRURL = $DeployRRegData.ClientURL
     $DeployRURL = $DeployRURL.Split(':')[0..1] -join ':'
     $DeployRServerName = $DeployRURL.Split('/')[2]
-
-
-
+    
+    
+    
     Write-Host "Testing StifleR Server URL... $($StifleRServerURL)" -ForegroundColor Cyan
     $StifleRTest = Test-Url -Url $StifleRServerURL
     if ($StifleRTest) {
@@ -520,9 +550,9 @@ Write-Host "====================================================================
     Write-Host "Testing DeployR Server URL... $($DeployRURL)" -ForegroundColor Cyan
     $DeployRTest = Test-Url -Url $DeployRURL
     if ($DeployRTest) {
-
         
-
+        
+        
         $Test7281 = Test-NetConnection -ComputerName $DeployRServerName -Port 7281
         if ($Test7281) {
             Write-Host "DeployR Server Port 7281 is accessible." -ForegroundColor Green
@@ -535,7 +565,7 @@ Write-Host "====================================================================
     else {
         Write-Host "DeployR Server URL is NOT accessible." -ForegroundColor Red
     }
-
+    
 }
 Write-Host "=========================================================================" -ForegroundColor DarkGray
 write-host "Checking Certificate... on Ports 443 & 9000" -ForegroundColor Cyan
