@@ -54,7 +54,7 @@ function Install-SQLExpress2022 {
 }
 write-Host -ForegroundColor Green "[+] Install-SQL2022CU"
 function Install-SQL2022CU {
-    iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-SQL2022CU.ps1)
+    iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-SQL2022CU.ps1)
 }
 write-Host -ForegroundColor Green "[+] Configure-SQLExpress"
 function Configure-SQLExpress { 
