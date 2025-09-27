@@ -172,6 +172,41 @@ Function Get-ContentFromGitHub {<#
     
 }
 
+
+
+Function Get-FQDNFrom2PXEConfig {
+    param (
+        [string]$configFilePath = "C:\Program Files\2Pint Software\2PXE\2Pint.2PXE.Service.exe.config"
+    )
+
+    if (Test-Path $configFilePath) {
+        [xml]$configXml = Get-Content $configFilePath
+        $appSettings = $configXml.configuration.appSettings
+        $fqdnSetting = $appSettings.add | Where-Object { $_.key -eq "ExternalFQDNOverride" }
+        if ($fqdnSetting) {
+            return $fqdnSetting.value
+        } else {
+            Write-Warning "ExternalFQDNOverride key not found in appSettings section."
+            return $null
+        }
+    } else {
+        Write-Warning "Configuration file not found at $configFilePath."
+        return $null
+    }
+}
+
+Function Get-FQDNFromCertSAN {
+    #Loop Thought Certs in "MY" and get the SAN
+    $certs = Get-ChildItem -Path Cert:\LocalMachine\My
+    foreach ($cert in $certs) {
+        $DNSName = $cert.DnsNameList.Unicode
+        if ($DNSName) {
+            return $DNSName
+        }
+    }
+    return $null
+}
+
 Function Install-iPXEWS {
     [CmdletBinding()]
     param(
@@ -204,26 +239,25 @@ if (!(Test-Path $msifile)) {
     exit 1
 }
 # This will use the connection specific suffix for the fqdn - useful when system is not domain joined
+if (!$fqdn) {
+    $fqdn = Get-FQDNFrom2PXEConfig
+}
+if (!$fqdn) {
+    $fqdn = Get-FQDNFromCertSAN
+}
+if ($fqdn) {
+    Write-Host "Using FQDN : $fqdn"
+    $domain = ($fqdn.Split(".") | Select-Object -Skip 1) -Join "."   
+} else {
+    Write-Host "No FQDN found"
+}
+
+
 if (!$domain) {
     $domain = [string](Get-DnsClient | Select-Object -ExpandProperty ConnectionSpecificSuffix)
 }
 if ($($domain.Trim()) -eq ""){
     Write-Host "No domain suffix found. Please provide a domain name."
-    
-    $configFilePath = "C:\Program Files\2Pint Software\2PXE\2Pint.2PXE.Service.exe.config"  # Update with the actual file path
-    if (Test-Path $configFilePath) {
-        [xml]$configXml = Get-Content $configFilePath
-        $appSettings = $configXml.configuration.appSettings
-        $fqdnSetting = $appSettings.add | Where-Object { $_.key -eq "ExternalFQDNOverride" }
-        $fqdn = $fqdnSetting.value
-        $domain = ($fqdn.Split(".") | Select-Object -Skip 1) -Join "."
-        if (-not $fqdnSetting) {
-            Write-Host "ExternalFQDNOverride key not found in appSettings section."
-            
-        }
-    } else {
-        Write-Warning "Configuration file not found at $configFilePath. Assuming not part of a domain."
-    }
     if (-not $domain) {
         Write-Host "Domain name could not be determined from 2PXE config. Please provide a domain name."
         $domain = Read-Host "Enter the domain name to use for FQDN (e.g., example.com)"
