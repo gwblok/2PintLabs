@@ -52,6 +52,10 @@ write-Host -ForegroundColor Green "[+] Install-SQLExpress2022"
 function Install-SQLExpress2022 {
     iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-SQLExpress2022.ps1)
 }
+write-Host -ForegroundColor Green "[+] Install-SQL2022CU"
+function Install-SQL2022CU {
+    iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-SQL2022CU.ps1)
+}
 write-Host -ForegroundColor Green "[+] Configure-SQLExpress"
 function Configure-SQLExpress { 
     iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Configure-SQLExpress.ps1)
