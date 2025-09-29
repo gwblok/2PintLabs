@@ -107,6 +107,7 @@ There is no configuration to do after, so at this point just make sure you've se
 Ok, I can see that this installer didn't make the virtual directory, but I'm guessing future versions will, but for now, lets go ahead and create that.
 
 ```PowerShell
+Import-Module WebAdministration
 New-WebVirtualDirectory -Site "Default Web Site" -Name "StifleRDashboard" -PhysicalPath 'C:\Program Files\2Pint Software\StifleR Dashboards\Dashboard Files'
 ```
 
