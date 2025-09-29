@@ -42,3 +42,47 @@ Function Install-VSCode {
         }
     }
 }
+
+function Install-VSCodePowerShellExtension {
+    # PowerShell script to install the PowerShell extension for VS Code system-wide
+# Run as Administrator
+
+# Define paths
+$sharedExtensionsDir = "C:\Program Files\Microsoft VS Code\resources\app\extensions"
+$tempExtensionsDir = "$env:USERPROFILE\.vscode\extensions"
+$extensionId = "ms-vscode.powershell"
+
+# Ensure the shared extensions directory exists
+New-Item -ItemType Directory -Force -Path $sharedExtensionsDir -ErrorAction Stop | Out-Null
+
+# Install the PowerShell extension to the current user's profile temporarily
+Write-Host "Installing PowerShell extension ($extensionId) to temporary profile..."
+Start-Process -FilePath "code" -ArgumentList "--install-extension $extensionId" -Wait -NoNewWindow
+
+# Verify installation
+if (Test-Path "$tempExtensionsDir\$extensionId*") {
+    Write-Host "Extension installed successfully to temporary profile."
+
+    # Copy the extension to the shared directory
+    Write-Host "Copying extension to shared directory: $sharedExtensionsDir"
+    Copy-Item -Path "$tempExtensionsDir\$extensionId*" -Destination $sharedExtensionsDir -Recurse -Force
+
+    # Set permissions to ensure all users can access
+    Write-Host "Setting permissions on shared extensions directory..."
+    icacls "$sharedExtensionsDir" /grant "Users:(RX)" /T | Out-Null
+    icacls "$sharedExtensionsDir" /grant "Administrators:(F)" /T | Out-Null
+
+    Write-Host "PowerShell extension successfully preloaded for all users."
+} else {
+    Write-Error "Failed to install PowerShell extension to temporary profile."
+    exit 1
+}
+
+# Optional: Clean up temporary user extensions
+Write-Host "Cleaning up temporary extensions..."
+Remove-Item -Path "$tempExtensionsDir\$extensionId*" -Recurse -Force -ErrorAction SilentlyContinue
+
+# Instruct users to launch VS Code with the shared extensions directory (if needed)
+Write-Host "To use the shared extensions, launch VS Code with: code --extensions-dir '$sharedExtensionsDir'"
+Write-Host "Setup complete. Test by launching VS Code as a new user."
+}

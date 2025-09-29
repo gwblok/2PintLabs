@@ -1,6 +1,10 @@
 Function Install-2PXE {
     [CmdletBinding()]
     param (
+    [string]$domain,
+    [string]$fqdn,
+    #This one is required - path to the 2PXE MSI file
+    [Parameter(Mandatory=$true)]
     [string]$msifile
     )
     <#
