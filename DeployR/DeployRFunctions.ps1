@@ -27,9 +27,8 @@ function Enable-RequiredWindowsOptionalFeatures {
 }
 
 Write-Host -ForegroundColor Green "[+] Install-PowerShell74X"
-function Install-PowerShell74X {
-    iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-PowerShell74X.ps1)
-}
+iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-PowerShell74X.ps1)
+
 Write-Host -ForegroundColor Green "[+] Install-DotNetRuntimes80X"
 function Install-DotNetRuntimes80X {
     iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-DotNetRuntimes80X.ps1)
@@ -51,6 +50,10 @@ function Install-VCRedist-x64 {
 write-Host -ForegroundColor Green "[+] Install-SQLExpress2022"
 function Install-SQLExpress2022 {
     iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-SQLExpress2022.ps1)
+}
+write-Host -ForegroundColor Green "[+] Install-SQL2022CU"
+function Install-SQL2022CU {
+    iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-SQL2022CU.ps1)
 }
 write-Host -ForegroundColor Green "[+] Configure-SQLExpress"
 function Configure-SQLExpress { 
