@@ -49,16 +49,20 @@ function Import-DriverPack {
 
     if (-not $FriendlyModel) {
         $FriendlyModel = $ModelAlias
+        $FolderModelAlias = $ModelAlias
     }
-    $DriverPackSourcePath = "$ArchiveSourceFolder\$MakeAlias\$FriendlyModel\$OSVer"
+    else {
+        $FolderModelAlias = "$FriendlyModel - $ModelAlias"
+    }
+    $DriverPackSourcePath = "$ArchiveSourceFolder\$MakeAlias\$FolderModelAlias\$OSVer"
     Write-Host "  File Name: $DriverPackFileFullName"
     Write-Host "  Source Path: $DriverPackSourcePath"
     #if (Get-DeployRContentItem | Where-Object {$_.Name -eq "Driver Pack - $MakeAlias - $ModelAlias - $OSVer" -and $_.description -match "$DriverPackFileName"}){
-    if (Get-DeployRContentItem | Where-Object {$_.Name -eq "Driver Pack - $MakeAlias - $FriendlyModel - $OSVer"}){
-        Write-Host "  Driver Pack Content Item already exists for $MakeAlias - $FriendlyModel - $OSVer" -ForegroundColor Yellow
+    if (Get-DeployRContentItem | Where-Object {$_.Name -eq "Driver Pack - $MakeAlias - $FolderModelAlias - $OSVer"}){
+        Write-Host "  Driver Pack Content Item already exists for $MakeAlias - $FolderModelAlias - $OSVer" -ForegroundColor Yellow
     }
     else {
-        Write-Host "  Driver Pack Content Item does not exist for $MakeAlias - $FriendlyModel - $OSVer. Creating new one."
+        Write-Host "  Driver Pack Content Item does not exist for $MakeAlias - $FolderModelAlias - $OSVer. Creating new one."
         #Create Source Folder Structure
         New-Item -Path "$DriverPackSourcePath\Extracted" -ItemType Directory -Force | Out-Null
         #Download the Driver Pack
@@ -382,11 +386,6 @@ Function Find-DellDriverPacks {
     )
 
     $Data = Get-DellDriverPackXML
-    $DPs = $Data.DriverPackManifest.DriverPackage
-    $SelectDPs = $DPs | Select-Object -Property "SupportedSystems.Brand.Model.systemid", "Name.Name" |Out-GridView -Title "Select your Driver Packs" -Wait
-
-
-    $Data = Get-DellDriverPackXML
     $DriverPacks = $Data.DriverPackManifest.DriverPackage
     $DriverPacks = $DriverPacks | Where-Object {$_.SupportedOperatingSystems.OperatingSystem.osCode -match 'Windows10|Windows11'}
     $DriverPacks = $DriverPacks | Where-Object {$_.SupportedOperatingSystems.OperatingSystem.osArch -match 'x64'}
@@ -414,12 +413,18 @@ Function Find-DellDriverPacks {
     
     if ($Import) {
         foreach ($DP in $DPSelect) {
-            $FriendlyModel = $DP.Model -replace '[\/:*?"<>|]', '_'  # Sanitize for folder name
-            $ModelAlias = $DP.SystemID
-            $OSVer = if ($DP.OSSupported -match 'Windows11') {'Win11'} else {'Win10'}
-            $URL = $DP.URL
-            Import-DriverPack -MakeAlias "Dell" -FriendlyModel $FriendlyModel -ModelAlias $ModelAlias -OSVer $OSVer -URL $URL -ArchiveSourceFolder $SourceFolder -DeployRModulePath $DeployRModulePath
+            $SystemIDs = $DP.SystemID.Split(" ")
+            foreach ($SystemID in $SystemIDs) {
+                $FriendlyModel = $DP.Model -replace '[\/:*?"<>|]', '_'  # Sanitize for folder name
+                $ModelAlias = $SystemID
+                $OSVer = if ($DP.OSSupported -match 'Windows11') {'Win11'} else {'Win10'}
+                $URL = $DP.URL
+                Import-DriverPack -MakeAlias "Dell" -FriendlyModel $FriendlyModel -ModelAlias $ModelAlias -OSVer $OSVer -URL $URL -ArchiveSourceFolder $SourceFolder -DeployRModulePath $DeployRModulePath
+            }
         }
+    }
+    else {
+        return $DPSelect
     }
 
 }
