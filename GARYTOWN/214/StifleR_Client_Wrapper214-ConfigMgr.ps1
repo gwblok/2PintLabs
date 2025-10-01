@@ -2,9 +2,30 @@
 #Set the Log Folder:
 $LogFolder = "$env:SystemDrive\Windows\Temp\"
 Start-Transcript -Path "$LogFolder\StifleR_Client_Install.log" -Append
-$TargetVersion = '2.14.2535.82'
+
+
 $STIFLERSERVERS = 'https://214-StifleR.2p.garytown.com:1414'
 $STIFLERULEZURL = 'https://raw.githubusercontent.com/2pintsoftware/StifleRRules/master/StifleRulez.xml'
+$OPTIONS = @"
+{"SettingsOptions":{"StifleRulezURL":"$STIFLERULEZURL","StiflerServers":"[\u0022$STIFLERSERVERS\u0022]","VPNStrings":"[\u0022VPN\u0022,\u0022Cisco%20AnyConnect\u0022,\u0022Virtual%20Private%20Network\u0022,\u0022SonicWall\u0022,\u0022WireGuard\u0022,\u0022PanGP\u0022,\u0022Virtual%20Private%20Network\u0022]","EnableDebugTelemetry":"True","UseServerAsClient":"True","SignalRLogging":"True","RemoteToolsCapabilitiesFlag":"FileExplorer,%20FileContent,%20RegistryViewer,%20WmiViewer,%20EventLogs,%20PerformanceCounters,%20ResourceMonitor,%20TaskManager,%20DeviceInformation,%20RemoteAssistance,%20Rdp,%20RemoteCli,%20TsData,%20Intune,%20TunnelRdp"}}
+"@
+
+
+if (Test-Path -Path .\settings.2psImport) {
+    $OptionsFile = $true
+    $OPTIONS = Get-Content -Path .\settings.2psImport -Raw
+    $JSON = $OPTIONS | ConvertFrom-Json
+    $STIFLERSERVERS = $JSON.SettingsOptions.StiflerServers -replace '[\[\]\\u0022]'
+    $STIFLERULEZURL = $JSON.SettingsOptions.StifleRulezURL -replace '[\[\]\\u0022]'
+    $VPNSTRINGS = $JSON.SettingsOptions.VPNStrings -replace '[\[\]\\u0022]' -replace '%',' '
+}
+else{
+    Write-Host -ForegroundColor Red "No settings.2psImport file found in the current directory"
+    
+
+}
+
+
 
 function Get-InstalledApps
 {
@@ -70,19 +91,7 @@ $OPTIONS = @"
 "@
 #>
 
-$OPTIONS = @"
-{"SettingsOptions":{"StifleRulezURL":"$STIFLERULEZURL","StiflerServers":"[\u0022$STIFLERSERVERS\u0022]","VPNStrings":"[\u0022VPN\u0022,\u0022Cisco%20AnyConnect\u0022,\u0022Virtual%20Private%20Network\u0022,\u0022SonicWall\u0022,\u0022WireGuard\u0022]","EnableDebugTelemetry":"True","UseServerAsClient":"True","SignalRLogging":"True","RemoteToolsCapabilitiesFlag":"FileExplorer,%20FileContent,%20RegistryViewer,%20WmiViewer,%20EventLogs,%20PerformanceCounters,%20ResourceMonitor,%20TaskManager,%20DeviceInformation,%20RemoteAssistance,%20Rdp,%20RemoteCli,%20TsData,%20Intune,%20TunnelRdp"}}
-"@
 
-
-if (Test-Path -Path .\settings.2psImport) {
-    $OptionsFile = $true
-    $OPTIONS = Get-Content -Path .\settings.2psImport -Raw
-}
-else{
-    Write-Host -ForegroundColor Red "No settings.2psImport file found in the current directory"
-
-}
 
 $OPTIONS = Get-Content -Path .\settings.2psImport -Raw
 Write-Host -ForegroundColor DarkGray "-------------------------------------------------------"
