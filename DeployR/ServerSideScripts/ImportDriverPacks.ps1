@@ -49,16 +49,20 @@ function Import-DriverPack {
 
     if (-not $FriendlyModel) {
         $FriendlyModel = $ModelAlias
+        $FolderModelAlias = $ModelAlias
     }
-    $DriverPackSourcePath = "$ArchiveSourceFolder\$MakeAlias\$FriendlyModel\$OSVer"
+    else {
+        $FolderModelAlias = "$FriendlyModel - $ModelAlias"
+    }
+    $DriverPackSourcePath = "$ArchiveSourceFolder\$MakeAlias\$FolderModelAlias\$OSVer"
     Write-Host "  File Name: $DriverPackFileFullName"
     Write-Host "  Source Path: $DriverPackSourcePath"
     #if (Get-DeployRContentItem | Where-Object {$_.Name -eq "Driver Pack - $MakeAlias - $ModelAlias - $OSVer" -and $_.description -match "$DriverPackFileName"}){
-    if (Get-DeployRContentItem | Where-Object {$_.Name -eq "Driver Pack - $MakeAlias - $FriendlyModel - $OSVer"}){
-        Write-Host "  Driver Pack Content Item already exists for $MakeAlias - $FriendlyModel - $OSVer" -ForegroundColor Yellow
+    if (Get-DeployRContentItem | Where-Object {$_.Name -eq "Driver Pack - $MakeAlias - $FolderModelAlias - $OSVer"}){
+        Write-Host "  Driver Pack Content Item already exists for $MakeAlias - $FolderModelAlias - $OSVer" -ForegroundColor Yellow
     }
     else {
-        Write-Host "  Driver Pack Content Item does not exist for $MakeAlias - $FriendlyModel - $OSVer. Creating new one."
+        Write-Host "  Driver Pack Content Item does not exist for $MakeAlias - $FolderModelAlias - $OSVer. Creating new one."
         #Create Source Folder Structure
         New-Item -Path "$DriverPackSourcePath\Extracted" -ItemType Directory -Force | Out-Null
         #Download the Driver Pack
@@ -102,7 +106,7 @@ function Import-DriverPack {
         
         #Create DeployR Content Item for the Driver Pack
         
-        $NewCI = New-DeployRContentItem -Name "Driver Pack - $MakeAlias - $FriendlyModel - $OSVer" -Type Folder -Purpose DriverPack -Description "File: $DriverPackFileName"
+        $NewCI = New-DeployRContentItem -Name "Driver Pack - $MakeAlias - $FolderModelAlias - $OSVer" -Type Folder -Purpose DriverPack -Description "File: $DriverPackFileName"
         $ContentId = $NewCI.id
         $NewVersion = New-DeployRContentItemVersion -ContentItemId $ContentId -Description "Source: $DriverPackSourcePath" -DriverManufacturer $MakeAlias -DriverModel $ModelAlias -SourceFolder "$DriverPackSourcePath\Extracted"
         $ContentVersion = $NewVersion.versionNo
@@ -174,6 +178,164 @@ function Import-PanasonicDriverPacks {
 
 
 #region Dell Driver Packs Import
+function Get-DellSupportedModels {
+    [CmdletBinding()]
+    
+    $CabPathIndex = "$env:ProgramData\EMPS\DellCabDownloads\CatalogIndexPC.cab"
+    $DellCabExtractPath = "$env:ProgramData\EMPS\DellCabDownloads\DellCabExtract"
+    
+    # Pull down Dell XML CAB used in Dell Command Update ,extract and Load
+    if (!(Test-Path $DellCabExtractPath)){$null = New-Item -Path $DellCabExtractPath -ItemType Directory -Force}
+    Write-Verbose "Downloading Dell Cab"
+    Invoke-WebRequest -Uri "https://downloads.dell.com/catalog/CatalogIndexPC.cab" -OutFile $CabPathIndex -UseBasicParsing -Proxy $ProxyServer
+    If(Test-Path "$DellCabExtractPath\DellSDPCatalogPC.xml"){Remove-Item -Path "$DellCabExtractPath\DellSDPCatalogPC.xml" -Force}
+    Start-Sleep -Seconds 1
+    if (test-path $DellCabExtractPath){Remove-Item -Path $DellCabExtractPath -Force -Recurse}
+    $null = New-Item -Path $DellCabExtractPath -ItemType Directory
+    Write-Verbose "Expanding the Cab File..." 
+    $null = expand $CabPathIndex $DellCabExtractPath\CatalogIndexPC.xml
+    
+    Write-Verbose "Loading Dell Catalog XML.... can take awhile"
+    [xml]$XMLIndex = Get-Content "$DellCabExtractPath\CatalogIndexPC.xml"
+    
+    
+    $SupportedModels = $XMLIndex.ManifestIndex.GroupManifest
+    $SupportedModelsObject = @()
+    foreach ($SupportedModel in $SupportedModels){
+        $SPInventory = New-Object -TypeName PSObject
+        $SPInventory | Add-Member -MemberType NoteProperty -Name "SystemID" -Value "$($SupportedModel.SupportedSystems.Brand.Model.systemID)" -Force
+        $SPInventory | Add-Member -MemberType NoteProperty -Name "Model" -Value "$($SupportedModel.SupportedSystems.Brand.Model.Display.'#cdata-section')"  -Force
+        $SPInventory | Add-Member -MemberType NoteProperty -Name "URL" -Value "$($SupportedModel.ManifestInformation.path)" -Force
+        $SPInventory | Add-Member -MemberType NoteProperty -Name "Date" -Value "$($SupportedModel.ManifestInformation.version)" -Force		
+        $SupportedModelsObject += $SPInventory 
+    }
+    return $SupportedModelsObject
+}
+function Get-DellDeviceDetails {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory=$False)]
+        [ValidateLength(4,4)]    
+        [string]$SystemSKUNumber,
+        [string]$ModelLike
+    )
+    
+    $Manufacturer = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufacturer
+    
+    
+    if ((!($SystemSKUNumber)) -and (!($ModelLike))) {
+        if ($Manufacturer -notmatch "Dell"){return "This Function is only for Dell Systems, or please provide a SKU"}
+        $SystemSKUNumber = (Get-CimInstance -ClassName Win32_ComputerSystem).SystemSKUNumber
+    }
+    <#
+    if (!($ModelLike)){
+        $DellSKU = Get-DellSupportedModels | Where-Object {$_.systemID -match $SystemSKUNumber} | Select-Object -First 1
+    }
+    else {
+        $DellSKU = Get-DellSupportedModels | Where-Object { $_.Model -match $ModelLike}
+    }
+    
+    return $DellSKU | Select-Object -Property SystemID,Model
+    #>
+    $MoreData = Get-DellDriverPackXML
+    if (!($ModelLike)){
+        $DrillDown = $MoreData.DriverPackManifest.DriverPackage.SupportedSystems.brand.model | Where-Object {$_.systemid -eq $SystemSKUNumber} | Select-Object -First 1
+        $RDSDate = [DATETIME]"$($DrillDown.rtsDate)"
+        $DeviceOutput = New-Object -TypeName PSObject
+        $DeviceOutput | Add-Member -MemberType NoteProperty -Name "SystemID" -Value "$($DrillDown.systemID)" -Force
+        $DeviceOutput | Add-Member -MemberType NoteProperty -Name "Model" -Value "$($DrillDown.name)"  -Force
+        $DeviceOutput | Add-Member -MemberType NoteProperty -Name "RTSDate" -Value $([DATETIME]$RDSDate) -Force
+        return $DeviceOutput		
+    }
+    else{
+        $DrillDown = $MoreData.DriverPackManifest.DriverPackage.SupportedSystems.brand.model | Where-Object {$_.name -match $ModelLike}
+        if ($DrillDown.count -gt 1){
+            $SystemIDs = $DrillDown.systemID | Select-Object -Unique
+            $DeviceOutputObject = @()
+            foreach ($SystemID in $SystemIDs){
+                $DrillDown = $MoreData.DriverPackManifest.DriverPackage.SupportedSystems.brand.model | Where-Object {$_.systemid -eq $SystemID}| Select-Object -First 1
+                $RDSDate = [DATETIME]"$($DrillDown.rtsDate)"
+                $DeviceOutput = New-Object -TypeName PSObject
+                $DeviceOutput | Add-Member -MemberType NoteProperty -Name "SystemID" -Value "$($DrillDown.systemID)" -Force
+                $DeviceOutput | Add-Member -MemberType NoteProperty -Name "Model" -Value "$($DrillDown.name)"  -Force
+                $DeviceOutput | Add-Member -MemberType NoteProperty -Name "RTSDate" -Value $([DATETIME]$RDSDate) -Force
+                $DeviceOutputObject += $DeviceOutput 
+            }
+            return $DeviceOutputObject | Sort-Object -Property RTSDate
+        }
+    }
+}
+function Get-DellDriverPackXML {
+    [CmdletBinding()]
+    
+    $CabPathIndex = "$env:ProgramData\EMPS\DellCabDownloads\CatalogIndexPC.cab"
+    $DellCabExtractPath = "$env:ProgramData\EMPS\DellCabDownloads\DellCabExtract"
+    
+    # Pull down Dell XML CAB used in Dell Command Update ,extract and Load
+    if (!(Test-Path $DellCabExtractPath)){$null = New-Item -Path $DellCabExtractPath -ItemType Directory -Force}
+    Write-Verbose "Downloading Dell Cab"
+    Invoke-WebRequest -Uri "https://downloads.dell.com/catalog/DriverPackCatalog.cab" -OutFile $CabPathIndex -UseBasicParsing -Proxy $ProxyServer
+    If(Test-Path "$DellCabExtractPath\DellSDPCatalogPC.xml"){Remove-Item -Path "$DellCabExtractPath\DellSDPCatalogPC.xml" -Force}
+    Start-Sleep -Seconds 1
+    if (test-path $DellCabExtractPath){Remove-Item -Path $DellCabExtractPath -Force -Recurse}
+    $null = New-Item -Path $DellCabExtractPath -ItemType Directory
+    Write-Verbose "Expanding the Cab File..." 
+    $null = expand $CabPathIndex $DellCabExtractPath\DriverPackCatalog.xml
+    
+    Write-Verbose "Loading Dell Catalog XML.... can take awhile"
+    [xml]$XMLIndex = Get-Content "$DellCabExtractPath\DriverPackCatalog.xml"
+    
+    return $XMLIndex
+}
+function Get-DellDeviceDriverPack {
+    [CmdletBinding()]
+    param (
+    [Parameter(Mandatory=$False)]
+    [ValidateLength(4,4)]    
+    [string]$SystemSKUNumber,
+    [ValidateSet('Windows10','Windows11')]
+    [string]$OSVer
+    )
+    
+    $Manufacturer = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufacturer
+    
+    
+    if (!($SystemSKUNumber)) {
+        if ($Manufacturer -notmatch "Dell"){return "This Function is only for Dell Systems, or please provide a SKU"}
+        $SystemSKUNumber = (Get-CimInstance -ClassName Win32_ComputerSystem).SystemSKUNumber
+    }
+    
+    $MoreData = Get-DellDriverPackXML
+    $DriverPacks = $MoreData.DriverPackManifest.DriverPackage | Where-Object {$_.SupportedSystems.brand.model.systemid -eq $SystemSKUNumber}
+    $DeviceDetails = $MoreData.DriverPackManifest.DriverPackage.SupportedSystems.brand.model | Where-Object {$_.systemid -eq $SystemSKUNumber} | Select-Object -First 1
+    $DriverPacksOBject = @()
+    foreach ($DriverPack in $DriverPacks){
+        $URL = "http://$($MoreData.DriverPackManifest.baseLocation)/$($DriverPack.path)"
+        $FileName = $DriverPack.path -split "/" | Select-Object -Last 1
+        $DeviceDriverPack = New-Object -TypeName PSObject
+        $MetaDataVersion = $MoreData.DriverPackManifest.version
+        $SizeinMB = [Math]::Round($DriverPack.size/1MB,2)
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "SystemID" -Value "$($DeviceDetails.systemID)" -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "Model" -Value "$($DeviceDetails.name)"  -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "MetaDataVersion" -Value "$MetaDataVersion"  -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "FileName" -Value "$FileName"  -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "ReleaseID" -Value "$($DriverPack.releaseID)"  -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "URL" -Value "$URL"  -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "DateTime" -Value $([DATETIME]$DriverPack.dateTime) -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "hashMD5" -Value $($DriverPack.hashMD5) -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "SizeinMB" -Value $SizeinMB -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "OSSupported" -Value $($DriverPack.SupportedOperatingSystems.OperatingSystem.osCode) -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "OsArch" -Value $($DriverPack.SupportedOperatingSystems.OperatingSystem.osArch) -Force
+        $DriverPacksOBject += $DeviceDriverPack 
+    }
+    
+    if ($OSVer){
+        $DriverPacksOBject = $DriverPacksOBject | Where-Object {$_.OSSupported -match $OSVer}
+    }
+    
+    return $DriverPacksOBject 
+    
+}
 
 function Import-DellDriverPackBySKU {
     param (
@@ -184,77 +346,7 @@ function Import-DellDriverPackBySKU {
     
     #region functions
     
-    function Get-DellDriverPackXML {
-        [CmdletBinding()]
-        
-        $CabPathIndex = "$env:ProgramData\EMPS\DellCabDownloads\CatalogIndexPC.cab"
-        $DellCabExtractPath = "$env:ProgramData\EMPS\DellCabDownloads\DellCabExtract"
-        
-        # Pull down Dell XML CAB used in Dell Command Update ,extract and Load
-        if (!(Test-Path $DellCabExtractPath)){$null = New-Item -Path $DellCabExtractPath -ItemType Directory -Force}
-        Write-Verbose "Downloading Dell Cab"
-        Invoke-WebRequest -Uri "https://downloads.dell.com/catalog/DriverPackCatalog.cab" -OutFile $CabPathIndex -UseBasicParsing -Proxy $ProxyServer
-        If(Test-Path "$DellCabExtractPath\DellSDPCatalogPC.xml"){Remove-Item -Path "$DellCabExtractPath\DellSDPCatalogPC.xml" -Force}
-        Start-Sleep -Seconds 1
-        if (test-path $DellCabExtractPath){Remove-Item -Path $DellCabExtractPath -Force -Recurse}
-        $null = New-Item -Path $DellCabExtractPath -ItemType Directory
-        Write-Verbose "Expanding the Cab File..." 
-        $null = expand $CabPathIndex $DellCabExtractPath\DriverPackCatalog.xml
-        
-        Write-Verbose "Loading Dell Catalog XML.... can take awhile"
-        [xml]$XMLIndex = Get-Content "$DellCabExtractPath\DriverPackCatalog.xml"
-        
-        return $XMLIndex
-    }
-    function Get-DellDeviceDriverPack {
-        [CmdletBinding()]
-        param (
-        [Parameter(Mandatory=$False)]
-        [ValidateLength(4,4)]    
-        [string]$SystemSKUNumber,
-        [ValidateSet('Windows10','Windows11')]
-        [string]$OSVer
-        )
-        
-        $Manufacturer = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufacturer
-        
-        
-        if (!($SystemSKUNumber)) {
-            if ($Manufacturer -notmatch "Dell"){return "This Function is only for Dell Systems, or please provide a SKU"}
-            $SystemSKUNumber = (Get-CimInstance -ClassName Win32_ComputerSystem).SystemSKUNumber
-        }
-        
-        $MoreData = Get-DellDriverPackXML
-        $DriverPacks = $MoreData.DriverPackManifest.DriverPackage | Where-Object {$_.SupportedSystems.brand.model.systemid -eq $SystemSKUNumber}
-        $DeviceDetails = $MoreData.DriverPackManifest.DriverPackage.SupportedSystems.brand.model | Where-Object {$_.systemid -eq $SystemSKUNumber} | Select-Object -First 1
-        $DriverPacksOBject = @()
-        foreach ($DriverPack in $DriverPacks){
-            $URL = "http://$($MoreData.DriverPackManifest.baseLocation)/$($DriverPack.path)"
-            $FileName = $DriverPack.path -split "/" | Select-Object -Last 1
-            $DeviceDriverPack = New-Object -TypeName PSObject
-            $MetaDataVersion = $MoreData.DriverPackManifest.version
-            $SizeinMB = [Math]::Round($DriverPack.size/1MB,2)
-            $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "SystemID" -Value "$($DeviceDetails.systemID)" -Force
-            $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "Model" -Value "$($DeviceDetails.name)"  -Force
-            $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "MetaDataVersion" -Value "$MetaDataVersion"  -Force
-            $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "FileName" -Value "$FileName"  -Force
-            $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "ReleaseID" -Value "$($DriverPack.releaseID)"  -Force
-            $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "URL" -Value "$URL"  -Force
-            $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "DateTime" -Value $([DATETIME]$DriverPack.dateTime) -Force
-            $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "hashMD5" -Value $($DriverPack.hashMD5) -Force
-            $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "SizeinMB" -Value $SizeinMB -Force
-            $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "OSSupported" -Value $($DriverPack.SupportedOperatingSystems.OperatingSystem.osCode) -Force
-            $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "OsArch" -Value $($DriverPack.SupportedOperatingSystems.OperatingSystem.osArch) -Force
-            $DriverPacksOBject += $DeviceDriverPack 
-        }
-        
-        if ($OSVer){
-            $DriverPacksOBject = $DriverPacksOBject | Where-Object {$_.OSSupported -match $OSVer}
-        }
-        
-        return $DriverPacksOBject 
-        
-    }
+
     #endregion functions
     Write-Host "Importing Dell Driver Packs" -ForegroundColor Green
     #Ensure Source Folder exists
@@ -285,6 +377,57 @@ function Import-DellDriverPackBySKU {
     }
 
 
+Function Find-DellDriverPacks {
+    [CmdletBinding()]
+    param (
+        [switch]$Import,
+        [string]$SourceFolder = "D:\DeployRContentItems\Source\DriverPacks",
+        [string]$DeployRModulePath ='C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
+    )
+
+    $Data = Get-DellDriverPackXML
+    $DriverPacks = $Data.DriverPackManifest.DriverPackage
+    $DriverPacks = $DriverPacks | Where-Object {$_.SupportedOperatingSystems.OperatingSystem.osCode -match 'Windows10|Windows11'}
+    $DriverPacks = $DriverPacks | Where-Object {$_.SupportedOperatingSystems.OperatingSystem.osArch -match 'x64'}
+    $DriverPacksOBject = @()
+    foreach ($DriverPack in $DriverPacks){
+        $URL = "http://$($Data.DriverPackManifest.baseLocation)/$($DriverPack.path)"
+        $FileName = $DriverPack.path -split "/" | Select-Object -Last 1
+        $DeviceDriverPack = New-Object -TypeName PSObject
+        $MetaDataVersion = $Data.DriverPackManifest.version
+        $SizeinMB = [Math]::Round($DriverPack.size/1MB,2)
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "SystemID" -Value "$($Driverpack.SupportedSystems.Brand.model.systemid)" -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "Model" -Value "$($Driverpack.SupportedSystems.Brand.model.name | Select-Object -Unique)"  -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "MetaDataVersion" -Value "$MetaDataVersion"  -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "FileName" -Value "$FileName"  -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "ReleaseID" -Value "$($DriverPack.releaseID)"  -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "URL" -Value "$URL"  -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "DateTime" -Value $([DATETIME]$DriverPack.dateTime) -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "hashMD5" -Value $($DriverPack.hashMD5) -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "SizeinMB" -Value $SizeinMB -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "OSSupported" -Value $($DriverPack.SupportedOperatingSystems.OperatingSystem.osCode) -Force
+        $DeviceDriverPack | Add-Member -MemberType NoteProperty -Name "OsArch" -Value $($DriverPack.SupportedOperatingSystems.OperatingSystem.osArch) -Force
+        $DriverPacksOBject += $DeviceDriverPack 
+    }
+    $DPSelect = $DriverPacksOBject | Out-GridView -PassThru -Title "Select the Dell Driver Packs to Import"
+    
+    if ($Import) {
+        foreach ($DP in $DPSelect) {
+            $SystemIDs = $DP.SystemID.Split(" ")
+            foreach ($SystemID in $SystemIDs) {
+                $FriendlyModel = $DP.Model -replace '[\/:*?"<>|]', '_'  # Sanitize for folder name
+                $ModelAlias = $SystemID
+                $OSVer = if ($DP.OSSupported -match 'Windows11') {'Win11'} else {'Win10'}
+                $URL = $DP.URL
+                Import-DriverPack -MakeAlias "Dell" -FriendlyModel $FriendlyModel -ModelAlias $ModelAlias -OSVer $OSVer -URL $URL -ArchiveSourceFolder $SourceFolder -DeployRModulePath $DeployRModulePath
+            }
+        }
+    }
+    else {
+        return $DPSelect
+    }
+
+}
 #endregion Dell Driver Packs Import
 
 
