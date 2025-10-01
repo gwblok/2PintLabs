@@ -106,7 +106,7 @@ function Import-DriverPack {
         
         #Create DeployR Content Item for the Driver Pack
         
-        $NewCI = New-DeployRContentItem -Name "Driver Pack - $MakeAlias - $FriendlyModel - $OSVer" -Type Folder -Purpose DriverPack -Description "File: $DriverPackFileName"
+        $NewCI = New-DeployRContentItem -Name "Driver Pack - $MakeAlias - $FolderModelAlias - $OSVer" -Type Folder -Purpose DriverPack -Description "File: $DriverPackFileName"
         $ContentId = $NewCI.id
         $NewVersion = New-DeployRContentItemVersion -ContentItemId $ContentId -Description "Source: $DriverPackSourcePath" -DriverManufacturer $MakeAlias -DriverModel $ModelAlias -SourceFolder "$DriverPackSourcePath\Extracted"
         $ContentVersion = $NewVersion.versionNo
