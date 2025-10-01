@@ -1,7 +1,7 @@
 
 #Set the Log Folder:
 $LogFolder = "$env:SystemDrive\Windows\Temp\"
-Start-Transcript -Path "$LogFolder\StifleR_Client_Install.log" -Append
+Start-Transcript -Path "$LogFolder\StifleR_Client_Install_Transcript.log" -Append
 
 
 $STIFLERSERVERS = 'https://214-StifleR.2p.garytown.com:1414'
@@ -14,17 +14,15 @@ $OPTIONS = @"
 if (Test-Path -Path .\settings.2psImport) {
     $OptionsFile = $true
     $OPTIONS = Get-Content -Path .\settings.2psImport -Raw
-    $JSON = $OPTIONS | ConvertFrom-Json
-    $STIFLERSERVERS = $JSON.SettingsOptions.StiflerServers -replace '[\[\]\\u0022]'
-    $STIFLERULEZURL = $JSON.SettingsOptions.StifleRulezURL -replace '[\[\]\\u0022]'
-    $VPNSTRINGS = $JSON.SettingsOptions.VPNStrings -replace '[\[\]\\u0022]' -replace '%',' '
 }
 else{
     Write-Host -ForegroundColor Red "No settings.2psImport file found in the current directory"
-    
-
 }
 
+$JSON = $OPTIONS | ConvertFrom-Json
+$STIFLERSERVERS = $JSON.SettingsOptions.StiflerServers -replace '[\[\]\\u0022]'
+$STIFLERULEZURL = $JSON.SettingsOptions.StifleRulezURL -replace '[\[\]\\u0022]'
+$VPNSTRINGS = $JSON.SettingsOptions.VPNStrings -replace '[\[\]\\u0022]' -replace '%',' '
 
 
 function Get-InstalledApps
@@ -83,31 +81,23 @@ if (-not $MSI) {
     return
 }
 
-<#
-{"SettingsOptions":{"StifleRulezURL":"https://raw.githubusercontent.com/2pintsoftware/StifleRRules/master/StifleRulez.xml","LogEventLevel":"Verbose","StiflerServers":"[\u0022https://dr.2pintlabs.com:1414\u0022]","EnableDebugTelemetry":"True","UseServerAsClient":"True","SignalRLogging":"True","RemoteToolsCapabilitiesFlag":"FileExplorer,%20FileContent,%20RegistryViewer,%20WmiViewer,%20EventLogs,%20PerformanceCounters,%20ResourceMonitor,%20TaskManager,%20DeviceInformation,%20RemoteAssistance,%20Rdp,%20RemoteCli,%20TsData,%20IntuneLogs,%20TunnelRdp"}}
 
-$OPTIONS = @"
-{"SettingsOptions":{"StifleRulezURL":"$STIFLERULEZURL","StiflerServers":"[\u0022$STIFLERSERVERS\u0022]","VPNStrings":"[\u0022VPN\u0022,\u0022Cisco%20AnyConnect\u0022,\u0022Virtual%20Private%20Network\u0022,\u0022SonicWall\u0022,\u0022WireGuard\u0022]","EnableDebugTelemetry":"True","UseServerAsClient":"True","SignalRLogging":"True","RemoteToolsCapabilitiesFlag":"FileExplorer,%20FileContent,%20RegistryViewer,%20WmiViewer,%20EventLogs,%20PerformanceCounters,%20ResourceMonitor,%20TaskManager,%20DeviceInformation,%20RemoteAssistance,%20Rdp,%20RemoteCli,%20TsData,%20IntuneLogs,%20TunnelRdp"}}
-"@
-#>
-
-
-
-$OPTIONS = Get-Content -Path .\settings.2psImport -Raw
 Write-Host -ForegroundColor DarkGray "-------------------------------------------------------"
 Write-Host -ForegroundColor Cyan "Installing StifleR Client with the following options:"
+if ($OptionsFile) {write-host -ForegroundColor Green "Found Options File (settings.2psImport): $OptionsFile"}
+else {write-host -ForegroundColor Yellow "No settings.2psImport file found in the current directory, reverting to defaults."}
 write-host -ForegroundColor Green "StifleR Servers: $STIFLERSERVERS"
 write-host -ForegroundColor Green "StifleR Rulez URL: $STIFLERULEZURL"
-write-host -ForegroundColor Green "VPN Strings: VPN, Cisco AnyConnect, Virtual Private Network, SonicWall, WireGuard"
-write-host -ForegroundColor Green "Found Options File (settings.2psImport): $OptionsFile"
+write-host -ForegroundColor Green "VPN Strings: $VPNSTRINGS"
+
 Write-Host -ForegroundColor DarkGray "-------------------------------------------------------"
 #Write out the contents of the $Options Variables
 Write-Host -ForegroundColor gray "$OPTIONS"
 Write-Host -ForegroundColor DarkGray "-------------------------------------------------------"
-Write-Host "$Options"
 
-write-host " Start-Process -FilePath msiexec.exe -ArgumentList `"/i $MSI /l*v $LogFolder\install.log /quiet OPTIONS=$OPTIONS AUTOSTART=1`" -Wait -PassThru"
-$Install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $MSI /l*v $LogFolder\install.log /quiet OPTIONS=$OPTIONS AUTOSTART=1" -Wait -PassThru
+
+write-host " Start-Process -FilePath msiexec.exe -ArgumentList `"/i $MSI /l*v $LogFolder\StifleR_Client_Install_MSI.log /quiet OPTIONS=$OPTIONS AUTOSTART=1`" -Wait -PassThru"
+$Install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $MSI /l*v $LogFolder\StifleR_Client_Install_MSI.log /quiet OPTIONS=$OPTIONS AUTOSTART=1" -Wait -PassThru
 
 if ($Install.ExitCode -eq 0) {
     Write-Host -ForegroundColor Green "Installation completed successfully."
