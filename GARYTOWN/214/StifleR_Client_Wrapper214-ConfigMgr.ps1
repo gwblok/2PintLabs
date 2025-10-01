@@ -1,4 +1,6 @@
 
+#Set the Log Folder:
+$LogFolder = "$env:SystemDrive\Windows\Temp\"
 Start-Transcript -Path "$LogFolder\StifleR_Client_Install.log" -Append
 $TargetVersion = '2.14.2535.82'
 $STIFLERSERVERS = 'https://214-StifleR.2p.garytown.com:1414'
