@@ -14,6 +14,7 @@ if (Get-Module -name "DeployR.Utility"){
     [String]$DriverPackOption = ${TSEnv:DriverPackOption}
     [switch]$ApplyDrivers = $true
     [String]$MakeAlias = ${TSEnv:MakeAlias}
+    [String]$Make = ${TSEnv:Make}
     [String]$ModelAlias = ${TSEnv:ModelAlias}
     [int]$OSImageBuild = ${TSEnv:OSImageBuild}
 }
@@ -29,14 +30,15 @@ else {
     [switch]$ApplyDrivers = $true
     $Gather = iex (irm gather.garytown.com)
     [String]$MakeAlias = $Gather.MakeAlias
+    [String]$Make = $Gather.Make
     [String]$ModelAlias = $Gather.ModelAlias
     [int]$OSImageBuild = $Gather.OSCurrentBuild
 }
 
 
 # Validate the Device Manufacturer
-if ($MakeAlias -ne "Dell" -and $MakeAlias -ne "Lenovo" -and $MakeAlias -ne "HP" -and $MakeAlias -ne "Panasonic Corporation" -and $MakeAlias -ne "Microsoft") {
-    Write-Host "MakeAlias must be Microsoft, Dell, Lenovo, Panasonic or HP. Exiting script."
+if ($MakeAlias -ne "Dell" -and $MakeAlias -ne "Lenovo" -and $MakeAlias -ne "HP" -and $MakeAlias -ne "Panasonic Corporation" -and $MakeAlias -ne "Microsoft" -and $Make -ne "Acer") {
+    Write-Host "MakeAlias must be Microsoft, Dell, Lenovo, Panasonic, Acer or HP. Exiting script."
     Exit 0
 }
 if ($ModelAlias -eq "Virtual Machine") {
@@ -2294,6 +2296,11 @@ if ($env:SystemDrive -eq "X:"){
     Migrate-WinPEDrivers -OfflineOSPath "$($TargetSystemDrive)\"
 }
 #endregion
+
+if ($Make -eq "Acer"){
+    Write-Host "Acer Systems do not have a Driver Pack Option, exiting script."
+    exit 0
+}
 
 write-host "=============================================================="
 write-host "Continuing with OEM Feeds to Get Drivers"
