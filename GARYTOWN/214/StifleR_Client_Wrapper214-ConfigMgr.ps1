@@ -20,7 +20,7 @@ else{
 }
 
 $JSON = $OPTIONS | ConvertFrom-Json
-$STIFLERSERVERS = $JSON.SettingsOptions.StiflerServers -replace '[\[\]\\u0022]'
+$STIFLERSERVERS = $JSON.SettingsOptions.StiflerServers -replace '[\[\]\\u0022]' -replace '"',' '
 $STIFLERULEZURL = $JSON.SettingsOptions.StifleRulezURL -replace '[\[\]\\u0022]'
 $VPNSTRINGS = $JSON.SettingsOptions.VPNStrings -replace '[\[\]\\u0022]' -replace '%',' '
 
@@ -67,6 +67,7 @@ function Test-Url {
 }
 Write-Host "Testing Connection to StifleR Server: $STIFLERSERVERS before proceeding with installation..."
 $StifleRServerBaseName = $STIFLERSERVERS.Replace('https://', '').Replace(':1414', '')
+write-Host "Running... Test-NetConnection -ComputerName $StifleRServerBaseName -Port 1414:"
 if ((Test-NetConnection -ComputerName $StifleRServerBaseName -Port 1414 -WarningAction SilentlyContinue).TcpTestSucceeded -eq $false) {
     Write-Host -ForegroundColor Red "StifleR Server is not reachable. Please check the server address and port."
     Stop-Transcript
