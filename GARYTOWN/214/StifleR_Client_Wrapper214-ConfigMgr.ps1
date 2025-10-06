@@ -3,7 +3,7 @@
 $LogFolder = "$env:SystemDrive\Windows\Temp\"
 Start-Transcript -Path "$LogFolder\StifleR_Client_Install_Transcript.log" -Append
 
-
+$StifleRSettingsConfigFileName = "settings.2psImport"
 $STIFLERSERVERS = 'https://214-StifleR.2p.garytown.com:1414'
 $STIFLERULEZURL = 'https://raw.githubusercontent.com/2pintsoftware/StifleRRules/master/StifleRulez.xml'
 $OPTIONS = @"
@@ -11,12 +11,14 @@ $OPTIONS = @"
 "@
 
 
-if (Test-Path -Path .\settings.2psImport) {
+if (Test-Path -Path .\$StifleRSettingsConfigFileName) {
+    Write-Host "Found $StifleRSettingsConfigFileName file in the current directory, using settings from file." -ForegroundColor Green
     $OptionsFile = $true
-    $OPTIONS = Get-Content -Path .\settings.2psImport -Raw
+    $OPTIONS = Get-Content -Path .\$StifleRSettingsConfigFileName -Raw
+    
 }
 else{
-    Write-Host -ForegroundColor Red "No settings.2psImport file found in the current directory"
+    Write-Host -ForegroundColor Red "No $StifleRSettingsConfigFileName file found in the current directory"
 }
 
 $JSON = $OPTIONS | ConvertFrom-Json
@@ -85,14 +87,15 @@ if (-not $MSI) {
 
 Write-Host -ForegroundColor DarkGray "-------------------------------------------------------"
 Write-Host -ForegroundColor Cyan "Installing StifleR Client with the following options:"
-if ($OptionsFile) {write-host -ForegroundColor Green "Found Options File (settings.2psImport): $OptionsFile"}
-else {write-host -ForegroundColor Yellow "No settings.2psImport file found in the current directory, reverting to defaults."}
+if ($OptionsFile) {write-host -ForegroundColor Green "Found Options File ($StifleRSettingsConfigFileName): $OptionsFile"}
+else {write-host -ForegroundColor Yellow "No 2psImport file found in the current directory, reverting to defaults."}
 write-host -ForegroundColor Green "StifleR Servers: $STIFLERSERVERS"
 write-host -ForegroundColor Green "StifleR Rulez URL: $STIFLERULEZURL"
 write-host -ForegroundColor Green "VPN Strings: $VPNSTRINGS"
 
 Write-Host -ForegroundColor DarkGray "-------------------------------------------------------"
 #Write out the contents of the $Options Variables
+write-host -ForegroundColor DarkGray "OPTIONS being used for install in $StifleRSettingsConfigFileName"
 Write-Host -ForegroundColor gray "$OPTIONS"
 Write-Host -ForegroundColor DarkGray "-------------------------------------------------------"
 

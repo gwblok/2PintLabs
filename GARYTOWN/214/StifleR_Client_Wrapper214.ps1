@@ -1,7 +1,16 @@
-$TargetVersion = '2.14.2535.82'
+#Set the Log Folder:
+$LogFolder = "$env:SystemDrive\Windows\Temp\"
+Start-Transcript -Path "$LogFolder\StifleR_Client_Install_Transcript.log" -Append
+
+$STIFLERSETTINGSURL = "https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/GARYTOWN/214/settings.2psImport"
+$ClientURL = 'https://214-StifleR.2p.garytown.com/StifleR-ClientApp.zip'
 $STIFLERSERVERS = 'https://214-StifleR.2p.garytown.com:1414'
 $STIFLERULEZURL = 'https://raw.githubusercontent.com/2pintsoftware/StifleRRules/master/StifleRulez.xml'
-$ClientURL = 'https://214-StifleR.2p.garytown.com/StifleR-ClientApp.zip'
+
+$OPTIONS = @"
+{"SettingsOptions":{"StifleRulezURL":"$STIFLERULEZURL","StiflerServers":"[\u0022$STIFLERSERVERS\u0022]","VPNStrings":"[\u0022VPN\u0022,\u0022Cisco%20AnyConnect\u0022,\u0022Virtual%20Private%20Network\u0022,\u0022SonicWall\u0022,\u0022WireGuard\u0022,\u0022PanGP\u0022,\u0022Virtual%20Private%20Network\u0022]","EnableDebugTelemetry":"True","UseServerAsClient":"True","SignalRLogging":"True","RemoteToolsCapabilitiesFlag":"FileExplorer,%20FileContent,%20RegistryViewer,%20WmiViewer,%20EventLogs,%20PerformanceCounters,%20ResourceMonitor,%20TaskManager,%20DeviceInformation,%20RemoteAssistance,%20Rdp,%20RemoteCli,%20TsData,%20Intune,%20TunnelRdp"}}
+"@
+
 
 function Get-InstalledApps
 {
@@ -51,8 +60,10 @@ if ((Test-NetConnection -ComputerName $StifleRServerBaseName -Port 1414 -Warning
 }
 Write-Host -ForegroundColor Green "StifleR Server is reachable. Proceeding with installation..."
 
-
+#Create Temp Directory
 $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+
+#Download the StifleR Client Package
 $packageName = $ClientURL.Split('/')[-1]
 If (Test-Path -path "C:\OSDCloud\Installers\$packageName"){
     $packagePath = "C:\OSDCloud\Installers\$packageName"
@@ -70,7 +81,26 @@ else {
     #Download the package
     Write-Host -ForegroundColor Cyan "Starting download and extraction of $packageName"
     Start-BitsTransfer -Source $ClientURL -Destination $packagePath
+    
 }
+
+#Get Settings File From GitHub
+Invoke-WebRequest -Uri $STIFLERSETTINGSURL -OutFile "$tempDir\settings.2psImport"
+
+if (Test-Path -Path "$tempDir\settings.2psImport") {
+    Write-Host "Found settings.2psImport file in the temp directory, using settings from file." -ForegroundColor Green
+    $OptionsFile = $true
+    $OPTIONS = Get-Content -Path .\$StifleRSettingsConfigFileName -Raw
+    
+}
+else{
+    Write-Host -ForegroundColor Red "No $StifleRSettingsConfigFileName file found in the current directory"
+}
+
+$JSON = $OPTIONS | ConvertFrom-Json
+$STIFLERSERVERS = $JSON.SettingsOptions.StiflerServers -replace '[\[\]\\u0022]' -replace '"',' '
+$STIFLERULEZURL = $JSON.SettingsOptions.StifleRulezURL -replace '[\[\]\\u0022]'
+$VPNSTRINGS = $JSON.SettingsOptions.VPNStrings -replace '[\[\]\\u0022]' -replace '%',' '
 
 
 
