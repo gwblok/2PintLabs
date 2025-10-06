@@ -5,7 +5,12 @@
 
 #Region Declaration
 $ModulePath = 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
-
+if ((Get-Service -Name DeployRService).status -ne 'Running') {
+    Write-Host "DeployR Service is not running. Starting Service." -ForegroundColor Yellow
+    start-service -Name DeployRService
+    Start-Sleep -Seconds 10
+}
+Connect-DeployR -Passcode (Get-Content "D:\DeployRPasscode.txt" -Raw) -ErrorAction Stop -Verbose
 #Set-DeployRHost "http://localhost:7282"
 
 #Import Content for Steps
