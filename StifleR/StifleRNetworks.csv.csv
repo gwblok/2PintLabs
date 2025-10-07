@@ -1,0 +1,8 @@
+﻿LOCountry,LOCountryCode,LOLocationName,LODescription,LOState,LOTimeZone,LOTown,LOAddress,NGDescription,NGName,NGTemplate,NWNetworkID,NWSubnetMask,NWDescription
+United States,US,Phoenix - 111 2Pint Way,Script Created,AZ,US Mountain Standard Time,Phoenix,111 2Pint Way,Script Created,Phoenix - 111 2Pint Way,00000000-0000-0000-0000-000000000006,192.168.25.0,255.255.255.0,Phoenix - 111 2Pint Way
+United States,US,Phoenix - 111 2Pint Way,Script Created,AZ,US Mountain Standard Time,Phoenix,111 2Pint Way,Script Created,Phoenix - 111 2Pint Way,00000000-0000-0000-0000-000000000006,192.168.30.0,255.255.255.0,Phoenix - 111 2Pint Way
+United States,US,Tucson - 222 2Pint Way,Script Created,AZ,US Mountain Standard Time,Tucson,222 2Pint Way,Script Created,Tucson - 222 2Pint Way,00000000-0000-0000-0000-000000000006,192.168.10.0,255.255.255.0,Tucson - 222 2Pint Way
+United States,US,W365,Script Created,,US Mountain Standard Time,W365,,Script Created,W365,00000000-0000-0000-0000-000000000006,10.0.0.0,255.255.255.0,W365
+United States,US,GaryTown - 333 2Pint Way,Script Created,AZ,Central Standard Time,GaryTown,333 2Pint Way,Script Created,GaryTown - 333 2Pint Way,00000000-0000-0000-0000-000000000006,192.168.21.0,255.255.255.0,GaryTown - 333 2Pint Way
+United States,US,VPN,Script Created,,US Mountain Standard Time,VPN,,Script Created,VPN,00000000-0000-0000-0000-000000000001,192.168.150.248,255.255.255.248,VPN
+

@@ -28,7 +28,8 @@ else
 #$StifleRParentFolder = "C:\Program Files\2Pint Software"
 $StifleRInstallFolder = (Get-ItemPropertyValue -Path HKLM:\SYSTEM\CurrentControlSet\Services\StifleRServer -Name ImagePath | Split-Path -Parent).Replace('"','')
 $StifleRParentFolder = $StifleRInstallFolder | split-Path -Parent
-$gMSAAccountName = 'gMSAStifleR$'  #If you don't have a gMSA account, I'd recommend using "SYSTEM" then going in manually and changing it to the account you want to use.
+#$gMSAAccountName = 'gMSAStifleR$'  #If you don't have a gMSA account, I'd recommend using "SYSTEM" then going in manually and changing it to the account you want to use.
+$gMSAAccountName = 'SYSTEM'
 
 #Create Folder Structure
 $StifleRMaintenanceFolder = "$StifleRParentFolder\StifleR Maintenance"

@@ -152,6 +152,11 @@ if ($($duplicates.Count) -eq 0) {
 }
 
 #Duplicates based on MAC Address
+
+<# This section is commented out because:
+    We have found that some VPN clients share the same MAC address
+    If you want to enable this section, please test it in your environment first
+
 $Clients = Get-CimInstance -Namespace root\StifleR -Class "Clients"
 $duplicates = $Clients | Group-ObjectCount -Property MacAddress | Where-Object { $_.Count -gt 1 }
 
@@ -190,5 +195,5 @@ if ($($duplicates.Count) -eq 0) {
     Write-Log "Removed $($ClientsToRemove.count) Clients"
     Write-Host "Removed $($ClientsToRemove.count) Clients" -ForegroundColor Green
 }
-
+#>
 Write-Log "Remove-StifleRDuplicates all done, over and out!"
