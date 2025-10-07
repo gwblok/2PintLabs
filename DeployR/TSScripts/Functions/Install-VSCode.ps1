@@ -57,7 +57,7 @@ New-Item -ItemType Directory -Force -Path $sharedExtensionsDir -ErrorAction Stop
 
 # Install the PowerShell extension to the current user's profile temporarily
 Write-Host "Installing PowerShell extension ($extensionId) to temporary profile..."
-Start-Process -FilePath "code" -ArgumentList "--install-extension $extensionId" -Wait -NoNewWindow
+Start-Process -FilePath cmd.exe -ArgumentList "/C c:\Program Files\Microsoft VS Code\bin\code.exe --install-extension $extensionId" -Wait -NoNewWindow
 
 # Verify installation
 if (Test-Path "$tempExtensionsDir\$extensionId*") {

@@ -28,3 +28,27 @@ Write-Host "Installing Git silently..."
 Start-Process $packagePath -ArgumentList "/VERYSILENT" -Wait
 
 Write-Host "Git installation complete."
+
+
+function Set-GitConfig {
+    param (
+        [string]$UserName,
+        [string]$UserEmail
+    )
+
+    # Set Git global username
+    Write-Host "Setting Git username to: $UserName"
+    Start-process -FilePath  'C:\Program Files\Git\bin\git.exe' -ArgumentList "config --global user.name $UserName" -wait -NoNewWindow
+
+    # Verify username was set
+    Write-Host "Current Git username:" -ForegroundColor Cyan
+    $configuredUser = Start-process -FilePath  'C:\Program Files\Git\bin\git.exe' -ArgumentList "config --global user.name" -NoNewWindow -Wait -PassThru
+
+    # Set Git global email
+    Write-Host "Setting Git email to: $UserEmail"
+    Start-process -FilePath  'C:\Program Files\Git\bin\git.exe' -ArgumentList "config --global user.email $UserEmail" -wait -NoNewWindow
+
+    # Verify email was set
+    Write-Host "Current Git email:" -ForegroundColor Cyan
+    $configuredEmail = Start-process -FilePath  'C:\Program Files\Git\bin\git.exe' -ArgumentList "config --global user.email" -NoNewWindow -Wait -PassThru
+}
