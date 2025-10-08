@@ -126,13 +126,19 @@ else {
     return
 }
 
+<# Not using anymore, leaving here for reference
 
+#Create Fall back if didn't find settings file
 $OPTIONS = @"
 {"SettingsOptions":{"StifleRulezURL":"$STIFLERULEZURL","StiflerServers":"[\u0022$STIFLERSERVERS\u0022]","VPNStrings":"[\u0022VPN\u0022,\u0022Cisco%20AnyConnect\u0022,\u0022Virtual%20Private%20Network\u0022,\u0022SonicWall\u0022,\u0022WireGuard\u0022]","EnableDebugTelemetry":"True","UseServerAsClient":"True","SignalRLogging":"True","RemoteToolsCapabilitiesFlag":"FileExplorer,%20FileContent,%20RegistryViewer,%20WmiViewer,%20EventLogs,%20PerformanceCounters,%20ResourceMonitor,%20TaskManager,%20DeviceInformation,%20RemoteAssistance,%20Rdp,%20RemoteCli,%20TsData,%20Intune,%20TunnelRdp"}}
 "@
+#Use these Settings if found settings file
 if (Test-Path -Path .\settings.2psImport) {
     $OPTIONS = Get-Content -Path .\settings.2psImport -Raw
 }
+#>
+
+
 Write-Host -ForegroundColor DarkGray "-------------------------------------------------------"
 Write-Host -ForegroundColor Cyan "Installing StifleR Client with the following options:"
 write-host -ForegroundColor Green "StifleR Servers: $STIFLERSERVERS"
