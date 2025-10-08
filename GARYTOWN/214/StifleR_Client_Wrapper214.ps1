@@ -91,11 +91,11 @@ Invoke-WebRequest -Uri $STIFLERSETTINGSURL -OutFile "$tempDir\settings.2psImport
 if (Test-Path -Path "$tempDir\settings.2psImport") {
     Write-Host "Found settings.2psImport file in the temp directory, using settings from file." -ForegroundColor Green
     $OptionsFile = $true
-    $OPTIONS = Get-Content -Path .\$StifleRSettingsConfigFileName -Raw
+    $OPTIONS = Get-Content -Path "$tempDir\settings.2psImport" -Raw
     
 }
 else{
-    Write-Host -ForegroundColor Red "No $StifleRSettingsConfigFileName file found in the current directory"
+    Write-Host -ForegroundColor Red "No $tempDir\settings.2psImport file found in the current directory"
 }
 
 $JSON = $OPTIONS | ConvertFrom-Json
@@ -108,7 +108,7 @@ $VPNSTRINGS = $JSON.SettingsOptions.VPNStrings -replace '[\[\]\\u0022]' -replace
 
 
 #Extract the package
-Expand-Archive -Path $packagePath -DestinationPath $tempDir
+Expand-Archive -Path $packagePath -DestinationPath $tempDir -Force
 
 if (Test-Path -Path $tempDir){
     Write-Host -ForegroundColor Green "Download and extraction completed successfully."
@@ -141,7 +141,8 @@ write-host -ForegroundColor Green "VPN Strings: VPN, Cisco AnyConnect, Virtual P
 Write-Host -ForegroundColor DarkGray "-------------------------------------------------------"
 Write-Host "$Options"
 
-$Install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $MSI /l*v $LogFolder\StifleRClientMSI.log /quiet OPTIONS=$OPTIONS AUTOSTART=1" -Wait -PassThru
+write-host " Start-Process -FilePath msiexec.exe -ArgumentList `"/i $MSI /l*v $LogFolder\StifleR_Client_Install_MSI.log /quiet OPTIONS=$OPTIONS AUTOSTART=1`" -Wait -PassThru"
+$Install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $MSI /l*v $LogFolder\StifleR_Client_Install_MSI.log /quiet AUTOSTART=1 OPTIONS=$tempDir\settings.2psImport" -Wait -PassThru
 
 if ($Install.ExitCode -eq 0) {
     Write-Host -ForegroundColor Green "Installation completed successfully."
