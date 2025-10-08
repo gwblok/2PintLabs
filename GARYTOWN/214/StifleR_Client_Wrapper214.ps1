@@ -106,10 +106,11 @@ else{
 }
 
 $JSON = $OPTIONS | ConvertFrom-Json
-$STIFLERSERVERS = $JSON.SettingsOptions.StiflerServers -replace '[\[\]\\u0022]' -replace '"',' '
-$STIFLERULEZURL = $JSON.SettingsOptions.StifleRulezURL -replace '[\[\]\\u0022]'
-$VPNSTRINGS = $JSON.SettingsOptions.VPNStrings -replace '[\[\]\\u0022]' -replace '%',' '
-
+#Pull out the brackets and quotes
+$STIFLERSERVERS = ($JSON.SettingsOptions.StiflerServers -replace '[\[\]]', '' -replace '"',' ').Trim()
+#$STIFLERSERVERS = $JSON.SettingsOptions.StiflerServers -replace '[\[\]\\u0022]' -replace '"',' '
+$STIFLERULEZURL = ($JSON.SettingsOptions.StifleRulezURL -replace '[\[\]]', '' -replace '"',' ').Trim()
+$VPNSTRINGS = ($JSON.SettingsOptions.VPNStrings -replace '[\[\]]', '' -replace '"',' ').Trim()
 
 
 

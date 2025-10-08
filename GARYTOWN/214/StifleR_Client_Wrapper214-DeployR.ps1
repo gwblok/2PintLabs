@@ -9,7 +9,7 @@ catch {
 }
 
 Start-Transcript -Path "$LogFolder\StifleR_Client_Install.log" -Append
-$TargetVersion = '2.14.2535.82'
+
 $STIFLERSERVERS = 'https://214-StifleR.2p.garytown.com:1414'
 $STIFLERULEZURL = 'https://raw.githubusercontent.com/2pintsoftware/StifleRRules/master/StifleRulez.xml'
 #$ClientURL = 'https://214-StifleR.2p.garytown.com/StifleR-ClientApp.zip'
