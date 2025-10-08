@@ -1,5 +1,5 @@
 #Set the Log Folder:
-$LogFolder = "$env:SystemDrive\Windows\Temp\"
+$LogFolder = "$env:SystemDrive\Windows\Temp"
 Start-Transcript -Path "$LogFolder\StifleR_Client_Install_Transcript.log" -Append
 
 $STIFLERSETTINGSURL = "https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/GARYTOWN/214/dr2pintlabs.2psImport"
