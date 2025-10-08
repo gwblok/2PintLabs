@@ -187,3 +187,4 @@ else{
         Set-Service -Name StifleRClient -StartupType Automatic
     }
 }
+Stop-Transcript
