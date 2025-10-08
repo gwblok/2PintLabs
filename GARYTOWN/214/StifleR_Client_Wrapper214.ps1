@@ -141,7 +141,11 @@ write-host -ForegroundColor Green "VPN Strings: VPN, Cisco AnyConnect, Virtual P
 Write-Host -ForegroundColor DarkGray "-------------------------------------------------------"
 Write-Host "$Options"
 
-write-host " Start-Process -FilePath msiexec.exe -ArgumentList `"/i $MSI /l*v $LogFolder\StifleR_Client_Install_MSI.log /quiet OPTIONS=$OPTIONS AUTOSTART=1`" -Wait -PassThru"
+Write-Host -ForegroundColor DarkGray "-------------------------------------------------------"
+#Install the MSI
+write-host -ForegroundColor Cyan "Starting installation of StifleR Client..."
+
+write-host " Start-Process -FilePath msiexec.exe -ArgumentList `"/i $MSI /l*v $LogFolder\StifleR_Client_Install_MSI.log /quiet AUTOSTART=1 OPTIONS=$tempDir\settings.2psImport`" -Wait -PassThru"
 $Install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $MSI /l*v $LogFolder\StifleR_Client_Install_MSI.log /quiet AUTOSTART=1 OPTIONS=$tempDir\settings.2psImport" -Wait -PassThru
 
 if ($Install.ExitCode -eq 0) {
