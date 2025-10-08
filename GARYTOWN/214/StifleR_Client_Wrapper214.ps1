@@ -81,15 +81,22 @@ else {
     
     #Download the package
     Write-Host -ForegroundColor Cyan "Starting download and extraction of $packageName"
-    Start-BitsTransfer -Source $ClientURL -Destination $packagePath
-    
+    try {
+        Write-Host "Using BITS to download $ClientURL to $packagePath"
+        Start-BitsTransfer -Source $ClientURL -Destination $packagePath
+    }
+    catch {
+        Write-Host "BITS download failed, falling back to Invoke-WebRequest"
+        Invoke-WebRequest -Uri $ClientURL -OutFile $packagePath -UseBasicParsing
+    }    
 }
 
 #Get Settings File From GitHub
+Write-Host "Downloading settings.2psImport from $STIFLERSETTINGSURL"
 Invoke-WebRequest -Uri $STIFLERSETTINGSURL -OutFile "$tempDir\settings.2psImport"
 
 if (Test-Path -Path "$tempDir\settings.2psImport") {
-    Write-Host "Found settings.2psImport file in the temp directory, using settings from file." -ForegroundColor Green
+    Write-Host "Found settings.2psImport file in the temp directory after download, using settings from file." -ForegroundColor Green
     $OptionsFile = $true
     $OPTIONS = Get-Content -Path "$tempDir\settings.2psImport" -Raw
     
@@ -108,6 +115,13 @@ $VPNSTRINGS = $JSON.SettingsOptions.VPNStrings -replace '[\[\]\\u0022]' -replace
 
 
 #Extract the package
+if (Test-Path -Path $packagePath){
+    Write-Host -ForegroundColor Cyan "Extracting package to $tempDir"
+}
+else {
+    Write-Host -ForegroundColor Red "Package not found at $packagePath"
+    exit 1
+}
 Expand-Archive -Path $packagePath -DestinationPath $tempDir -Force
 
 if (Test-Path -Path $tempDir){
@@ -116,7 +130,7 @@ if (Test-Path -Path $tempDir){
 }
 else {
     Write-Host -ForegroundColor Red "Download or extraction failed."
-    return
+    exit 1
 }
 if (Test-Path -Path $MSI){
     Write-Host -ForegroundColor Green "MSI found: $MSI"
