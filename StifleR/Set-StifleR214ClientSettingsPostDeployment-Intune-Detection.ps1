@@ -1,5 +1,5 @@
 ﻿#Settings you want to check
-$DesiredServerName = '214-StifleR.2p.garytown.com' #Replaces this information into the StiflerServers registry key
+$DesiredServerName = 'DR.2PintLabs.com' #Replaces this information into the StiflerServers registry key
 $DesiredVPNClient = 'WireGuard'  #Appends this information into the VPNStrings registry key
 
 
