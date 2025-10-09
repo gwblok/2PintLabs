@@ -1,7 +1,8 @@
 # Requires -Version 7.0
 # Requires -RunAsAdministrator
 
-
+$ImportTS = $true
+$ImportSteps = $true
 
 #Region Declaration
 $ModulePath = 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
@@ -226,8 +227,14 @@ dir c:\temp\TaskSequenceBackup -File | Import-DeployRTaskSequence
 #Download the Steps from GitHub
 
 try {
-    Get-DeployRStepsFromGitHub -DownloadPath $DownloadStepsPath
-    Get-DeployRStepsFromGitHub -DownloadPath $DownloadTSModulesPath -GitHubPath "DeployR/CustomTaskSequenceModules"
+    if ($ImportSteps){
+        Write-Host "Download Custom Steps" -ForegroundColor Green
+        Get-DeployRStepsFromGitHub -DownloadPath $DownloadStepsPath
+    }
+    if ($ImportTS) {
+        Write-Host "Downloading Task Sequences" -ForegroundColor Green
+        Get-DeployRStepsFromGitHub -DownloadPath $DownloadTSModulesPath -GitHubPath "DeployR/CustomTaskSequenceModules"
+    }
 }
 catch {
     Write-Error "Failed to download steps from GitHub: $_"
@@ -266,7 +273,7 @@ Get-ChildItem -Path $DownloadStepsPath -Directory | Where-Object {$_.Name -ne "R
         $StepFile = $_.FullName
         $StepJSON = Get-Content -Path $StepFile -Raw | ConvertFrom-Json
         Write-Host "Importing step definition from file: $StepFile" -ForegroundColor Yellow
-        Import-DeployRStepDefinition -SourceFile $StepFile -Force
+        Import-DeployRStepDefinition -SourceFile $StepFile -Force | Out-Null
     }
 }
 
@@ -278,6 +285,6 @@ Get-ChildItem -Path $DownloadTSModulesPath -Directory | ForEach-Object {
         $TSFile = $_.FullName
         $TSJSON = Get-Content -Path $TSFile -Raw | ConvertFrom-Json
         Write-Host "Importing task sequence from file: $TSFile" -ForegroundColor Yellow
-        Import-DeployRTaskSequence -SourceFile $TSFile -Force
+        Import-DeployRTaskSequence -SourceFile $TSFile -Force | Out-Null
     }
 }
