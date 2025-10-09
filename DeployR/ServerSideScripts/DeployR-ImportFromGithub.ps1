@@ -10,6 +10,7 @@ if ((Get-Service -Name DeployRService).status -ne 'Running') {
     start-service -Name DeployRService
     Start-Sleep -Seconds 10
 }
+Import-Module $ModulePath
 Connect-DeployR -Passcode (Get-Content "D:\DeployRPasscode.txt" -Raw) -ErrorAction Stop -Verbose
 #Set-DeployRHost "http://localhost:7282"
 
