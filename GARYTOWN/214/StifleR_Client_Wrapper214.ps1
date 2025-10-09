@@ -62,12 +62,12 @@ if ((Test-NetConnection -ComputerName $StifleRServerBaseName -Port 1414 -Warning
 Write-Host -ForegroundColor Green "StifleR Server is reachable. Proceeding with installation..."
 
 #Create Temp Directory
-$tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+$tempDir = Join-Path ("$env:SystemDrive\Windows\Temp") ([System.IO.Path]::GetRandomFileName())
 
 #Download the StifleR Client Package
 $packageName = $ClientURL.Split('/')[-1]
-If (Test-Path -path "C:\OSDCloud\Installers\$packageName"){
-    $packagePath = "C:\OSDCloud\Installers\$packageName"
+If (Test-Path -path "C:\_2P\Installers\$packageName"){
+    $packagePath = "C:\_2P\Installers\$packageName"
 }
 else {
     $null = New-Item -ItemType Directory -Path $tempDir -Force -ErrorAction SilentlyContinue
