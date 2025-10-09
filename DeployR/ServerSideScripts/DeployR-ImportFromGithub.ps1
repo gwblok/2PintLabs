@@ -2,7 +2,7 @@
 # Requires -RunAsAdministrator
 
 $ImportTS = $true
-$ImportSteps = $false
+$ImportSteps = $true
 
 #Region Declaration
 $ModulePath = 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
