@@ -34,7 +34,7 @@ if ($ComputerFQDN -eq "214-DEPLOYR.2p.garytown.com") {
     $EnableBackup2GitHub = $true
     $EnableBackup2GitHubTS = $true
     $EnableBackup2GitHubStepDefs = $true
-
+    
 }
 #Adding Azure Server for Backups
 if ($ComputerFQDN -eq "dr.2PintLabs.com") {
@@ -117,16 +117,35 @@ if ($EnableBackup2GitHub -and $GitHubCustomSteps -and $GitHubCustomStepsReferenc
         }
         #Get all task sequences except the built-in ones
         write-host "Getting all task sequence modules..." -ForegroundColor Yellow
-        (Get-DeployRMetadata -Type TaskSequence | Where-Object {$_.id -notlike '0000*' -and ($_.name -match "Module" -or $_.name -match "GitHub")}) | ForEach-Object {
-            write-host "Backing up task sequence: $($_.name) | $($_.id)" -ForegroundColor Cyan
-            $ExportFolderName = "$($_.name)-$($_.id)"
+        $TaskSequences = (Get-DeployRMetadata -Type TaskSequence | Where-Object {$_.id -notlike '0000*' -and ($_.name -match "Module" -or $_.name -match "GitHub")}) 
+        
+        foreach ($ts in $TaskSequences) {
+            write-host "Backing up task sequence: $($ts.name) | $($ts.id)" -ForegroundColor Cyan
+            $ExportFolderName = "$($ts.name)-$($ts.id)"
             if (Test-Path -Path "$GitHubCustomTaskSequenceModules\$ExportFolderName") {
                 Write-Host "Removing existing folder: $GitHubCustomTaskSequenceModules\$ExportFolderName" -ForegroundColor Yellow
                 Remove-Item -Path "$GitHubCustomTaskSequenceModules\$ExportFolderName" -Recurse -Force
             }
             New-Item -Path "$GitHubCustomTaskSequenceModules\$ExportFolderName" -ItemType Directory -Force | Out-Null
             write-host "Exporting step definition to: $GitHubCustomTaskSequenceModules\$ExportFolderName" -ForegroundColor Cyan
-            Export-DeployRTaskSequence -Id $_.id -DestinationFolder "$GitHubCustomTaskSequenceModules\$ExportFolderName"
+            Export-DeployRTaskSequence -Id $ts.id -DestinationFolder "$GitHubCustomTaskSequenceModules\$ExportFolderName"
+            <#
+            $versions = $ts.versions
+            foreach ($version in $versions) {
+                $Steps = $version.steps
+                $ContentID = (($Steps | Where-Object {$_.type -eq "Content"}).defaultValue).split(':') | Select-Object -first 1
+                $ContentItemInfo = Get-DeployRContentItem | Where-Object {$_.id -eq $ContentID}
+                write-host "Backing up content item: $($ContentItemInfo.name) | $($ContentItemInfo.id)" -ForegroundColor Cyan
+                $ExportContentFolderName = "$($ContentItemInfo.name)-$($ContentItemInfo.id)"
+                if (Test-Path -Path "$GitHubCustomStepsReferencedContent\$ExportContentFolderName") {
+                    #Write-Host "Removing existing folder: $GitHubCustomStepsReferencedContent\$ExportContentFolderName" -ForegroundColor Yellow
+                    #Remove-Item -Path "$GitHubCustomStepsReferencedContent\$ExportContentFolderName" -Recurse -Force
+                    Start-Sleep -Milliseconds 200
+                }
+                Write-Host "Exporting content item to: $GitHubCustomStepsReferencedContent\$ExportContentFolderName" -ForegroundColor Cyan
+                Export-DeployRContentItem -Id $ContentItemInfo.id -DestinationFolder "$GitHubCustomStepsReferencedContent\$ExportContentFolderName"
+            }
+            #>
         }
     }
     else {
@@ -138,47 +157,47 @@ if ($EnableBackup2GitHub -and $GitHubCustomSteps -and $GitHubCustomStepsReferenc
     if ($EnableBackup2GitHubStepDefs) {
         Write-Host "Exporting Step Definitions to GitHub as EnableBackup2GitHubStepDefs is set to true" -ForegroundColor Yellow
         #Backup DeployR step definitions for GitHub Custom Steps
-    Write-Host "Exporting DeployR step definitions to GitHub..." -ForegroundColor Yellow
-    write-host "Cleanup $GitHubCustomSteps and $GitHubCustomStepsReferencedContent first" -ForegroundColor Yellow
-    if (Test-Path -Path $GitHubCustomSteps) {
-        Write-Host "Removing existing folder: $GitHubCustomSteps" -ForegroundColor Yellow
-        Remove-Item -Path "$GitHubCustomSteps\*" -Recurse -Force
-        Start-Sleep -Milliseconds 200
-    }
-    if (Test-Path -Path $GitHubCustomStepsReferencedContent) {
-        Write-Host "Removing existing folder: $GitHubCustomStepsReferencedContent" -ForegroundColor Yellow
-        Remove-Item -Path "$GitHubCustomStepsReferencedContent\*" -Recurse -Force
-        Start-Sleep -Milliseconds 200
-    }
-    #Get all step definitions except the built-in ones
-    write-host "Getting all step definitions..." -ForegroundColor Yellow
-    $StepDefinitions = Get-DeployRMetadata -Type StepDefinition | Where-Object {$_.id -notlike '0000*' -and $_.name -notmatch "Delete"}
-    foreach ($stepDef in $StepDefinitions) {
-        write-host "Backing up step definition: $($stepDef.name) | $($stepDef.id)" -ForegroundColor Cyan
-        $ExportFolderName = "$($stepDef.name)-$($stepDef.id)"
-        if (Test-Path -Path "$GitHubCustomSteps\$ExportFolderName") {
-            Write-Host "Removing existing folder: $GitHubCustomSteps\$ExportFolderName" -ForegroundColor Yellow
-            Remove-Item -Path "$GitHubCustomSteps\$ExportFolderName" -Recurse -Force
+        Write-Host "Exporting DeployR step definitions to GitHub..." -ForegroundColor Yellow
+        write-host "Cleanup $GitHubCustomSteps and $GitHubCustomStepsReferencedContent first" -ForegroundColor Yellow
+        if (Test-Path -Path $GitHubCustomSteps) {
+            Write-Host "Removing existing folder: $GitHubCustomSteps" -ForegroundColor Yellow
+            Remove-Item -Path "$GitHubCustomSteps\*" -Recurse -Force
+            Start-Sleep -Milliseconds 200
         }
-        New-Item -Path "$GitHubCustomSteps\$ExportFolderName" -ItemType Directory -Force | Out-Null
-        write-host "Exporting step definition to: $GitHubCustomSteps\$ExportFolderName" -ForegroundColor Cyan
-        Export-DeployRStepDefinition -Id $stepDef.id -DestinationFolder "$GitHubCustomSteps\$ExportFolderName"
-        $versions = $stepDef.versions
-        foreach ($version in $versions) {
-            $Options = $version.options
-            $ContentID = (($Options | Where-Object {$_.type -eq "Content"}).defaultValue).split(':') | Select-Object -first 1
-            $ContentItemInfo = Get-DeployRContentItem | Where-Object {$_.id -eq $ContentID}
-            write-host "Backing up content item: $($ContentItemInfo.name) | $($ContentItemInfo.id)" -ForegroundColor Cyan
-            $ExportContentFolderName = "$($ContentItemInfo.name)-$($ContentItemInfo.id)"
-            if (Test-Path -Path "$GitHubCustomStepsReferencedContent\$ExportContentFolderName") {
-                #Write-Host "Removing existing folder: $GitHubCustomStepsReferencedContent\$ExportContentFolderName" -ForegroundColor Yellow
-                #Remove-Item -Path "$GitHubCustomStepsReferencedContent\$ExportContentFolderName" -Recurse -Force
-                Start-Sleep -Milliseconds 200
+        if (Test-Path -Path $GitHubCustomStepsReferencedContent) {
+            Write-Host "Removing existing folder: $GitHubCustomStepsReferencedContent" -ForegroundColor Yellow
+            Remove-Item -Path "$GitHubCustomStepsReferencedContent\*" -Recurse -Force
+            Start-Sleep -Milliseconds 200
+        }
+        #Get all step definitions except the built-in ones
+        write-host "Getting all step definitions..." -ForegroundColor Yellow
+        $StepDefinitions = Get-DeployRMetadata -Type StepDefinition | Where-Object {$_.id -notlike '0000*' -and $_.name -notmatch "Delete"}
+        foreach ($stepDef in $StepDefinitions) {
+            write-host "Backing up step definition: $($stepDef.name) | $($stepDef.id)" -ForegroundColor Cyan
+            $ExportFolderName = "$($stepDef.name)-$($stepDef.id)"
+            if (Test-Path -Path "$GitHubCustomSteps\$ExportFolderName") {
+                Write-Host "Removing existing folder: $GitHubCustomSteps\$ExportFolderName" -ForegroundColor Yellow
+                Remove-Item -Path "$GitHubCustomSteps\$ExportFolderName" -Recurse -Force
             }
-            Write-Host "Exporting content item to: $GitHubCustomStepsReferencedContent\$ExportContentFolderName" -ForegroundColor Cyan
-            Export-DeployRContentItem -Id $ContentItemInfo.id -DestinationFolder "$GitHubCustomStepsReferencedContent\$ExportContentFolderName"
+            New-Item -Path "$GitHubCustomSteps\$ExportFolderName" -ItemType Directory -Force | Out-Null
+            write-host "Exporting step definition to: $GitHubCustomSteps\$ExportFolderName" -ForegroundColor Cyan
+            Export-DeployRStepDefinition -Id $stepDef.id -DestinationFolder "$GitHubCustomSteps\$ExportFolderName"
+            $versions = $stepDef.versions
+            foreach ($version in $versions) {
+                $Options = $version.options
+                $ContentID = (($Options | Where-Object {$_.type -eq "Content"}).defaultValue).split(':') | Select-Object -first 1
+                $ContentItemInfo = Get-DeployRContentItem | Where-Object {$_.id -eq $ContentID}
+                write-host "Backing up content item: $($ContentItemInfo.name) | $($ContentItemInfo.id)" -ForegroundColor Cyan
+                $ExportContentFolderName = "$($ContentItemInfo.name)-$($ContentItemInfo.id)"
+                if (Test-Path -Path "$GitHubCustomStepsReferencedContent\$ExportContentFolderName") {
+                    #Write-Host "Removing existing folder: $GitHubCustomStepsReferencedContent\$ExportContentFolderName" -ForegroundColor Yellow
+                    #Remove-Item -Path "$GitHubCustomStepsReferencedContent\$ExportContentFolderName" -Recurse -Force
+                    Start-Sleep -Milliseconds 200
+                }
+                Write-Host "Exporting content item to: $GitHubCustomStepsReferencedContent\$ExportContentFolderName" -ForegroundColor Cyan
+                Export-DeployRContentItem -Id $ContentItemInfo.id -DestinationFolder "$GitHubCustomStepsReferencedContent\$ExportContentFolderName"
+            }
         }
-    }
     }
     else {
         Write-Host "Skipping Step Definition Export to GitHub as EnableBackup2GitHubStepDefs is set to false" -ForegroundColor Yellow
