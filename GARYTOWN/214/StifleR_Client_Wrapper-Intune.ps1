@@ -15,7 +15,7 @@ if (Test-Path -Path .\$StifleRSettingsConfigFileName) {
     Write-Host "Found $StifleRSettingsConfigFileName file in the current directory, using settings from file." -ForegroundColor Green
     $OptionsFile = $true
     $OPTIONS = Get-Content -Path .\$StifleRSettingsConfigFileName -Raw
-    $OPTIONS = Get-Content -Path "\\src\src$\Apps\2pint\Agent\2.14.2540.105\settings.2psImport" -Raw
+    #$OPTIONS = Get-Content -Path "\\src\src$\Apps\2pint\Agent\2.14.2540.105\settings.2psImport" -Raw
 }
 else{
     Write-Host -ForegroundColor Red "No $StifleRSettingsConfigFileName file found in the current directory"
