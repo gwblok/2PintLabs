@@ -1,7 +1,8 @@
 # Requires -Version 7.0
 # Requires -RunAsAdministrator
 
-
+$ImportTS = $true
+$ImportSteps = $false
 
 #Region Declaration
 $ModulePath = 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
@@ -226,8 +227,14 @@ dir c:\temp\TaskSequenceBackup -File | Import-DeployRTaskSequence
 #Download the Steps from GitHub
 
 try {
-    Get-DeployRStepsFromGitHub -DownloadPath $DownloadStepsPath
-    Get-DeployRStepsFromGitHub -DownloadPath $DownloadTSModulesPath -GitHubPath "DeployR/CustomTaskSequenceModules"
+    if ($ImportSteps){
+        Write-Host "Download Custom Steps" -ForegroundColor Green
+        Get-DeployRStepsFromGitHub -DownloadPath $DownloadStepsPath
+    }
+    if ($ImportTS) {
+        Write-Host "Downloading Task Sequences" -ForegroundColor Green
+        Get-DeployRStepsFromGitHub -DownloadPath $DownloadTSModulesPath -GitHubPath "DeployR/CustomTaskSequenceModules"
+    }
 }
 catch {
     Write-Error "Failed to download steps from GitHub: $_"
