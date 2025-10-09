@@ -34,12 +34,14 @@ if ($ComputerFQDN -eq "214-DEPLOYR.2p.garytown.com") {
     $EnableBackup2GitHub = $true
     $EnableBackup2GitHubTS = $true
     $EnableBackup2GitHubStepDefs = $true
+    $EnableBackup2OneDrive = $true
     
 }
 #Adding Azure Server for Backups
 if ($ComputerFQDN -eq "dr.2PintLabs.com") {
     $EnableBackup2GitHub = $true
     $EnableBackup2GitHubTS = $true
+    
 }
 
 #GitHubLocation, always overwrite with the latest version during a backup.
@@ -53,9 +55,10 @@ if ($EnableBackup2GitHub) {
     if (-not (Test-Path -Path $GitHubCustomTaskSequenceModules)) {New-Item -Path $GitHubCustomTaskSequenceModules -ItemType Directory | Out-Null}
 }
 
-#OneDriveBackup
-$OneDriveBackupPath = "C:\Users\gary.blok\OneDrive - garytown\DeployR-Sync\$ComputerFQDN"
-
+if ($EnableBackup2OneDrive){
+    #OneDriveBackup
+    $OneDriveBackupPath = "C:\Users\gary.blok\OneDrive - garytown\DeployR-Sync\$ComputerFQDN"
+}
 # Ensure the backup directory exists
 if (-not (Test-Path -Path $BackupLocation)) {New-Item -Path $BackupLocation -ItemType Directory | Out-Null}
 if (-not (Test-Path -Path $TempLocation)) {New-Item -Path $TempLocation -ItemType Directory | Out-Null}
@@ -88,20 +91,24 @@ Write-Host "Backing up DeployR task sequences..." -ForegroundColor Yellow
     write-host "Backing up task sequence: $($_.name) | $($_.id)" -ForegroundColor Cyan
     Export-DeployRTaskSequence -Id $_.id -DestinationFolder "$BackupLocation\$DateStamp\TaskSequences\$($_.name)-$($_.id)"
 }
-
-#Grab the latest DeployR Backup and COpy to OneDrive
-$LatestBackup = Get-ChildItem -Path $BackupLocation -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-if ($LatestBackup) {
-    Write-Host "Copying latest backup to OneDrive: $($LatestBackup.FullName)" -ForegroundColor Green
-    $DestinationPath = Join-Path -Path $OneDriveBackupPath -ChildPath "DeployR-Backup-$($LatestBackup.Name)"
-    if (Test-Path -Path $DestinationPath) {
-        Write-Host "Removing existing folder: $DestinationPath" -ForegroundColor Yellow
-        Remove-Item -Path $DestinationPath -Recurse -Force
+if ($EnableBackup2OneDrive){
+    #Grab the latest DeployR Backup and COpy to OneDrive
+    $LatestBackup = Get-ChildItem -Path $BackupLocation -Directory | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($LatestBackup) {
+        Write-Host "Copying latest backup to OneDrive: $($LatestBackup.FullName)" -ForegroundColor Green
+        $DestinationPath = Join-Path -Path $OneDriveBackupPath -ChildPath "DeployR-Backup-$($LatestBackup.Name)"
+        if (Test-Path -Path $DestinationPath) {
+            Write-Host "Removing existing folder: $DestinationPath" -ForegroundColor Yellow
+            Remove-Item -Path $DestinationPath -Recurse -Force
+        }
+        Write-Host "Backing up to destination folder: $DestinationPath" -ForegroundColor Cyan
+        Copy-Item -Path $LatestBackup.FullName -Destination $DestinationPath -Recurse
+    } else {
+        Write-Host "No backups found in $BackupLocation" -ForegroundColor Red
     }
-    Write-Host "Backing up to destination folder: $DestinationPath" -ForegroundColor Cyan
-    Copy-Item -Path $LatestBackup.FullName -Destination $DestinationPath -Recurse
-} else {
-    Write-Host "No backups found in $BackupLocation" -ForegroundColor Red
+}
+else {
+    Write-Host "Skipping OneDrive Backup as EnableBackup2OneDrive is set to false" -ForegroundColor Yellow
 }
 
 if ($EnableBackup2GitHub -and $GitHubCustomSteps -and $GitHubCustomStepsReferencedContent) {
@@ -132,18 +139,18 @@ if ($EnableBackup2GitHub -and $GitHubCustomSteps -and $GitHubCustomStepsReferenc
             <#
             $versions = $ts.versions
             foreach ($version in $versions) {
-                $Steps = $version.steps
-                $ContentID = (($Steps | Where-Object {$_.type -eq "Content"}).defaultValue).split(':') | Select-Object -first 1
-                $ContentItemInfo = Get-DeployRContentItem | Where-Object {$_.id -eq $ContentID}
-                write-host "Backing up content item: $($ContentItemInfo.name) | $($ContentItemInfo.id)" -ForegroundColor Cyan
-                $ExportContentFolderName = "$($ContentItemInfo.name)-$($ContentItemInfo.id)"
-                if (Test-Path -Path "$GitHubCustomStepsReferencedContent\$ExportContentFolderName") {
-                    #Write-Host "Removing existing folder: $GitHubCustomStepsReferencedContent\$ExportContentFolderName" -ForegroundColor Yellow
-                    #Remove-Item -Path "$GitHubCustomStepsReferencedContent\$ExportContentFolderName" -Recurse -Force
-                    Start-Sleep -Milliseconds 200
-                }
-                Write-Host "Exporting content item to: $GitHubCustomStepsReferencedContent\$ExportContentFolderName" -ForegroundColor Cyan
-                Export-DeployRContentItem -Id $ContentItemInfo.id -DestinationFolder "$GitHubCustomStepsReferencedContent\$ExportContentFolderName"
+            $Steps = $version.steps
+            $ContentID = (($Steps | Where-Object {$_.type -eq "Content"}).defaultValue).split(':') | Select-Object -first 1
+            $ContentItemInfo = Get-DeployRContentItem | Where-Object {$_.id -eq $ContentID}
+            write-host "Backing up content item: $($ContentItemInfo.name) | $($ContentItemInfo.id)" -ForegroundColor Cyan
+            $ExportContentFolderName = "$($ContentItemInfo.name)-$($ContentItemInfo.id)"
+            if (Test-Path -Path "$GitHubCustomStepsReferencedContent\$ExportContentFolderName") {
+            #Write-Host "Removing existing folder: $GitHubCustomStepsReferencedContent\$ExportContentFolderName" -ForegroundColor Yellow
+            #Remove-Item -Path "$GitHubCustomStepsReferencedContent\$ExportContentFolderName" -Recurse -Force
+            Start-Sleep -Milliseconds 200
+            }
+            Write-Host "Exporting content item to: $GitHubCustomStepsReferencedContent\$ExportContentFolderName" -ForegroundColor Cyan
+            Export-DeployRContentItem -Id $ContentItemInfo.id -DestinationFolder "$GitHubCustomStepsReferencedContent\$ExportContentFolderName"
             }
             #>
         }
