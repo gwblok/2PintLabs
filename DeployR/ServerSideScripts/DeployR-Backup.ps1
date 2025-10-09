@@ -23,12 +23,25 @@ function Get-ConnectionSpecificDNSSuffix {
 }
 
 # Usage
-$Suffix = Get-ConnectionSpecificDNSSuffix | Select-Object -First 1
-$ComputerFQDN = "$env:COMPUTERNAME.$Suffix"
+#$Suffix = Get-ConnectionSpecificDNSSuffix | Select-Object -First 1
+#$ComputerFQDN = "$env:COMPUTERNAME.$Suffix"
+
+$DeployRServerNameFromRegistry = (Get-ItemProperty -Path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings" -Name "StifleRServerApiUrl").StifleRServerApiUrl
+$ComputerFQDN = $DeployRServerNameFromRegistry -replace "https?://","" -replace ":.*$",""
+
 #Only Do SYnc Backups from the OnPrem DeployR Server
 if ($ComputerFQDN -eq "214-DEPLOYR.2p.garytown.com") {
     $EnableBackup2GitHub = $true
+    $EnableBackup2GitHubTS = $true
+    $EnableBackup2GitHubStepDefs = $true
+
 }
+#Adding Azure Server for Backups
+if ($ComputerFQDN -eq "dr.2PintLabs.com") {
+    $EnableBackup2GitHub = $true
+    $EnableBackup2GitHubTS = $true
+}
+
 #GitHubLocation, always overwrite with the latest version during a backup.
 #$EnableBackup2GitHub = $false
 if ($EnableBackup2GitHub) {
@@ -94,28 +107,37 @@ if ($LatestBackup) {
 if ($EnableBackup2GitHub -and $GitHubCustomSteps -and $GitHubCustomStepsReferencedContent) {
     
     #Backup DeployR Task Sequence Modules
-    Write-Host "Exporting DeployR task sequence modules to GitHub..." -ForegroundColor Yellow
-    if (Test-Path -Path $GitHubCustomTaskSequenceModules) {
-        Write-Host "Removing existing folder: $GitHubCustomTaskSequenceModules" -ForegroundColor Yellow
-        Remove-Item -Path "$GitHubCustomTaskSequenceModules\*" -Recurse -Force
-        Start-Sleep -Milliseconds 200
-    }
-
-    #Get all task sequences except the built-in ones
-    write-host "Getting all task sequence modules..." -ForegroundColor Yellow
-    (Get-DeployRMetadata -Type TaskSequence | Where-Object {$_.id -notlike '0000*' -and $_.name -match "Module"}) | ForEach-Object {
-        write-host "Backing up task sequence: $($_.name) | $($_.id)" -ForegroundColor Cyan
-        $ExportFolderName = "$($_.name)-$($_.id)"
-        if (Test-Path -Path "$GitHubCustomTaskSequenceModules\$ExportFolderName") {
-            Write-Host "Removing existing folder: $GitHubCustomTaskSequenceModules\$ExportFolderName" -ForegroundColor Yellow
-            Remove-Item -Path "$GitHubCustomTaskSequenceModules\$ExportFolderName" -Recurse -Force
+    if ($EnableBackup2GitHubTS) {
+        Write-Host "Starting TS Export To GitHub for Task Sequences" -ForegroundColor Yellow
+        Write-Host "Exporting DeployR task sequence modules to GitHub..." -ForegroundColor Yellow
+        if (Test-Path -Path $GitHubCustomTaskSequenceModules) {
+            Write-Host "Removing existing folder: $GitHubCustomTaskSequenceModules" -ForegroundColor Yellow
+            Remove-Item -Path "$GitHubCustomTaskSequenceModules\*" -Recurse -Force
+            Start-Sleep -Milliseconds 200
         }
-        New-Item -Path "$GitHubCustomTaskSequenceModules\$ExportFolderName" -ItemType Directory -Force | Out-Null
-        write-host "Exporting step definition to: $GitHubCustomTaskSequenceModules\$ExportFolderName" -ForegroundColor Cyan
-        Export-DeployRTaskSequence -Id $_.id -DestinationFolder "$GitHubCustomTaskSequenceModules\$ExportFolderName"
+        #Get all task sequences except the built-in ones
+        write-host "Getting all task sequence modules..." -ForegroundColor Yellow
+        (Get-DeployRMetadata -Type TaskSequence | Where-Object {$_.id -notlike '0000*' -and ($_.name -match "Module" -or $_.name -match "GitHub")}) | ForEach-Object {
+            write-host "Backing up task sequence: $($_.name) | $($_.id)" -ForegroundColor Cyan
+            $ExportFolderName = "$($_.name)-$($_.id)"
+            if (Test-Path -Path "$GitHubCustomTaskSequenceModules\$ExportFolderName") {
+                Write-Host "Removing existing folder: $GitHubCustomTaskSequenceModules\$ExportFolderName" -ForegroundColor Yellow
+                Remove-Item -Path "$GitHubCustomTaskSequenceModules\$ExportFolderName" -Recurse -Force
+            }
+            New-Item -Path "$GitHubCustomTaskSequenceModules\$ExportFolderName" -ItemType Directory -Force | Out-Null
+            write-host "Exporting step definition to: $GitHubCustomTaskSequenceModules\$ExportFolderName" -ForegroundColor Cyan
+            Export-DeployRTaskSequence -Id $_.id -DestinationFolder "$GitHubCustomTaskSequenceModules\$ExportFolderName"
+        }
     }
-
-    #Backup DeployR step definitions for GitHub Custom Steps
+    else {
+        Write-Host "Skipping Task Sequence Export to GitHub as EnableBackup2GitHubTS is set to false" -ForegroundColor Yellow
+    }
+    
+    
+    
+    if ($EnableBackup2GitHubStepDefs) {
+        Write-Host "Exporting Step Definitions to GitHub as EnableBackup2GitHubStepDefs is set to true" -ForegroundColor Yellow
+        #Backup DeployR step definitions for GitHub Custom Steps
     Write-Host "Exporting DeployR step definitions to GitHub..." -ForegroundColor Yellow
     write-host "Cleanup $GitHubCustomSteps and $GitHubCustomStepsReferencedContent first" -ForegroundColor Yellow
     if (Test-Path -Path $GitHubCustomSteps) {
@@ -157,6 +179,12 @@ if ($EnableBackup2GitHub -and $GitHubCustomSteps -and $GitHubCustomStepsReferenc
             Export-DeployRContentItem -Id $ContentItemInfo.id -DestinationFolder "$GitHubCustomStepsReferencedContent\$ExportContentFolderName"
         }
     }
+    }
+    else {
+        Write-Host "Skipping Step Definition Export to GitHub as EnableBackup2GitHubStepDefs is set to false" -ForegroundColor Yellow
+        return
+    }
+    
 }
 <# for Import Reference
 dir c:\temp\ContentBackup -File | Import-DeployRContentItem 
@@ -255,42 +283,42 @@ Import-DeployRStepDefinition -SourceFile "C:\Windows\Temp\TempDuplicateStepDef.j
 #>
 <# - Testing some edge cases
 Function Duplicate-DeployRStepDefinition {
-    param (
-    [Parameter(Mandatory = $true)]
-    [string]$StepDefinitionId = "ef875dff-343c-4e3c-88b5-a22918d65760",
-    [string]$TempLocation,
-    [string]$NewNameSuffix = "-Copy",
-    [string]$NewCIName
-    )
-    if ($null -eq $TempLocation -or $TempLocation -eq "") {
-        Write-Host "No TempLocation specified, setting it to C:\Windows\Temp" -ForegroundColor Yellow
-        $TempLocation = "C:\Windows\Temp"
-    }
-    if (-not (Test-Path -Path $TempLocation)) {
-        Write-Host "Temp location $TempLocation does not exist. Creating it." -ForegroundColor Yellow
-        New-Item -Path $TempLocation -ItemType Directory | Out-Null
-    }
-    $Sample = (Get-DeployRMetadata -Type StepDefinition | Where-Object {$_.id -eq $StepDefinitionId})
-    if ($null -eq $Sample) {
-        Write-Host "Step Definition with ID $StepDefinitionId not found." -ForegroundColor Red
-        return
-    }
-    [System.Guid]$NewStepGuid = New-Guid
-    [System.Guid]$NewVersionGuid = New-Guid
-    $Sample.id = $NewStepGuid
-    if ($NewCIName) {
-        $Sample.name = "Test Delete 2"
-    }
-    else {
-        $Sample.name = "$($Sample.name)$NewNameSuffix"
-    }
-    $Sample.readOnly = $false
-    $SampleVersions = $Sample.versions
-    $SampleVersions[0].id = $NewVersionGuid
-    $SampleVersions[0].StepDefinitionId = $NewStepGuid
-    $TempFilePath = "$TempLocation\TempDuplicateStepDef.json"
-    $Sample | ConvertTo-Json -Depth 10 | Out-File $TempFilePath -Force
-    Import-DeployRStepDefinition -SourceFile $TempFilePath -Force 
-    Write-Host "Duplicated Step Definition as $($Sample.name) with ID $NewStepGuid" -ForegroundColor Green
+param (
+[Parameter(Mandatory = $true)]
+[string]$StepDefinitionId = "ef875dff-343c-4e3c-88b5-a22918d65760",
+[string]$TempLocation,
+[string]$NewNameSuffix = "-Copy",
+[string]$NewCIName
+)
+if ($null -eq $TempLocation -or $TempLocation -eq "") {
+Write-Host "No TempLocation specified, setting it to C:\Windows\Temp" -ForegroundColor Yellow
+$TempLocation = "C:\Windows\Temp"
+}
+if (-not (Test-Path -Path $TempLocation)) {
+Write-Host "Temp location $TempLocation does not exist. Creating it." -ForegroundColor Yellow
+New-Item -Path $TempLocation -ItemType Directory | Out-Null
+}
+$Sample = (Get-DeployRMetadata -Type StepDefinition | Where-Object {$_.id -eq $StepDefinitionId})
+if ($null -eq $Sample) {
+Write-Host "Step Definition with ID $StepDefinitionId not found." -ForegroundColor Red
+return
+}
+[System.Guid]$NewStepGuid = New-Guid
+[System.Guid]$NewVersionGuid = New-Guid
+$Sample.id = $NewStepGuid
+if ($NewCIName) {
+$Sample.name = "Test Delete 2"
+}
+else {
+$Sample.name = "$($Sample.name)$NewNameSuffix"
+}
+$Sample.readOnly = $false
+$SampleVersions = $Sample.versions
+$SampleVersions[0].id = $NewVersionGuid
+$SampleVersions[0].StepDefinitionId = $NewStepGuid
+$TempFilePath = "$TempLocation\TempDuplicateStepDef.json"
+$Sample | ConvertTo-Json -Depth 10 | Out-File $TempFilePath -Force
+Import-DeployRStepDefinition -SourceFile $TempFilePath -Force 
+Write-Host "Duplicated Step Definition as $($Sample.name) with ID $NewStepGuid" -ForegroundColor Green
 }
 #>
