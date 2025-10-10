@@ -1,45 +1,65 @@
-﻿Write-Host "ApplyWU"
+﻿Write-Host "ApplyISO"
 
 Import-Module DeployR.Utility
 
 $continueMethod = ${TSEnv:ContinueMethod}
 
 
-# Get applicable OS
-$query = "?os=$($tsenv:OS)&osReleaseId=$($tsenv:Version)&osArchitecture=$($tsenv:Architecture)&osLanguage=$($tsenv:LanguageCode)&osEdition=$($tsenv:Edition)"
-$url += $query
-$Headers = @{ Authorization = "Bearer $($tsenv:DeployRToken)" }
-Write-Host "URL: $url"
-$os = Invoke-RestMethod -Uri $url -Method GET -Headers $Headers -ContentType "application/json" -UseBasicParsing -ErrorAction Stop -Verbose
-
-$Server2025EvalURL = "https://go.microsoft.com/fwlink/?linkid=2293312&clcid=0x409&culture=en-us&country=us"
+#$Server2025EvalURL = "https://go.microsoft.com/fwlink/?linkid=2293312&clcid=0x409&culture=en-us&country=us"
+$Server2025EvalURL = "https://software-static.download.prss.microsoft.com/dbazure/888969d5-f34g-4e03-ac9d-1f9786c66749/26100.1742.240906-0331.ge_release_svc_refresh_SERVER_EVAL_x64FRE_en-us.iso"
 # Download the specified file
 Write-Host "Downloading from: $Server2025EvalURL"
-$osWIM = Request-DeployRCustomContent -ContentName "OSISO" -ContentSize 6500 -ContentFriendlyName "Windows Server 2025 Standard Eval" -URL $Server2025EvalURL
+$osWIM = Request-DeployRCustomContent -ContentName "OSISO" -ContentFriendlyName "Windows Server 2025 Standard Eval" -URL $Server2025EvalURL
+$GetItemOutFile = Get-Item $osWIM
+$ISOPath = $GetItemOutFile.FullName
 
-$MountISO = Mount-DiskImage -ImagePath "C:\Users\GaryBlok\Downloads\26100.1742.240906-0331.ge_release_svc_refresh_SERVER_EVAL_x64FRE_en-us.iso"
+# Mount the ISO and Get the Drive Letter
+#$ISOPath = "C:\Users\GaryBlok\Downloads\26100.1742.240906-0331.ge_release_svc_refresh_SERVER_EVAL_x64FRE_en-us.iso"
+$MountISO = Mount-DiskImage -ImagePath $ISOPath -PassThru -Access ReadOnly
 
-# Get the detailed WIM info (XML) from the ESD/WIM.  This is necessary because the Get-WindowsImage cmdlet doesn't return all the
-# detail we need (e.g. edition ID) when enumerating all the images
-$fileStream = [System.IO.File]::OpenRead($osWIM)
-$byteArray = New-Object byte[] 208
-$null = $fileStream.Read($byteArray, 0, $byteArray.Length)
-$offset = [System.BitConverter]::ToInt64($byteArray, 80)
-$length = [System.BitConverter]::ToInt64($byteArray, 88)
-$xmlArray = New-Object byte[] $length
-$null = $fileStream.Seek($offset, 0)
-$null = $fileStream.Read($xmlArray, 0, $length)
-[xml] $xml = ([System.Text.Encoding]::Unicode.GetString($xmlArray)).Substring(1)
-$imageInfo = $xml.WIM.IMAGE | Where-Object { $_.WINDOWS.EDITIONID -eq ${TSEnv:Edition} }
-Write-Host "Using image index = $($imageInfo.INDEX) for edition ${TSEnv:Edition}"
+# Get the volume object for the mounted ISO
+$CDROM = $MountISO | Get-Volume
 
-# Apply the image
+# Check if the current drive letter is not 'I' and change it if needed
+if ($CDROM.DriveLetter -ne 'I') {
+    # Change the drive letter to I:
+
+	# Get the CD-ROM drive
+	# Specify the current drive letter of the mounted ISO (replace 'D:' with the actual drive letter)
+	$currentDriveLetter = 'D:'
+
+	# Get the volume using Get-CimInstance
+	$volume = Get-CimInstance -Query "SELECT * FROM Win32_Volume WHERE DriveLetter = '$currentDriveLetter'"
+
+	# Check if the volume was found
+	if ($null -eq $volume) {
+		Write-Output "No volume found with drive letter $currentDriveLetter"
+		exit
+	}
+
+	# Change the drive letter to 'I:'
+	$volume | Set-CimInstance -Arguments @{DriveLetter = 'I:'}
+
+	# Confirm the new drive letter
+	$updatedVolume = Get-CimInstance -Query "SELECT * FROM Win32_Volume WHERE DriveLetter = 'I:'"
+	if ($updatedVolume) {
+		Write-Output "The volume is now mounted with drive letter: I:"
+	} else {
+		Write-Output "Failed to change the drive letter to I:"
+	}
+}
+
+#Report the WIM info
+$osWIM = "I:\sources\install.wim"
+Get-WindowsImage -ImagePath $osWIM 
+
+# Apply the image *Server Standard Desktop Experience* to S:\
 Write-Host "Applying image to path S:\"
-$null = Expand-WindowsImage -ImagePath $osWIM -Index $imageInfo.INDEX -ApplyPath "S:\"
+$null = Expand-WindowsImage -ImagePath $osWIM -Index 2 -ApplyPath "S:\"
 $tsenv:OSDTargetSystemDrive = "S:"
 
 # Get additional information about the image and put it into TS variables
-$osImage = Get-WindowsImage -ImagePath $osWIM -Index $imageInfo.INDEX
+$osImage = Get-WindowsImage -ImagePath $osWIM -Index 2
 $tsenv:OSImageName = $osImage.ImageName
 $tsenv:OSImageVersion = $osImage.Version
 $tsenv:OSImageBuild = ([version]$osImage.Version).Build
