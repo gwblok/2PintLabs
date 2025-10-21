@@ -1,10 +1,11 @@
 #Set the Log Folder:
-$LogFolder = "$env:SystemDrive\Windows\Temp\"
+$LogFolder = "$env:SystemDrive\Windows\Temp"
 Start-Transcript -Path "$LogFolder\StifleR_Client_Install_Transcript.log" -Append
 
-$STIFLERSETTINGSURL = "https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/GARYTOWN/214/settings.2psImport"
-$ClientURL = 'https://214-StifleR.2p.garytown.com/StifleR-ClientApp.zip'
-$STIFLERSERVERS = 'https://214-StifleR.2p.garytown.com:1414'
+$STIFLERSETTINGSURL = "https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/GARYTOWN/214/dr2pintlabs.2psImport"
+$ClientURL = 'https://dr.2pintlabs.com/StifleR-ClientApp.zip'
+$STIFLERSERVERS = 'https://dr.2pintlabs.com:1414'
+#$STIFLERSERVERS = 'https://214-StifleR.2p.garytown.com:1414'
 $STIFLERULEZURL = 'https://raw.githubusercontent.com/2pintsoftware/StifleRRules/master/StifleRulez.xml'
 
 $OPTIONS = @"
@@ -61,12 +62,12 @@ if ((Test-NetConnection -ComputerName $StifleRServerBaseName -Port 1414 -Warning
 Write-Host -ForegroundColor Green "StifleR Server is reachable. Proceeding with installation..."
 
 #Create Temp Directory
-$tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+$tempDir = Join-Path ("$env:SystemDrive\Windows\Temp") ([System.IO.Path]::GetRandomFileName())
 
 #Download the StifleR Client Package
 $packageName = $ClientURL.Split('/')[-1]
-If (Test-Path -path "C:\OSDCloud\Installers\$packageName"){
-    $packagePath = "C:\OSDCloud\Installers\$packageName"
+If (Test-Path -path "C:\_2P\Installers\$packageName"){
+    $packagePath = "C:\_2P\Installers\$packageName"
 }
 else {
     $null = New-Item -ItemType Directory -Path $tempDir -Force -ErrorAction SilentlyContinue
@@ -80,34 +81,49 @@ else {
     
     #Download the package
     Write-Host -ForegroundColor Cyan "Starting download and extraction of $packageName"
-    Start-BitsTransfer -Source $ClientURL -Destination $packagePath
-    
+    try {
+        Write-Host "Using BITS to download $ClientURL to $packagePath"
+        Start-BitsTransfer -Source $ClientURL -Destination $packagePath
+    }
+    catch {
+        Write-Host "BITS download failed, falling back to Invoke-WebRequest"
+        Invoke-WebRequest -Uri $ClientURL -OutFile $packagePath -UseBasicParsing
+    }    
 }
 
 #Get Settings File From GitHub
+Write-Host "Downloading settings.2psImport from $STIFLERSETTINGSURL"
 Invoke-WebRequest -Uri $STIFLERSETTINGSURL -OutFile "$tempDir\settings.2psImport"
 
 if (Test-Path -Path "$tempDir\settings.2psImport") {
-    Write-Host "Found settings.2psImport file in the temp directory, using settings from file." -ForegroundColor Green
+    Write-Host "Found settings.2psImport file in the temp directory after download, using settings from file." -ForegroundColor Green
     $OptionsFile = $true
-    $OPTIONS = Get-Content -Path .\$StifleRSettingsConfigFileName -Raw
+    $OPTIONS = Get-Content -Path "$tempDir\settings.2psImport" -Raw
     
 }
 else{
-    Write-Host -ForegroundColor Red "No $StifleRSettingsConfigFileName file found in the current directory"
+    Write-Host -ForegroundColor Red "No $tempDir\settings.2psImport file found in the current directory"
 }
 
 $JSON = $OPTIONS | ConvertFrom-Json
-$STIFLERSERVERS = $JSON.SettingsOptions.StiflerServers -replace '[\[\]\\u0022]' -replace '"',' '
-$STIFLERULEZURL = $JSON.SettingsOptions.StifleRulezURL -replace '[\[\]\\u0022]'
-$VPNSTRINGS = $JSON.SettingsOptions.VPNStrings -replace '[\[\]\\u0022]' -replace '%',' '
-
+#Pull out the brackets and quotes
+$STIFLERSERVERS = ($JSON.SettingsOptions.StiflerServers -replace '[\[\]]', '' -replace '"',' ').Trim()
+#$STIFLERSERVERS = $JSON.SettingsOptions.StiflerServers -replace '[\[\]\\u0022]' -replace '"',' '
+$STIFLERULEZURL = ($JSON.SettingsOptions.StifleRulezURL -replace '[\[\]]', '' -replace '"',' ').Trim()
+$VPNSTRINGS = ($JSON.SettingsOptions.VPNStrings -replace '[\[\]]', '' -replace '"',' ').Trim()
 
 
 
 
 #Extract the package
-Expand-Archive -Path $packagePath -DestinationPath $tempDir
+if (Test-Path -Path $packagePath){
+    Write-Host -ForegroundColor Cyan "Extracting package to $tempDir"
+}
+else {
+    Write-Host -ForegroundColor Red "Package not found at $packagePath"
+    exit 1
+}
+Expand-Archive -Path $packagePath -DestinationPath $tempDir -Force
 
 if (Test-Path -Path $tempDir){
     Write-Host -ForegroundColor Green "Download and extraction completed successfully."
@@ -115,7 +131,7 @@ if (Test-Path -Path $tempDir){
 }
 else {
     Write-Host -ForegroundColor Red "Download or extraction failed."
-    return
+    exit 1
 }
 if (Test-Path -Path $MSI){
     Write-Host -ForegroundColor Green "MSI found: $MSI"
@@ -125,13 +141,19 @@ else {
     return
 }
 
+<# Not using anymore, leaving here for reference
 
+#Create Fall back if didn't find settings file
 $OPTIONS = @"
 {"SettingsOptions":{"StifleRulezURL":"$STIFLERULEZURL","StiflerServers":"[\u0022$STIFLERSERVERS\u0022]","VPNStrings":"[\u0022VPN\u0022,\u0022Cisco%20AnyConnect\u0022,\u0022Virtual%20Private%20Network\u0022,\u0022SonicWall\u0022,\u0022WireGuard\u0022]","EnableDebugTelemetry":"True","UseServerAsClient":"True","SignalRLogging":"True","RemoteToolsCapabilitiesFlag":"FileExplorer,%20FileContent,%20RegistryViewer,%20WmiViewer,%20EventLogs,%20PerformanceCounters,%20ResourceMonitor,%20TaskManager,%20DeviceInformation,%20RemoteAssistance,%20Rdp,%20RemoteCli,%20TsData,%20Intune,%20TunnelRdp"}}
 "@
+#Use these Settings if found settings file
 if (Test-Path -Path .\settings.2psImport) {
     $OPTIONS = Get-Content -Path .\settings.2psImport -Raw
 }
+#>
+
+
 Write-Host -ForegroundColor DarkGray "-------------------------------------------------------"
 Write-Host -ForegroundColor Cyan "Installing StifleR Client with the following options:"
 write-host -ForegroundColor Green "StifleR Servers: $STIFLERSERVERS"
@@ -140,7 +162,12 @@ write-host -ForegroundColor Green "VPN Strings: VPN, Cisco AnyConnect, Virtual P
 Write-Host -ForegroundColor DarkGray "-------------------------------------------------------"
 Write-Host "$Options"
 
-$Install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $MSI /l*v $LogFolder\StifleRClientMSI.log /quiet OPTIONS=$OPTIONS AUTOSTART=1" -Wait -PassThru
+Write-Host -ForegroundColor DarkGray "-------------------------------------------------------"
+#Install the MSI
+write-host -ForegroundColor Cyan "Starting installation of StifleR Client..."
+
+write-host " Start-Process -FilePath msiexec.exe -ArgumentList `"/i $MSI /l*v $LogFolder\StifleR_Client_Install_MSI.log /quiet AUTOSTART=1 OPTIONS=$tempDir\settings.2psImport`" -Wait -PassThru"
+$Install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $MSI /l*v $LogFolder\StifleR_Client_Install_MSI.log /quiet AUTOSTART=1 OPTIONS=`"$tempDir\settings.2psImport`"" -Wait -PassThru
 
 if ($Install.ExitCode -eq 0) {
     Write-Host -ForegroundColor Green "Installation completed successfully."
@@ -185,3 +212,4 @@ else{
         Set-Service -Name StifleRClient -StartupType Automatic
     }
 }
+Stop-Transcript
