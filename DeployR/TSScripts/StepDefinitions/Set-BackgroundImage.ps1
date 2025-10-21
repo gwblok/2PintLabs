@@ -152,15 +152,24 @@ SchemeName=@%SystemRoot%\System32\mmres.dll,-800
     # STEP 2: Configure background
     if (Test-Path -Path "$StoragePath\Background.jpg"){
     Write-Host "Setting up OSD theme"
+    Write-Host "Confirmed Background.jpg exists, proceeding to set as background via Theme."
     New-Item -Path "C:\Windows\Resources\OEM Themes" -ItemType Directory -Force | Out-Null
+    Write-Host "Creating DeployROSD.theme file in C:\Windows\Resources\OEM Themes"
     $ThemeFile | Out-File -FilePath "C:\Windows\Resources\OEM Themes\DeployROSD.theme" -Force -Encoding UTF8
     New-Item -Path  "C:\Windows\web\wallpaper\DeployROSD" -ItemType Directory -Force | Out-Null
+    Write-Host "Copying Background.jpg to C:\Windows\web\wallpaper\DeployROSD\DeployROSD.jpg"
     Copy-Item "$StoragePath\Background.jpg" "C:\Windows\web\wallpaper\DeployROSD\DeployROSD.jpg" -Force
+    if (Test-Path -Path "C:\Windows\Web\Wallpaper\DeployROSD\DeployROSD.jpg"){
+        Write-Host "Background Image successfully copied to Wallpaper folder."
+    }
+    else{
+        Write-Output "Failed to copy Background Image to Wallpaper folder."
+    }
     Write-Host "Setting DeployROSD theme as the new user default"
     
     [GC]::Collect()
     start-sleep -Milliseconds 500
-    Write-Host "Mounting Default User Registry Hive (REG LOAD HKLM\Default C:\Users\Default\NTUSER.DAT)"
+    Write-Host " Mounting Default User Registry Hive (REG LOAD HKLM\Default C:\Users\Default\NTUSER.DAT)"
     REG LOAD HKLM\Default C:\Users\Default\NTUSER.DAT
     $reg = New-ItemProperty -Path "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Themes" -Name "InstallTheme" -Value "%SystemRoot%\resources\OEM Themes\DeployROSD.theme" -PropertyType String -Force | Out-Null
     $reg = New-ItemProperty -Path "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Themes" -Name "CurrentTheme" -Value "%SystemRoot%\resources\OEM Themes\DeployROSD.theme" -PropertyType String -Force | Out-Null
@@ -170,7 +179,7 @@ SchemeName=@%SystemRoot%\System32\mmres.dll,-800
     
     [GC]::Collect()
     start-sleep -Milliseconds 500
-    Write-Host "Unmounting Default User Registry Hive (REG UNLOAD HKLM\Default)"
+    Write-Host " Unmounting Default User Registry Hive (REG UNLOAD HKLM\Default)"
     REG UNLOAD HKLM\Default
 
     }
