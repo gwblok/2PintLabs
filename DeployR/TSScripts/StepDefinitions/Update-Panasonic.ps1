@@ -1,9 +1,103 @@
 write-Host "Installing PanasonicCommandUpdate Module"
-try {
-    Install-Module -Name PanasonicCommandUpdate -Force -Verbose -Scope AllUsers
+
+# Ensure TLS 1.2 for gallery downloads
+try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 } catch {}
+
+function Test-PowerShellGalleryConnectivity {
+    <# Returns $true if cdn.powershellgallery.com:443 is reachable #>
+    try {
+        if (Get-Command -Name Test-NetConnection -ErrorAction SilentlyContinue) {
+            $res = Test-NetConnection -ComputerName 'cdn.powershellgallery.com' -Port 443 -WarningAction SilentlyContinue
+            return [bool]$res.TcpTestSucceeded
+        } else {
+            # Fallback using TcpClient
+            $client = New-Object System.Net.Sockets.TcpClient
+            $iar = $client.BeginConnect('cdn.powershellgallery.com', 443, $null, $null)
+            $wait = $iar.AsyncWaitHandle.WaitOne(5000) # 5s
+            if ($wait -and $client.Connected) { $client.EndConnect($iar); $client.Close(); return $true } else { return $false }
+        }
+    } catch {
+        return $false
+    }
 }
-catch {
-    <#Do this if a terminating exception happens#>
+
+function Invoke-PanasonicFallbackInstaller {
+    param(
+        [string]$FallbackUrl = 'https://dl-pc-support.connect.panasonic.com/public/soft_first/store_app/PanasonicCommandUpdate_SetupFiles_2.10311.0.0_4ec6da73_d20254473.exe'
+    )
+    try {
+        $packageName = [System.IO.Path]::GetFileName($FallbackUrl)
+        $tempDir = [System.IO.Path]::GetTempPath()
+        $installerPath = Join-Path $tempDir $packageName
+        Write-Host "Downloading fallback installer to: $installerPath"
+        try {
+            Start-BitsTransfer -Source $FallbackUrl -Destination $installerPath -ErrorAction Stop
+        } catch {
+            Write-Warning "BITS transfer failed or not available, falling back to Invoke-WebRequest: $_"
+            Invoke-WebRequest -Uri $FallbackUrl -OutFile $installerPath -UseBasicParsing -ErrorAction Stop
+        }
+
+        if (Test-Path $installerPath) {
+            Write-Host "Fallback installer downloaded: $installerPath"
+            try {
+                Write-Host "Launching fallback installer (interactive)..."
+                Start-Process -FilePath $installerPath -Wait -NoNewWindow -PassThru
+            } catch {
+                Write-Warning "Failed to launch fallback installer: $_"
+            }
+        } else {
+            Write-Warning "Fallback installer was not downloaded."
+        }
+    } catch {
+        Write-Warning "Fallback download failed: $_"
+    }
+}
+
+# If the gallery CDN is unreachable, skip Install-Module and use the fallback installer
+if (-not (Test-PowerShellGalleryConnectivity)) {
+    Write-Warning "Cannot reach PowerShellGallery CDN (cdn.powershellgallery.com). Skipping Install-Module and using fallback installer."
+    Invoke-PanasonicFallbackInstaller
+} else {
+    try {
+        # Ensure NuGet package provider is available
+        try { Install-PackageProvider -Name NuGet -Force -Scope AllUsers -ErrorAction SilentlyContinue } catch {}
+        Install-Module -Name PanasonicCommandUpdate -Force -Verbose -Scope AllUsers -ErrorAction Stop
+    }
+    catch {
+        Write-Warning "Install-Module failed: $($_.Exception.Message) -- falling back to manual installer."
+        Invoke-PanasonicFallbackInstaller
+    }
+}
+
+if (!(Get-Module -Name PanasonicCommandUpdate)){
+    Write-Warning "Install-Module failed, attempting fallback download of PanasonicCommandUpdate installer..."
+    try {
+        $fallbackUrl = 'https://dl-pc-support.connect.panasonic.com/public/soft_first/store_app/PanasonicCommandUpdate_SetupFiles_2.10311.0.0_4ec6da73_d20254473.exe'
+        $packageName = [System.IO.Path]::GetFileName($fallbackUrl)
+        $tempDir = [System.IO.Path]::GetTempPath()
+        $installerPath = Join-Path $tempDir $packageName
+        Write-Host "Downloading fallback installer to: $installerPath"
+        try {
+            Start-BitsTransfer -Source $fallbackUrl -Destination $installerPath -ErrorAction Stop
+        } catch {
+            Write-Warning "BITS transfer failed or not available, falling back to Invoke-WebRequest: $_"
+            Invoke-WebRequest -Uri $fallbackUrl -OutFile $installerPath -UseBasicParsing -ErrorAction Stop
+        }
+
+        if (Test-Path $installerPath) {
+            Write-Host "Fallback installer downloaded: $installerPath"
+            try {
+                Write-Host "Launching fallback installer (interactive)..."
+                Start-Process -FilePath $installerPath -ArgumentList "-s" -Wait -NoNewWindow -PassThru
+            } catch {
+                Write-Warning "Failed to launch fallback installer: $_"
+            }
+        } else {
+            Write-Warning "Fallback installer was not downloaded."
+        }
+    } catch {
+        Write-Warning "Fallback download failed: $_"
+    }
 }
 
 if (Get-Module -Name PanasonicCommandUpdate) {
