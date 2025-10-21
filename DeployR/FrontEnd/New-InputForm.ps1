@@ -53,7 +53,7 @@ $LogoBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAakAAABkCAYAAAA8Lc+FAAAAAXNSR0IArs4c6QAAA
 # Define user role options array (DisplayName = ReturnValue)
 # Using ordered hashtable to control the display order
 $UserRoleOptions = [ordered]@{
-    "Default - Generic User" = "Default"
+    "Default - None" = $null
     "Lab Computer - HR" = "HR"
     "Lab Computer - IT" = "IT"
     "Lab Computer - Execs" = "Execs"
