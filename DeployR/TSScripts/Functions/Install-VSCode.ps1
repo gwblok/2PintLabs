@@ -19,16 +19,16 @@ Function Install-VSCode {
         # Attempt download with Start-BitsTransfer
         Write-Host "Attempting to download VS Code installer using BITS..."
         try {
-            Start-BitsTransfer -Source $downloadUrl -Destination $installerPath -ErrorAction Stop
+            Start-BitsTransfer -Source $downloadUrl -Destination $installerPath -ErrorAction SilentlyContinue
         }
         catch {
             Write-Host "BITS download failed, falling back to Invoke-WebRequest..." -ForegroundColor Yellow
-            Invoke-WebRequest -Uri $downloadUrl -OutFile $installerPath -ErrorAction Stop
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $installerPath -ErrorAction SilentlyContinue
         }
         
         # Install VS Code silently
         Write-Host "Installing VS Code..."
-        Start-Process -FilePath $installerPath -ArgumentList "/VERYSILENT /NORESTART /MERGETASKS=!runcode /LOG=$logPath" -Wait -ErrorAction Stop
+        Start-Process -FilePath $installerPath -ArgumentList "/VERYSILENT /NORESTART /MERGETASKS=!runcode /LOG=$logPath" -Wait -ErrorAction SilentlyContinue
         
         Write-Host "VS Code installed successfully."
     }
