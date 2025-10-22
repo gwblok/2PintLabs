@@ -1,3 +1,25 @@
+try {
+    Import-Module DeployR.Utility -ErrorAction SilentlyContinue
+}
+catch {
+    Write-Warning "DeployR.Utility module not found. Environment variables will be set in the standard environment."
+}
+
+if (Get-Module -name "DeployR.Utility"){
+    write-Host "Using DeployR.Utility Module to get FQDN and Install2PXE values" -ForegroundColor Green
+    $FQDN = ${TSEnv:FormFQDN}
+    $Install2PXE = ${TSEnv:FormInstall2PXE}
+    write-Host "FQDN = $(${TSEnv:FormFQDN})" -ForegroundColor Green
+    write-Host "Install2PXE = $Install2PXE" -ForegroundColor Green
+}
+else{
+    Write-Host "Using Test Values for FQDN and Install2PXE" -ForegroundColor Yellow
+    $FQDN = "DeployR.2PintLabs.com"
+    $Install2PXE = $true
+    write-Host "FQDN = $FQDN" -ForegroundColor Yellow
+    write-Host "Install2PXE = $Install2PXE" -ForegroundColor Yellow
+}
+
 Function Install-2PXE {
     [CmdletBinding()]
     param (
@@ -219,3 +241,9 @@ Function Import-2PXERootCA {
     }
 }
 
+$MSIFiles = Get-ChildItem -Path C:\Windows\Temp\2Pint -Filter *.msi
+
+$2PXE = $MSIFiles | Where-Object { $_.Name -like "*2PXE*.msi" } | Select-Object -First 1
+
+Install-2PXE -msifile $2PXE.FullName -fqdn $FQDN
+Import-2PXERootCA

@@ -341,7 +341,67 @@ if ($result -eq $true) {
 
 }
 
-$FormResults = Show-DeployRInputForm
+# --- Runtime detection: if WPF (PresentationFramework) isn't available (eg: WinPE),
+# fall back to console prompts so the Task Sequence can continue.
+function Test-WPFAvailable {
+    try {
+        # Attempt to load a WPF assembly. This will throw in environments without the desktop runtime.
+        Add-Type -AssemblyName PresentationFramework -ErrorAction Stop
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
+function Get-DeployRInputFromConsole {
+    # Console-based input fallback (keeps same return shape as GUI)
+    do {
+        $manualName = Read-Host "Enter computer name (letters, numbers, hyphen only)"
+        if ([string]::IsNullOrWhiteSpace($manualName)) {
+            Write-Host "Computer name is required." -ForegroundColor Yellow
+            $valid = $false; continue
+        }
+        if ($manualName -notmatch '^[a-zA-Z0-9-]+$') {
+            Write-Host "Only letters, numbers, and hyphens are allowed." -ForegroundColor Red
+            $valid = $false; continue
+        }
+        if ($manualName.Length -gt 63) {
+            Write-Host "Computer name cannot exceed 63 characters." -ForegroundColor Red
+            $valid = $false; continue
+        }
+        $valid = $true
+    } until ($valid)
+
+    $domain = Read-Host "Enter domain suffix (or press Enter to skip, e.g. contoso.local)"
+    if ($domain -eq 'contoso.local') { $domain = '' }
+
+    if (-not [string]::IsNullOrWhiteSpace($domain)) {
+        $fqdn = "$($manualName.ToUpper()).$domain"
+    }
+    else { $fqdn = $null }
+
+    $install2PXE = $false
+    $resp = Read-Host "Install 2PXE and Self-Signed Cert? (Y/N)"
+    if ($resp -match '^[Yy]') { $install2PXE = $true }
+
+    return [PSCustomObject]@{
+        ComputerName  = $manualName.ToUpper()
+        DomainSuffix  = if ([string]::IsNullOrWhiteSpace($domain)) { $null } else { $domain }
+        FQDN          = $fqdn
+        Install2PXE   = [bool]$install2PXE
+        FormSubmitted = $true
+    }
+}
+
+# Decide whether to use GUI or console fallback
+if (-not (Test-WPFAvailable)) {
+    Write-Warning "WPF / PresentationFramework not available in this environment (likely WinPE). Falling back to console prompts."
+    $FormResults = Get-DeployRInputFromConsole
+}
+else {
+    $FormResults = Show-DeployRInputForm
+}
 try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
 }
