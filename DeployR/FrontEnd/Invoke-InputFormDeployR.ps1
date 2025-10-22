@@ -414,6 +414,7 @@ catch {
 write-host "========================================" -ForegroundColor DarkGray
 # Set the provided variables
 if (Get-Module -name "DeployR.Utility"){
+    ${TSEnv:OSDComputerName} = $FormResults.ComputerName
     ${TSEnv:FormComputerName} = $FormResults.ComputerName
     ${TSEnv:FormDomainSuffix} = $FormResults.DomainSuffix
     ${TSEnv:FormFQDN} = $FormResults.FQDN
