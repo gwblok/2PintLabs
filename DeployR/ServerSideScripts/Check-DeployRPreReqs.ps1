@@ -18,12 +18,15 @@ Remediation at end will prompt to remediate:
 - Missing IIS MIME types
 - Missing IIS Virtual Directories
 - Missing Windows Components
+
+Change Log
+- 2025-10-22 - Updated .NET version to 8.0.21
 #>
 
 #Ensure Several things are installed, as well as configurations are done to help troubleshoot DeployR installations
 
 #Keep this updated as needed 
-$DotNetMinVersion = '8.0.19'
+$DotNetMinVersion = '8.0.21'
 
 
 
