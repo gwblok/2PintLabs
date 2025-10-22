@@ -14,6 +14,11 @@ function Get-CMOSDGather {
     $Script | Out-File -FilePath "$env:temp\CMOSD-Gather.ps1" -Force -Encoding UTF8
     powershell.exe "$env:temp\CMOSD-Gather.ps1" -debug $true
 }
+write-host "Function: Show-TSLauncher" -ForegroundColor Green
+function Show-TSLauncher {
+    iex (irm "https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/FrontEnd/New-InputFormDeployR.ps1")
+}
+
 write-host "===================================================================="
 write-Host "DeployR Pre-Reqs Functions" -ForegroundColor Green
 write-Host ""
@@ -63,6 +68,7 @@ write-Host -ForegroundColor Green "[+] Install-SSMS21"
 function Install-SSMS21 {
     iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-SSMS21.ps1)
 }
+
 Write-Host ""
 Write-Host "===================================================================="
 Write-Host "2Pint Software Install Scripts, Requires you have the MSI Path" -ForegroundColor Green
