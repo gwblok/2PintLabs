@@ -1,3 +1,20 @@
+try {
+    Import-Module DeployR.Utility -ErrorAction SilentlyContinue
+}
+catch {
+    Write-Warning "DeployR.Utility module not found. Environment variables will be set in the standard environment."
+}
+
+if (Get-Module -name "DeployR.Utility"){
+    write-Host "Using DeployR.Utility Module to get FQDN" -ForegroundColor Green
+    $FQDN = ${TSEnv:FormFQDN}
+    write-Host "FQDN = $(${TSEnv:FormFQDN})" -ForegroundColor Green
+}
+else{
+    Write-Host "Using Test Values for FQDN" -ForegroundColor Yellow
+    $FQDN = "DeployR.2PintLabs.com"
+    write-Host "FQDN = $FQDN" -ForegroundColor Yellow
+}
 
 #region Functions
 Function Get-FQDNFrom2PXEConfig {
@@ -447,3 +464,4 @@ Function Create-FQDN2PXECert {
 
 #endregion
 
+Create-FQDN2PXECert -fqdn $FQDN

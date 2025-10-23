@@ -429,7 +429,8 @@ catch {
 Write-Host "Script completed."
 }
 
-$MSIFiles = Get-ChildItem -Path C:\Windows\Temp\2Pint -Filter *.msi
+$WorkingDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
+$MSIFiles = Get-ChildItem -Path $WorkingDir -Filter *.msi | Select-Object -First 1
 $iPXE = $MSIFiles | Where-Object { $_.Name -like "*iPXE*.msi" } | Select-Object -First 1
 
 Install-iPXEWS -msifile $iPXE.FullName

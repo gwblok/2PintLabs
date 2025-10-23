@@ -129,6 +129,8 @@ if (!(Test-Path $msifile)) {
     # "RUN_TFTP_SERVER=`"1`""                                  # 2PXE has a built-in TFTP server 1 for ON 0 for OFF
     # "RUN_HTTP_SERVER=`"1`""                                  # 2PXE WebService for iPXE integration 1 for ON 0 for OFF
     "EMBEDDEDSDI=`"0`""                                      # Use an embedded boot.sdi image. See full documentation for more info
+    "ExternalFQDNOverride=`"$fqdn`""                        # Use this FQDN for iPXE Anywhere Web Service calls instead of the local system FQDN
+    # "TFTPROOTPATH=`"C:\MyTFTPRoot`""
     # "F12TIMEOUT=`"10000`""                                   # F12 prompt timout for iPXE loaders for non mandatory deployements in milliseconds.
     # "IPXELOADERS=`"1`""                                      # Use iPXE Boot Loaders 1 to enable and 0 to disable. If 0 2PXE will use Windows boot loaders
     # "UNKNOWNSUPPORT=`"1`""                                   # 1 for enable (default) 0 to disable - enables Unknown Machine support in ConfigMgr
@@ -241,7 +243,10 @@ Function Import-2PXERootCA {
     }
 }
 
-$MSIFiles = Get-ChildItem -Path C:\Windows\Temp\2Pint -Filter *.msi
+
+$WorkingDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
+
+$MSIFiles = Get-ChildItem -Path $WorkingDir -Filter *.msi | Select-Object -First 1
 
 $2PXE = $MSIFiles | Where-Object { $_.Name -like "*2PXE*.msi" } | Select-Object -First 1
 
