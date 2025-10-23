@@ -292,3 +292,8 @@ Write-Host "DeployR installation completed with exit code $($DeployRInstall.Exit
 
 
 Set-DeployRServerConfiguration -fqdn $fqdn
+
+
+#Approve DeployR in Dashboard
+$deployR = Invoke-RestMethod "https://$($FQDN):9000/api/infrastructureService/type/11" -UseDefaultCredentials
+Invoke-RestMethod "https://$($FQDN):9000/api/infrastructureService/$($deployR.id)/approve" -Method PUT -UseDefaultCredentials
