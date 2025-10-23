@@ -1,5 +1,4 @@
 $FORM = @'
-
 Function Show-DeployRInputForm {
 <#
 .SYNOPSIS
@@ -133,6 +132,7 @@ $DefaultDomainSuffix = "contoso.local"  # Change this to your domain or set to $
     <!-- Install 2PXE checkbox (moved out of naming group) -->
     <StackPanel Grid.Row="3" Margin="0,0,0,12">
         <CheckBox Name="chkInstall2PXE" Content="Install 2PXE and Self-Signed Cert" FontSize="12"/>
+        <CheckBox Name="chkAddFQDNToHosts" Content="Add FQDN to Local Host File" FontSize="12" Margin="0,6,0,0"/>
     </StackPanel>
 
         <!-- Status TextBlock -->
@@ -177,6 +177,7 @@ $imgLogo = $Window.FindName("imgLogo")
 $txtManualName = $Window.FindName("txtManualName")
 $txtDomainSuffix = $Window.FindName("txtDomainSuffix")
 $chkInstall2PXE = $Window.FindName("chkInstall2PXE")
+$chkAddFQDNToHosts = $Window.FindName("chkAddFQDNToHosts")
 $txtPreview = $Window.FindName("txtPreview")
 $txtStatus = $Window.FindName("txtStatus")
 $btnOK = $Window.FindName("btnOK")
@@ -291,6 +292,7 @@ $btnOK.Add_Click({
     $script:DomainSuffix = if ([string]::IsNullOrWhiteSpace($domain)) { $null } else { $domain }
     $script:FQDN = $fqdn
     $script:Install2PXE = [bool]$chkInstall2PXE.IsChecked
+    $script:AddFQDNToHosts = [bool]$chkAddFQDNToHosts.IsChecked
 
     # Set dialog result and close
     $Window.DialogResult = $true
@@ -313,6 +315,7 @@ if ($result -eq $true) {
         DomainSuffix = $script:DomainSuffix
         FQDN = $script:FQDN
         Install2PXE = $script:Install2PXE
+            AddFQDNToHosts = $script:AddFQDNToHosts
         FormSubmitted = $true
     }
 
@@ -325,6 +328,7 @@ if ($result -eq $true) {
         }
     }
     Write-Host "Install 2PXE: $($FormResults.Install2PXE)" -ForegroundColor Green
+    Write-Host "Add FQDN to Hosts: $($FormResults.AddFQDNToHosts)" -ForegroundColor Green
 
     return $FormResults
 
@@ -337,6 +341,7 @@ if ($result -eq $true) {
         DomainSuffix = $null
         FQDN = $null
         Install2PXE = $false
+            AddFQDNToHosts = $false
         FormSubmitted = $false
     }
 }
@@ -387,11 +392,16 @@ function Get-DeployRInputFromConsole {
     $resp = Read-Host "Install 2PXE and Self-Signed Cert? (Y/N)"
     if ($resp -match '^[Yy]') { $install2PXE = $true }
 
+    $addFQDN = $false
+    $resp = Read-Host "Add FQDN to Local Host File? (Y/N)"
+    if ($resp -match '^[Yy]') { $addFQDN = $true }
+
     return [PSCustomObject]@{
         ComputerName  = $manualName.ToUpper()
         DomainSuffix  = if ([string]::IsNullOrWhiteSpace($domain)) { $null } else { $domain }
         FQDN          = $fqdn
         Install2PXE   = [bool]$install2PXE
+        AddFQDNToHosts = [bool]$addFQDN
         FormSubmitted = $true
     }
 }
@@ -415,28 +425,30 @@ write-host "========================================" -ForegroundColor DarkGray
 # Set the provided variables
 if (Get-Module -name "DeployR.Utility"){
     ${TSEnv:ComputerName} = $FormResults.ComputerName
-    ${TSEnv:FormComputerName} = $FormResults.ComputerName
     ${TSEnv:FormDomainSuffix} = $FormResults.DomainSuffix
     ${TSEnv:FormFQDN} = $FormResults.FQDN
     ${TSEnv:FormInstall2PXE} = $FormResults.Install2PXE
-
+    ${TSEnv:AddFQDNToHosts} = $FormResults.AddFQDNToHosts
     write-Host "Set DeployR TS Environment Variables:" -ForegroundColor Cyan
-    write-Host "FormComputerName = $(${TSEnv:FormComputerName})" -ForegroundColor Green
+    write-Host "ComputerName = $(${TSEnv:ComputerName})" -ForegroundColor Green
     write-Host "FormDomainSuffix = $(${TSEnv:FormDomainSuffix})" -ForegroundColor Green
     write-Host "FormFQDN = $(${TSEnv:FormFQDN})" -ForegroundColor Green
-    write-Host "FormInstall2PXE = $(${TSEnv:FormInstall2PXE})" -ForegroundColor Green   
+    write-Host "FormInstall2PXE = $(${TSEnv:FormInstall2PXE})" -ForegroundColor Green
+    write-Host "AddFQDNToHosts = $(${TSEnv:AddFQDNToHosts})" -ForegroundColor Green
 
 }
 else{
-    $env:FormComputerName = $FormResults.ComputerName
+    $env:ComputerName = $FormResults.ComputerName
     $env:FormDomainSuffix = $FormResults.DomainSuffix
     $env:FormFQDN = $FormResults.FQDN
     $env:FormInstall2PXE = $FormResults.Install2PXE
+    $env:AddFQDNToHosts = $FormResults.AddFQDNToHosts
     write-Host "Set Environment Variables for Testing outside DeployR:" -ForegroundColor Cyan
-    write-Host "FormComputerName = $($env:FormComputerName)" -ForegroundColor Green
+    write-Host "ComputerName = $($env:ComputerName)" -ForegroundColor Green
     write-Host "FormDomainSuffix = $($env:FormDomainSuffix)" -ForegroundColor Green
     write-Host "FormFQDN = $($env:FormFQDN)" -ForegroundColor Green
     write-Host "FormInstall2PXE = $($env:FormInstall2PXE)" -ForegroundColor Green
+    write-Host "AddFQDNToHosts = $($env:AddFQDNToHosts)" -ForegroundColor Green
 }
 '@
 

@@ -12,12 +12,14 @@ catch {
 if (Get-Module -name "DeployR.Utility"){
     write-Host "Using DeployR.Utility Module to get FQDN" -ForegroundColor Green
     $FQDN = ${TSEnv:FormFQDN}
+    $ContentLocation = ${TSEnv:CONTENT-CONTENT}
     write-Host "FQDN = $(${TSEnv:FormFQDN})" -ForegroundColor Green
 }
 else{
     Write-Host "Using Test Values for FQDN" -ForegroundColor Yellow
     $FQDN = "DeployR.2PintLabs.com"
     write-Host "FQDN = $FQDN" -ForegroundColor Yellow
+    $ContentLocation = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 }
 
 #region Functions
@@ -278,9 +280,9 @@ Write-Host "Function Set-DeployRServerConfiguration completed."
 }
 #endregion Functions
 
-$WorkingDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
+#$WorkingDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 
-$MSIFiles = Get-ChildItem -Path $WorkingDir -Filter *.msi
+$MSIFiles = Get-ChildItem -Path $ContentLocation -Filter *.msi
 
 $DeployR = $MSIFiles | Where-Object { $_.Name -like "*DeployR*.msi" } | Select-Object -First 1
 

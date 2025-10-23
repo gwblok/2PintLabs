@@ -8,11 +8,13 @@ catch {
 if (Get-Module -name "DeployR.Utility"){
     write-Host "Using DeployR.Utility Module to get FQDN" -ForegroundColor Green
     $FQDN = ${TSEnv:FormFQDN}
+    $ContentLocation = ${TSEnv:CONTENT-CONTENT}
     write-Host "FQDN = $(${TSEnv:FormFQDN})" -ForegroundColor Green
 }
 else{
     Write-Host "Using Test Values for FQDN" -ForegroundColor Yellow
     $FQDN = "DeployR.2PintLabs.com"
+    $ContentLocation = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
     write-Host "FQDN = $FQDN" -ForegroundColor Yellow
 }
 #region Functions
@@ -147,11 +149,18 @@ Import-Module WebAdministration
 New-WebVirtualDirectory -Site "Default Web Site" -Name "StifleRDashboard" -PhysicalPath 'C:\Program Files\2Pint Software\StifleR Dashboards\Dashboard Files'
 
 # Accessing server locally with fqdn can cause authentication prompt loop on workgroup server
+<#
 if ($partofdomain -eq $false) {
     Write-Host "Server is not member of a domain. Configuring BackConnectionHostNames."
     $multiStringData = @("$fqdn")
     Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0" -Name "BackConnectionHostNames" -Value $multiStringData -Type MultiString
 }
+#>
+#Always adding it...
+Write-Host "Adding Server FQDN to BackConnectionHostNames to prevent authentication loop."
+$multiStringData = @("$fqdn")
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0" -Name "BackConnectionHostNames" -Value $multiStringData -Type MultiString
+
 
 Write-Host "Script completed."
 }
@@ -406,8 +415,8 @@ Write-Host "Function Set-StifleRServerConfiguration completed."
 #endregion
 
 #Doing Stuff Here
-$WorkingDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
-$MSIFiles = Get-ChildItem -Path $WorkingDir -Filter *.msi
+
+$MSIFiles = Get-ChildItem -Path $ContentLocation -Filter *.msi
 $Dashboard = $MSIFiles | Where-Object { $_.Name -like "*Dashboard*.msi" } | Select-Object -First 1
 $StiflerRServer = $MSIFiles | Where-Object { $_.Name -like "*Server*.msi" } | Select-Object -First 1 
 
