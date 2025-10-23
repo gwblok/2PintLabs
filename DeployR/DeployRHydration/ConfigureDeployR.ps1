@@ -1,3 +1,7 @@
+
+#Connect to DeployR.Utility Module if available and gaather FQDN
+Write-Host "================================" -ForegroundColor Green
+Write-Host "Starting DeployR Install & Configuration Script" -ForegroundColor Green
 try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
 }
@@ -16,16 +20,7 @@ else{
     write-Host "FQDN = $FQDN" -ForegroundColor Yellow
 }
 
-
-
-$WorkingDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
-
-$MSIFiles = Get-ChildItem -Path $WorkingDir -Filter *.msi
-
-$DeployR = $MSIFiles | Where-Object { $_.Name -like "*DeployR*.msi" } | Select-Object -First 1
-
-Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$($DeployR.FullName)`" /qb!" -Wait
-
+#region Functions
 Function Get-FQDNFrom2PXEConfig {
     param (
         [string]$configFilePath = "C:\Program Files\2Pint Software\2PXE\2Pint.2PXE.Service.exe.config"
@@ -281,5 +276,17 @@ catch {
 Write-Host "Function Set-DeployRServerConfiguration completed."
 
 }
+#endregion Functions
+
+$WorkingDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
+
+$MSIFiles = Get-ChildItem -Path $WorkingDir -Filter *.msi
+
+$DeployR = $MSIFiles | Where-Object { $_.Name -like "*DeployR*.msi" } | Select-Object -First 1
+
+Write-Host "Installing DeployR from $($DeployR.FullName)" -ForegroundColor Green
+$DeployRInstall = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$($DeployR.FullName)`" /qb!" -Wait -PassThru -NoNewWindow
+Write-Host "DeployR installation completed with exit code $($DeployRInstall.ExitCode)" -ForegroundColor Green
+
 
 Set-DeployRServerConfiguration -fqdn $fqdn
