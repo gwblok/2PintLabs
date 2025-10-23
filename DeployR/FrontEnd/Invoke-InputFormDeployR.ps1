@@ -414,7 +414,7 @@ catch {
 write-host "========================================" -ForegroundColor DarkGray
 # Set the provided variables
 if (Get-Module -name "DeployR.Utility"){
-    ${TSEnv:OSDComputerName} = $FormResults.ComputerName
+    ${TSEnv:ComputerName} = $FormResults.ComputerName
     ${TSEnv:FormComputerName} = $FormResults.ComputerName
     ${TSEnv:FormDomainSuffix} = $FormResults.DomainSuffix
     ${TSEnv:FormFQDN} = $FormResults.FQDN
@@ -442,4 +442,4 @@ else{
 
 $FORM | Out-File $env:TEMP\DeployR_TestInputFormDeployR.ps1 -Encoding UTF8 -Force
 # Execute the generated form script
-Start-Process pwsh.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$env:TEMP\DeployR_TestInputFormDeployR.ps1`"" -Wait
+Start-Process pwsh.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$env:TEMP\DeployR_TestInputFormDeployR.ps1`"" -Wait -NoNewWindow -PassThru
