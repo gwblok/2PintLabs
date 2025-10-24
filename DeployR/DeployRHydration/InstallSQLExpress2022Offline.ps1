@@ -1,4 +1,16 @@
+try {
+    Import-Module DeployR.Utility -ErrorAction SilentlyContinue
+}
+catch {
+    Write-Warning "DeployR.Utility module not found. Environment variables will be set in the standard environment."
+}
 
+if (Get-Module -name "DeployR.Utility"){
+    $ContentLocation = ${TSEnv:CONTENT-CONTENT}
+}
+else{
+    $ContentLocation = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
+}
 
 <#
 .SYNOPSIS
@@ -19,9 +31,9 @@ CHANGELOG
 
 # Configuration
 #$DownloadUrl = "https://go.microsoft.com/fwlink/?linkid=2215160"  # Official Microsoft URL for SQL Server 2022 Express
-$WorkingDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
 
-$SQLInstallerFile = Get-ChildItem -Path $WorkingDir -Filter "SQLEXPR_x64_ENU.exe" | Select-Object -First 1
+
+$SQLInstallerFile = Get-ChildItem -Path $ContentLocation -Filter "SQLEXPR_x64_ENU.exe" | Select-Object -First 1
 write-Host "Using SQL Installer File: $($SQLInstallerFile.FullName)"
 $LogFile = "$env:TEMP\SQL_Express_Install_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
 $InstanceName = "SQLEXPRESS"  # Default instance name

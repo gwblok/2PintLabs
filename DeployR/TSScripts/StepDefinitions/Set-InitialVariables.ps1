@@ -97,7 +97,7 @@ else {
 #If the Peering is set to True, it will not set the variable, as it is already set in the Task Sequence environment by default
 if ($InitialPeering -eq "True") {
     Write-Output "Setting Peering to: $InitialPeering"
-    #${TSEnv:Peering} = $InitialPeering - Don't need to set this, it is already set in the Task Sequence environment by default
+    ${TSEnv:Peering} = $InitialPeering # Not sure about this - (Don't need to set this, it is already set in the Task Sequence environment by default)
 }
 else {
     Write-Output "Setting Peering to: $InitialPeering"

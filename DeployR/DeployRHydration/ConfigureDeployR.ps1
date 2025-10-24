@@ -295,5 +295,14 @@ Set-DeployRServerConfiguration -fqdn $fqdn
 
 
 #Approve DeployR in Dashboard
-$deployR = Invoke-RestMethod "https://$($FQDN):9000/api/infrastructureService/type/11" -UseDefaultCredentials
-Invoke-RestMethod "https://$($FQDN):9000/api/infrastructureService/$($deployR.id)/approve" -Method PUT -UseDefaultCredentials
+write-Host "Approving DeployR in StifleR Dashboard..." -ForegroundColor Green
+write-host "Running commands..."
+Write-Host "$deployR = Invoke-RestMethod `"https://$($FQDN):9000/api/infrastructureService/type/11`" -UseDefaultCredentials" -ForegroundColor Green
+Write-Host "Invoke-RestMethod `"https://$($FQDN):9000/api/infrastructureService/$($deployR.id)/approve`" -Method PUT -UseDefaultCredentials" -ForegroundColor Green
+try {
+    $deployR = Invoke-RestMethod "https://$($FQDN):9000/api/infrastructureService/type/11" -UseDefaultCredentials
+    Invoke-RestMethod "https://$($FQDN):9000/api/infrastructureService/$($deployR.id)/approve" -Method PUT -UseDefaultCredentials
+}
+catch {
+    <#Do this if a terminating exception happens#>
+}
