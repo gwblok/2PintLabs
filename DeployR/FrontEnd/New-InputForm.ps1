@@ -1,3 +1,5 @@
+Function Get-InputFormData {
+
 <#
 .SYNOPSIS
     Creates a WPF form to collect user input including computer naming strategy and user role selection.
@@ -276,6 +278,15 @@ function Get-HardwareId {
                     <ComboBox Name="cmbUserRole" 
                               Height="28" 
                               FontSize="12"/>
+                    
+                    <!-- Autopilot Group Tag Dropdown -->
+                    <TextBlock Name="txtAutopilotLabel" Text="Autopilot Group Tag:" 
+                               FontSize="13" 
+                               FontWeight="Bold"
+                               Margin="0,10,0,5"/>
+                    <ComboBox Name="cmbAutopilotGroupTag"
+                              Height="28"
+                              FontSize="12"/>
                 </StackPanel>
                 
                 <!-- Status TextBlock -->
@@ -330,9 +341,28 @@ $rbEntraID = $Window.FindName("rbEntraID")
 $rbAutopilot = $Window.FindName("rbAutopilot")
 $rbDomainJoin = $Window.FindName("rbDomainJoin")
 $cmbUserRole = $Window.FindName("cmbUserRole")
+$cmbAutopilotGroupTag = $Window.FindName("cmbAutopilotGroupTag")
+$txtAutopilotLabel = $Window.FindName("txtAutopilotLabel")
 $txtStatus = $Window.FindName("txtStatus")
 $btnOK = $Window.FindName("btnOK")
 $btnCancel = $Window.FindName("btnCancel")
+
+# Helper to toggle Autopilot controls visibility/enabled state
+function Set-AutopilotControlsState {
+    param(
+        [bool]$Enabled
+    )
+    if ($Enabled) {
+        $txtAutopilotLabel.Visibility = 'Visible'
+        $cmbAutopilotGroupTag.IsEnabled = $true
+        $cmbAutopilotGroupTag.Visibility = 'Visible'
+    }
+    else {
+        $txtAutopilotLabel.Visibility = 'Collapsed'
+        $cmbAutopilotGroupTag.IsEnabled = $false
+        $cmbAutopilotGroupTag.Visibility = 'Collapsed'
+    }
+}
 
 # Load logo from base64 or file path
 $logoLoaded = $false
@@ -379,6 +409,11 @@ foreach ($role in $UserRoleOptions.Keys) {
 }
 $cmbUserRole.SelectedIndex = 0
 
+# Populate Autopilot Group Tag ComboBox
+$cmbAutopilotGroupTag.Items.Add("Enterprise") | Out-Null
+$cmbAutopilotGroupTag.Items.Add("Hub Self Deploy") | Out-Null
+$cmbAutopilotGroupTag.SelectedIndex = 0
+
 # Populate Hardware ID Type ComboBox
 foreach ($hwType in $HardwareIdOptions) {
     $cmbHardwareId.Items.Add($hwType) | Out-Null
@@ -389,6 +424,9 @@ $cmbHardwareId.SelectedIndex = 0
 if (-not [string]::IsNullOrWhiteSpace($DefaultDomainSuffix)) {
     $txtDomainSuffix.Text = $DefaultDomainSuffix
 }
+
+# Initialize Autopilot controls visibility based on current selection
+Set-AutopilotControlsState -Enabled:([bool]$rbAutopilot.IsChecked)
 
 # Function to update preview
 function Update-Preview {
@@ -433,12 +471,33 @@ function Update-Preview {
         $hwId = Get-HardwareId -Type $hwType
         
         if ([string]::IsNullOrWhiteSpace($prefix)) {
+            # If no prefix, ensure hardware id is truncated to max 15 chars (keep tail)
+            if (-not [string]::IsNullOrWhiteSpace($hwId) -and $hwId.Length -gt 15) {
+                $hwId = $hwId.Substring($hwId.Length - 15, 15)
+            }
             $generatedName = $hwId
         }
         else {
             # Validate prefix characters
             if ($prefix -match '^[a-zA-Z0-9-]+$') {
-                $generatedName = "$prefix-$hwId"
+                # Compute maximum length allowed for hardware id portion
+                $maxHwLen = 15 - ($prefix.Length + 1) # 1 for dash
+                if ($maxHwLen -lt 1) {
+                    # Prefix is too long; truncate prefix to allow at least 1 char for hw id
+                    $maxPrefix = 14
+                    $prefix = $prefix.Substring(0, [Math]::Min($prefix.Length, $maxPrefix))
+                    $maxHwLen = 15 - ($prefix.Length + 1)
+                }
+
+                if (-not [string]::IsNullOrWhiteSpace($hwId) -and $hwId.Length -gt $maxHwLen) {
+                    # Keep the rightmost characters of the hardware id when truncating
+                    $truncatedHw = $hwId.Substring($hwId.Length - $maxHwLen, $maxHwLen)
+                    $generatedName = "$prefix-$truncatedHw"
+                    $txtStatus.Text = "Hardware ID truncated to fit 15 characters"
+                }
+                else {
+                    $generatedName = "$prefix-$hwId"
+                }
             }
             else {
                 $txtPreview.Text = "$prefix-$hwId (Invalid prefix)"
@@ -447,23 +506,21 @@ function Update-Preview {
                 return
             }
         }
-        
-        # Check total length
+        # Ensure final generated name does not exceed 15 chars (safety)
         if ($generatedName.Length -gt 15) {
-            $txtPreview.Text = "$generatedName (Too long: $($generatedName.Length) chars)"
-            $txtPreview.Foreground = "Red"
-            $txtStatus.Text = "Computer name cannot exceed 15 characters"
+            # As a safety, keep the rightmost 15 characters so serial tail is preserved
+            $generatedName = $generatedName.Substring($generatedName.Length - 15, 15)
+            $txtStatus.Text = "Name truncated to 15 characters"
         }
-        else {
-            $displayName = $generatedName
-            # Add domain suffix if provided
-            if (-not [string]::IsNullOrWhiteSpace($domainSuffix)) {
-                $displayName = "$displayName.$domainSuffix"
-            }
-            $txtPreview.Text = $displayName
-            $txtPreview.Foreground = "DarkGreen"
-            $txtStatus.Text = ""
+
+        $displayName = $generatedName
+        # Add domain suffix if provided
+        if (-not [string]::IsNullOrWhiteSpace($domainSuffix)) {
+            $displayName = "$displayName.$domainSuffix"
         }
+        $txtPreview.Text = $displayName
+        $txtPreview.Foreground = "DarkGreen"
+        if (-not $txtStatus.Text) { $txtStatus.Text = "" }
     }
 }
 
@@ -489,6 +546,12 @@ $rbHardwareName.Add_Checked({
     $cmbHardwareId.IsEnabled = $true
     Update-Preview
 })
+
+# Wire Workplace Join radio buttons to toggle Autopilot controls
+$rbWorkgroup.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
+$rbEntraID.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
+$rbAutopilot.Add_Checked({ Set-AutopilotControlsState -Enabled:$true })
+$rbDomainJoin.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
 
 # Text Changed Events
 $txtManualName.Add_TextChanged({
@@ -571,21 +634,33 @@ $btnOK.Add_Click({
         
         # Generate computer name
         if ([string]::IsNullOrWhiteSpace($prefix)) {
+            # Truncate hardware id if needed (keep tail)
+            if (-not [string]::IsNullOrWhiteSpace($hwId) -and $hwId.Length -gt 15) {
+                $hwId = $hwId.Substring($hwId.Length - 15, 15)
+            }
             $generatedName = $hwId
         }
         else {
+            # Ensure generated name fits 15 chars by truncating hw id portion
+            $maxHwLen = 15 - ($prefix.Length + 1)
+            if ($maxHwLen -lt 1) {
+                $maxPrefix = 14
+                $prefix = $prefix.Substring(0, [Math]::Min($prefix.Length, $maxPrefix))
+                $maxHwLen = 15 - ($prefix.Length + 1)
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($hwId) -and $hwId.Length -gt $maxHwLen) {
+                # Keep rightmost characters of hwId when truncating for prefix
+                $hwId = $hwId.Substring($hwId.Length - $maxHwLen, $maxHwLen)
+            }
             $generatedName = "$prefix-$hwId"
         }
         
         # Validate total length
+        # Final safety: truncate to 15 chars if still longer
         if ($generatedName.Length -gt 15) {
-            [System.Windows.MessageBox]::Show(
-                "The generated computer name '$generatedName' exceeds 15 characters ($($generatedName.Length) chars).`n`nPlease use a shorter prefix or try a different hardware ID type.",
-                "Validation Error",
-                [System.Windows.MessageBoxButton]::OK,
-                [System.Windows.MessageBoxImage]::Warning
-            )
-            return
+            # Safety: preserve serial tail by keeping rightmost 15 chars
+            $generatedName = $generatedName.Substring($generatedName.Length - 15, 15)
         }
         
         $script:NamingStrategy = "HardwareBased"
@@ -611,6 +686,13 @@ $btnOK.Add_Click({
     # Store user role - convert display name to simple value
     $selectedDisplayName = $cmbUserRole.SelectedItem
     $script:SelectedUserRole = $UserRoleOptions[$selectedDisplayName]
+
+    # Map Autopilot Group Tag display value to return value
+    $selectedAutopilot = $cmbAutopilotGroupTag.SelectedItem
+    switch ($selectedAutopilot) {
+        'Hub Self Deploy' { $script:AutopilotGroupTag = 'Hub' }
+        default { $script:AutopilotGroupTag = $selectedAutopilot }
+    }
     
     # Store domain suffix (ignore if it's the default placeholder value)
     $script:DomainSuffix = $txtDomainSuffix.Text.Trim()
@@ -641,6 +723,7 @@ if ($result -eq $true) {
         HardwareIdType = $script:HardwareIdType
         WorkplaceJoin = $script:WorkplaceJoin
         SelectedUserRole = $script:SelectedUserRole
+        AutopilotGroupTag = $script:AutopilotGroupTag
         FormSubmitted = $true
     }
     
@@ -702,6 +785,55 @@ if ($result -eq $true) {
         HardwareIdType = $null
         WorkplaceJoin = $null
         SelectedUserRole = $null
+        AutopilotGroupTag = $null
         FormSubmitted = $false
     }
+}
+
+}
+#
+$FormResults = Get-InputFormData
+try {
+    Import-Module DeployR.Utility -ErrorAction SilentlyContinue
+}
+catch {
+    Write-Warning "DeployR.Utility module not found. Environment variables will be set in the standard environment."
+}
+
+write-host "========================================" -ForegroundColor DarkGray
+# Set the provided variables
+if (Get-Module -name "DeployR.Utility"){
+    ${TSEnv:NamingStrategy} = $FormResults.NamingStrategy
+    ${TSEnv:ComputerName} = $FormResults.GeneratedComputerName
+    ${TSEnv:DomainSuffix} = $FormResults.DomainSuffix
+    ${TSEnv:HardwareIdType} = $FormResults.HardwareIdType
+    ${TSEnv:WorkplaceJoin} = $FormResults.WorkplaceJoin
+    ${TSEnv:SelectedUserRole} = $FormResults.SelectedUserRole
+    ${TSEnv:AutopilotGroupTag} = $FormResults.AutopilotGroupTag
+
+    write-Host "Set DeployR TS Environment Variables:" -ForegroundColor Cyan
+    write-Host "NamingStrategy = $(${TSEnv:NamingStrategy})" -ForegroundColor Green
+    write-Host "ComputerName = $(${TSEnv:ComputerName})" -ForegroundColor Green
+    write-Host "DomainSuffix = $(${TSEnv:DomainSuffix})" -ForegroundColor Green
+    write-Host "HardwareIdType = $(${TSEnv:HardwareIdType})" -ForegroundColor Green
+    write-Host "WorkplaceJoin = $(${TSEnv:WorkplaceJoin})" -ForegroundColor Green
+    write-Host "SelectedUserRole = $(${TSEnv:SelectedUserRole})" -ForegroundColor Green
+    write-Host "AutopilotGroupTag = $(${TSEnv:AutopilotGroupTag})" -ForegroundColor Green
+
+}
+else{
+    $env:NamingStrategy = $FormResults.NamingStrategy
+    $env:ComputerName = $FormResults.GeneratedComputerName
+    $env:DomainSuffix = $FormResults.DomainSuffix
+    $env:HardwareIdType = $FormResults.HardwareIdType
+    $env:WorkplaceJoin = $FormResults.WorkplaceJoin
+    $env:SelectedUserRole = $FormResults.SelectedUserRole
+    $env:AutopilotGroupTag = $FormResults.AutopilotGroupTag
+    write-Host "Set Environment Variables for Testing outside DeployR:" -ForegroundColor Cyan
+    write-Host "ComputerName = $($env:ComputerName)" -ForegroundColor Green
+    write-Host "DomainSuffix = $($env:DomainSuffix)" -ForegroundColor Green
+    write-Host "HardwareIdType = $($env:HardwareIdType)" -ForegroundColor Green
+    write-Host "WorkplaceJoin = $($env:WorkplaceJoin)" -ForegroundColor Green
+    write-Host "SelectedUserRole = $($env:SelectedUserRole)" -ForegroundColor Green
+    write-Host "AutopilotGroupTag = $($env:AutopilotGroupTag)" -ForegroundColor Green
 }
