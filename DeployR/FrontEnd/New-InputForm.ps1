@@ -260,6 +260,13 @@ function Get-HardwareId {
                              GroupName="WorkplaceJoin"
                              Margin="0,0,0,8"/>
                 
+                <RadioButton Name="rbOnlineDomainJoin"
+                             Content="Online Domain Join (less secure)"
+                             FontSize="12"
+                             FontWeight="Normal"
+                             GroupName="WorkplaceJoin"
+                             Margin="0,0,0,8"/>
+                
                 <RadioButton Name="rbDomainJoin" 
                              Content="Offline Domain Join" 
                              FontSize="12" 
@@ -287,6 +294,23 @@ function Get-HardwareId {
                     <ComboBox Name="cmbAutopilotGroupTag"
                               Height="28"
                               FontSize="12"/>
+                    
+                    <!-- Online Domain Join OU Dropdown (shown when Online Domain Join selected) -->
+                    <TextBlock Name="txtOnlineOULabel" Text="Online Domain Join OU:" 
+                               FontSize="13" 
+                               FontWeight="Bold"
+                               Margin="0,10,0,5"
+                               Visibility="Collapsed"/>
+                    <ComboBox Name="cmbOnlineOU"
+                              Height="28"
+                              FontSize="12"
+                              Visibility="Collapsed"/>
+                    <TextBlock Name="txtOnlineJoinInfo"
+                               Text="Account: CM_DJ    Domain: 2P.GARYTOWN.COM"
+                               FontSize="11"
+                               Foreground="Gray"
+                               Margin="0,5,0,0"
+                               Visibility="Collapsed"/>
                 </StackPanel>
                 
                 <!-- Status TextBlock -->
@@ -339,13 +363,20 @@ $txtPreview = $Window.FindName("txtPreview")
 $rbWorkgroup = $Window.FindName("rbWorkgroup")
 $rbEntraID = $Window.FindName("rbEntraID")
 $rbAutopilot = $Window.FindName("rbAutopilot")
+$rbOnlineDomainJoin = $Window.FindName("rbOnlineDomainJoin")
 $rbDomainJoin = $Window.FindName("rbDomainJoin")
 $cmbUserRole = $Window.FindName("cmbUserRole")
 $cmbAutopilotGroupTag = $Window.FindName("cmbAutopilotGroupTag")
 $txtAutopilotLabel = $Window.FindName("txtAutopilotLabel")
+$txtOnlineOULabel = $Window.FindName("txtOnlineOULabel")
+$cmbOnlineOU = $Window.FindName("cmbOnlineOU")
+$txtOnlineJoinInfo = $Window.FindName("txtOnlineJoinInfo")
 $txtStatus = $Window.FindName("txtStatus")
 $btnOK = $Window.FindName("btnOK")
 $btnCancel = $Window.FindName("btnCancel")
+
+# Initialize online OU script variable
+$script:OnlineOU = $null
 
 # Helper to toggle Autopilot controls visibility/enabled state
 function Set-AutopilotControlsState {
@@ -361,6 +392,22 @@ function Set-AutopilotControlsState {
         $txtAutopilotLabel.Visibility = 'Collapsed'
         $cmbAutopilotGroupTag.IsEnabled = $false
         $cmbAutopilotGroupTag.Visibility = 'Collapsed'
+    }
+}
+
+function Set-OnlineDomainJoinControlsState {
+    param([bool]$Enabled)
+    if ($Enabled) {
+        $txtOnlineOULabel.Visibility = 'Visible'
+        $cmbOnlineOU.Visibility = 'Visible'
+        $cmbOnlineOU.IsEnabled = $true
+        $txtOnlineJoinInfo.Visibility = 'Visible'
+    }
+    else {
+        $txtOnlineOULabel.Visibility = 'Collapsed'
+        $cmbOnlineOU.Visibility = 'Collapsed'
+        $cmbOnlineOU.IsEnabled = $false
+        $txtOnlineJoinInfo.Visibility = 'Collapsed'
     }
 }
 
@@ -413,6 +460,11 @@ $cmbUserRole.SelectedIndex = 0
 $cmbAutopilotGroupTag.Items.Add("Enterprise") | Out-Null
 $cmbAutopilotGroupTag.Items.Add("Hub Self Deploy") | Out-Null
 $cmbAutopilotGroupTag.SelectedIndex = 0
+
+# Populate Online OU ComboBox
+$cmbOnlineOU.Items.Add("OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com") | Out-Null
+$cmbOnlineOU.Items.Add("OU=Servers,OU=2PintTown,DC=2P,DC=garytown,DC=com") | Out-Null
+$cmbOnlineOU.SelectedIndex = 0
 
 # Populate Hardware ID Type ComboBox
 foreach ($hwType in $HardwareIdOptions) {
@@ -552,6 +604,12 @@ $rbWorkgroup.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
 $rbEntraID.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
 $rbAutopilot.Add_Checked({ Set-AutopilotControlsState -Enabled:$true })
 $rbDomainJoin.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
+# Wire Online Domain Join radio handlers
+$rbWorkgroup.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
+$rbEntraID.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
+$rbAutopilot.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
+$rbOnlineDomainJoin.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$true })
+$rbDomainJoin.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
 
 # Text Changed Events
 $txtManualName.Add_TextChanged({
@@ -679,6 +737,10 @@ $btnOK.Add_Click({
     elseif ($rbAutopilot.IsChecked) {
         $script:WorkplaceJoin = "Autopilot"
     }
+    elseif ($rbOnlineDomainJoin.IsChecked) {
+        $script:WorkplaceJoin = "OnlineDomainJoin"
+        $script:OnlineOU = $cmbOnlineOU.SelectedItem
+    }
     elseif ($rbDomainJoin.IsChecked) {
         $script:WorkplaceJoin = "ODJ"
     }
@@ -724,6 +786,8 @@ if ($result -eq $true) {
         WorkplaceJoin = $script:WorkplaceJoin
         SelectedUserRole = $script:SelectedUserRole
         AutopilotGroupTag = $script:AutopilotGroupTag
+        OnlineDomainJoinOU = $script:OnlineOU
+        OnlineDomainJoinSelected = ($script:WorkplaceJoin -eq 'OnlineDomainJoin')
         FormSubmitted = $true
     }
     
@@ -786,6 +850,7 @@ if ($result -eq $true) {
         WorkplaceJoin = $null
         SelectedUserRole = $null
         AutopilotGroupTag = $null
+        OnlineDomainJoinOU = $null
         FormSubmitted = $false
     }
 }
@@ -808,6 +873,7 @@ if (Get-Module -name "DeployR.Utility"){
     ${TSEnv:DomainSuffix} = $FormResults.DomainSuffix
     ${TSEnv:HardwareIdType} = $FormResults.HardwareIdType
     ${TSEnv:WorkplaceJoin} = $FormResults.WorkplaceJoin
+    ${TSEnv:OnlineDomainJoinOU} = $FormResults.OnlineDomainJoinOU
     ${TSEnv:SelectedUserRole} = $FormResults.SelectedUserRole
     ${TSEnv:AutopilotGroupTag} = $FormResults.AutopilotGroupTag
 
@@ -817,6 +883,7 @@ if (Get-Module -name "DeployR.Utility"){
     write-Host "DomainSuffix = $(${TSEnv:DomainSuffix})" -ForegroundColor Green
     write-Host "HardwareIdType = $(${TSEnv:HardwareIdType})" -ForegroundColor Green
     write-Host "WorkplaceJoin = $(${TSEnv:WorkplaceJoin})" -ForegroundColor Green
+    write-Host "OnlineDomainJoinOU = $(${TSEnv:OnlineDomainJoinOU})" -ForegroundColor Green
     write-Host "SelectedUserRole = $(${TSEnv:SelectedUserRole})" -ForegroundColor Green
     write-Host "AutopilotGroupTag = $(${TSEnv:AutopilotGroupTag})" -ForegroundColor Green
 
@@ -827,6 +894,7 @@ else{
     $env:DomainSuffix = $FormResults.DomainSuffix
     $env:HardwareIdType = $FormResults.HardwareIdType
     $env:WorkplaceJoin = $FormResults.WorkplaceJoin
+    $env:OnlineDomainJoinOU = $FormResults.OnlineDomainJoinOU
     $env:SelectedUserRole = $FormResults.SelectedUserRole
     $env:AutopilotGroupTag = $FormResults.AutopilotGroupTag
     write-Host "Set Environment Variables for Testing outside DeployR:" -ForegroundColor Cyan
@@ -834,6 +902,7 @@ else{
     write-Host "DomainSuffix = $($env:DomainSuffix)" -ForegroundColor Green
     write-Host "HardwareIdType = $($env:HardwareIdType)" -ForegroundColor Green
     write-Host "WorkplaceJoin = $($env:WorkplaceJoin)" -ForegroundColor Green
+    write-Host "OnlineDomainJoinOU = $($env:OnlineDomainJoinOU)" -ForegroundColor Green
     write-Host "SelectedUserRole = $($env:SelectedUserRole)" -ForegroundColor Green
     write-Host "AutopilotGroupTag = $($env:AutopilotGroupTag)" -ForegroundColor Green
 }
