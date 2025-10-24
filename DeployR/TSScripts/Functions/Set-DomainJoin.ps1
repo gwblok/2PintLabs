@@ -1,3 +1,84 @@
+# NO SUPPORT | THIS IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND
+# THIS IS NOT SECURE
+
+
+# Note: This script expects domain join credentials and domain information to be provided
+# by the Task Sequence environment variables or set manually before calling Set-DomainJoin.
+# Required Task Sequence variables (or set these values in your calling code):
+#
+# Set-DomainJoin.ps1
+# ------------------
+# Purpose:
+#   Join the local computer to an Active Directory domain. This function is designed
+#   to be used from Task Sequences and automation runbooks for 2Pint Software DeployR.
+#
+# Behavior / Features:
+#   - Accepts credentials as a PSCredential (-Credential) or as Username + Password
+#     where Password may be a SecureString or plain-text string (plain-text will be
+#     converted to a SecureString automatically).
+#   - The OU parameter is optional. If omitted, the domain's default computer container
+#     will be used.
+#   - Checks current domain membership and is idempotent when already joined to the
+#     target domain.
+#
+# Task Sequence Integration (2Pint DeployR):
+#   If running inside a Task Sequence and the optional `DeployR.Utility` module is
+#   available, this script will read the following TSEnv variables by convention:
+#     - ${TSEnv:DomainJoinUsername}  (username used to join, e.g. CM_DJ)
+#     - ${TSEnv:DomainJoinPassword}  (SecureString or plain-text)
+#     - ${TSEnv:DomainJoinDomain}    (DNS domain name, e.g. 2P.GARYTOWN.COM)
+#     - ${TSEnv:OnlineDomainJoinOU}  (optional OU distinguishedName when using
+#                                     Online Domain Join workflow)
+#
+#   If `DeployR.Utility` isn't present this script will rely on the calling scope to
+#   set $UserName, $Password and $Domain variables before calling `Set-DomainJoin`.
+#
+# Security Notes:
+#   - Plain-text passwords are supported for convenience in automation but will be
+#     converted to SecureString prior to creating a PSCredential. Prefer passing a
+#     PSCredential object or SecureString where possible.
+#   - "Online Domain Join" workflows expose credentials to the network and may be
+#     considered less secure; ensure you understand your environment's security
+#     posture before using that mode.
+#
+# Examples:
+#   # Using a PSCredential
+#   $cred = Get-Credential
+#   Set-DomainJoin -Credential $cred -Domain '2P.GARYTOWN.COM' -Restart
+#
+#   # Using username + plain-text password (converted internally)
+#   Set-DomainJoin -Username '2P\\CM_DJ' -Password 'P@ssw0rd' -Domain '2P.GARYTOWN.COM'
+#
+#   # From Task Sequence (DeployR) - variables read from TSEnv when DeployR.Utility
+#   # is available. The outer Task Sequence should set DomainJoinUsername, DomainJoinPassword
+#   # and DomainJoinDomain prior to invoking this script.
+#
+# Designed For:
+#   This function is part of the 2PintLabs DeployR toolset and was created to support
+#   2Pint Software DeployR Task Sequence workflows. It is safe to call from automation
+#   tasks and Task Sequences that follow the variable conventions above.
+
+Write-Host "================================" -ForegroundColor Green
+Write-Host "Starting Domain Join Script" -ForegroundColor Green
+try {
+    Import-Module DeployR.Utility -ErrorAction SilentlyContinue
+}
+catch {
+    Write-Warning "DeployR.Utility module not found. Environment variables will be set in the standard environment."
+}
+
+if (Get-Module -name "DeployR.Utility"){
+    write-Host "Using DeployR.Utility Module to get FQDN" -ForegroundColor Green
+    $OU = ${TSEnv:OnlineDomainJoinOU}
+    $UserName = ${TSEnv:DomainJoinUsername}
+    $Password = ${TSEnv:DomainJoinPassword}
+    $Domain = ${TSEnv:DomainJoinDomain}
+}
+else{
+    Write-Host "Not IN TS"
+}
+
+
 function Set-DomainJoin {
     <#
     .SYNOPSIS
@@ -22,6 +103,12 @@ function Set-DomainJoin {
     [CmdletBinding(SupportsShouldProcess=$true, DefaultParameterSetName='Pass')]
     param(
     # When using a password: Username + Password (SecureString or plain-text string)
+    # NOTE: Password is declared as [object] to allow callers to supply either a
+    #       SecureString (preferred) or a plain-text string for automation scenarios.
+    #       The script will convert plain-text strings to SecureString before
+    #       constructing a PSCredential. A static analyzer may warn about string
+    #       usage for passwords; this is intentional to preserve automation
+    #       convenience while still converting to a secure form at runtime.
     [Parameter(Mandatory=$true, ParameterSetName='Pass')]
     [string]$Username,
 
@@ -125,3 +212,11 @@ function Set-DomainJoin {
         return @{ Joined = $false; Domain = $Domain; Error = $_.Exception.Message }
     }
 }
+
+# Do the stuff
+Write-Host "================================" -ForegroundColor Green
+Write-Host "Starting Domain Join Script" -ForegroundColor Green
+Write-Host "Joining Domain: $Domain" -ForegroundColor Green
+write-host "Using account: $UserName" -ForegroundColor Green
+write-host "Using OU: $OU" -ForegroundColor Green
+Set-DomainJoin -Username $UserName -Password $Password -OU $OU -Domain $Domain
