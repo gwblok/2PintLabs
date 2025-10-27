@@ -1,3 +1,27 @@
+#Connect to DeployR
+try {
+    Import-Module DeployR.Utility
+}
+catch {}
+if (Get-Module -name "DeployR.Utility"){
+    # Get the provided variables
+
+    [String]$TargetSystemDrive = ${TSEnv:OSDTARGETSYSTEMDRIVE}
+    [String]$LogPath = ${TSEnv:_DEPLOYRLOGS}
+    [String]$MakeAlias = ${TSEnv:MakeAlias}
+    [String]$Make = ${TSEnv:Make}
+    [String]$ModelAlias = ${TSEnv:ModelAlias}
+}
+else {
+    <#Do this if a terminating exception happens#>
+    [String]$TargetSystemDrive = "C:"
+    [String]$LogPath = "C:\Windows\Temp\"
+    $Gather = iex (irm gather.garytown.com)
+    [String]$MakeAlias = $Gather.MakeAlias
+    [String]$Make = $Gather.Make
+    [String]$ModelAlias = $Gather.ModelAlias
+}
+
 
 if ($ModelAlias -eq "Virtual Machine") {
     Write-Host "ModelAlias is Virtual Machine, exiting script."
