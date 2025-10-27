@@ -278,6 +278,9 @@ Get-ChildItem -Path $DownloadStepsPath -Directory | Where-Object {$_.Name -ne "R
 }
 
 #Import Task Sequences
+write-host "==========================================" -ForegroundColor darkgray
+write-host "Importing Task Sequences from: $DownloadTSModulesPath" -ForegroundColor Magenta
+write-host ""
 Get-ChildItem -Path $DownloadTSModulesPath -Directory | ForEach-Object {
     $TSFolder = $_.FullName
     Write-Host "Importing Task Sequence from: $TSFolder" -ForegroundColor Cyan
