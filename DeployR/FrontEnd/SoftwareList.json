@@ -1,0 +1,12 @@
+{
+  "software": [
+    { "Id": "greenshot", "DisplayName": "GreenShot" },
+    { "Id": "office365", "DisplayName": "Office 365" },
+    { "Id": "adobereader", "DisplayName": "Adobe Reader" },
+    { "Id": "notepadplusplus", "DisplayName": "Notepad++" },
+    { "Id": "wmiexplorer", "DisplayName": "WMIExplorer" },
+    { "Id": "googlechrome", "DisplayName": "Google Chrome" },
+    { "Id": "7zip", "DisplayName": "7-Zip" },
+    { "Id": "vlc", "DisplayName": "VLC Media Player" }
+  ]
+}

@@ -123,13 +123,15 @@ function Get-HardwareId {
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         
-        <!-- ScrollViewer for main content -->
-        <ScrollViewer Grid.Row="0" 
-                      VerticalScrollBarVisibility="Auto" 
-                      HorizontalScrollBarVisibility="Disabled"
-                      Margin="0,0,0,10"
-                      Padding="0,0,10,0">
-            <Grid>
+        <!-- Tabs for content -->
+        <TabControl Grid.Row="0" Margin="0,0,0,10">
+            <TabItem Header="General">
+                <!-- ScrollViewer for main content -->
+                <ScrollViewer VerticalScrollBarVisibility="Auto" 
+                              HorizontalScrollBarVisibility="Disabled"
+                              Margin="0,0,0,10"
+                              Padding="0,0,10,0">
+                    <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
@@ -323,7 +325,19 @@ function Get-HardwareId {
                            TextWrapping="Wrap"
                            Margin="0,0,0,10"/>
             </Grid>
-        </ScrollViewer>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Software">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8">
+                    <StackPanel Margin="0,6,0,0">
+                        <TextBlock Text="Select software to install:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <!-- Dynamic software list populated from SoftwareList.json -->
+                        <StackPanel Name="spSoftwareList" Margin="6,4,0,0" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
         
         <!-- Buttons (Fixed at bottom, outside ScrollViewer) -->
         <StackPanel Grid.Row="1" 
@@ -374,6 +388,7 @@ $txtOnlineJoinInfo = $Window.FindName("txtOnlineJoinInfo")
 $txtStatus = $Window.FindName("txtStatus")
 $btnOK = $Window.FindName("btnOK")
 $btnCancel = $Window.FindName("btnCancel")
+$spSoftwareList = $Window.FindName("spSoftwareList")
 
 # Initialize online OU script variable
 $script:OnlineOU = $null
@@ -471,6 +486,49 @@ foreach ($hwType in $HardwareIdOptions) {
     $cmbHardwareId.Items.Add($hwType) | Out-Null
 }
 $cmbHardwareId.SelectedIndex = 0
+
+# Load software list from JSON file located next to this script
+$script:SelectedSoftware = @()
+$script:SelectedSoftwareCsv = ""
+# Resolve script directory robustly to support dot-sourcing and different PowerShell hosts
+$scriptDir = $null
+try { $scriptDir = $PSScriptRoot } catch {}
+if (-not $scriptDir) {
+    if ($PSCommandPath) { $scriptDir = Split-Path -Parent $PSCommandPath }
+    elseif ($MyInvocation -and $MyInvocation.MyCommand -and $MyInvocation.MyCommand.Definition) { $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition }
+    elseif ($MyInvocation -and $MyInvocation.MyCommand -and $MyInvocation.MyCommand.Path) { $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
+    else { $scriptDir = (Get-Location).Path }
+}
+$softwareJsonPath = Join-Path -Path $scriptDir -ChildPath 'SoftwareList.json'
+if (Test-Path $softwareJsonPath) {
+    try {
+        $softwareData = Get-Content -Path $softwareJsonPath -Raw | ConvertFrom-Json
+        if ($softwareData -and $softwareData.software) {
+            foreach ($item in $softwareData.software) {
+                $cb = New-Object System.Windows.Controls.CheckBox
+                $cb.Content = $item.DisplayName
+                $cb.Tag = $item.Id
+                $cb.Margin = '6,4,0,4'
+                $cb.FontSize = 12
+                $spSoftwareList.Children.Add($cb) | Out-Null
+            }
+        }
+    }
+    catch {
+        Write-Warning ([string]::Format('Failed to load software list from {0}: {1}', $softwareJsonPath, $_))
+    }
+}
+else {
+    # Fallback: populate with a few defaults if JSON not found
+    $defaults = @('GreenShot','Office 365','Adobe Reader')
+    foreach ($d in $defaults) {
+        $cb = New-Object System.Windows.Controls.CheckBox
+        $cb.Content = $d
+        $cb.Margin = '6,4,0,4'
+        $cb.FontSize = 12
+        $spSoftwareList.Children.Add($cb) | Out-Null
+    }
+}
 
 # Initialize Domain Suffix field with default value
 if (-not [string]::IsNullOrWhiteSpace($DefaultDomainSuffix)) {
@@ -761,7 +819,20 @@ $btnOK.Add_Click({
     if ([string]::IsNullOrWhiteSpace($script:DomainSuffix) -or $script:DomainSuffix -eq "contoso.local") {
         $script:DomainSuffix = $null
     }
+    # Capture software selections from dynamic 'Software' tab
+    $script:SelectedSoftware = @()
+    foreach ($child in $spSoftwareList.Children) {
+        try {
+            if ($child -and $child.IsChecked) {
+                $name = [string]$child.Content
+                $script:SelectedSoftware += $name
+            }
+        } catch {}
+    }
+    $script:SelectedSoftwareCsv = ($script:SelectedSoftware -join ',')
     
+    # Stop auto-close timer (if running), then set dialog result and close
+    try { if ($script:AutoCloseTimer) { $script:AutoCloseTimer.Stop() } } catch {}
     # Set dialog result and close
     $Window.DialogResult = $true
     $Window.Close()
@@ -769,9 +840,33 @@ $btnOK.Add_Click({
 
 # Cancel Button Click Event
 $btnCancel.Add_Click({
+    try { if ($script:AutoCloseTimer) { $script:AutoCloseTimer.Stop() } } catch {}
     $Window.DialogResult = $false
     $Window.Close()
 })
+
+# Auto-close timer: close the window after 5 minutes (300 seconds)
+# Uses a DispatcherTimer so UI thread updates are safe. Updates txtStatus with countdown.
+$timeoutSeconds = 300
+$script:AutoCloseTimer = New-Object System.Windows.Threading.DispatcherTimer
+$script:AutoCloseTimer.Interval = [TimeSpan]::FromSeconds(1)
+$script:AutoCloseRemaining = [int]$timeoutSeconds
+$txtStatus.Text = "Auto-close in {0}m {1}s" -f ([math]::Floor($script:AutoCloseRemaining/60)), ($script:AutoCloseRemaining%60)
+$script:AutoCloseTimer.Add_Tick({
+    try {
+        $script:AutoCloseRemaining = $script:AutoCloseRemaining - 1
+        if ($script:AutoCloseRemaining -lt 0) {
+            try { $script:AutoCloseTimer.Stop() } catch {}
+            try { $Window.DialogResult = $false } catch {}
+            try { $Window.Close() } catch {}
+            return
+        }
+        $m = [math]::Floor($script:AutoCloseRemaining/60)
+        $s = $script:AutoCloseRemaining % 60
+        $txtStatus.Text = "Auto-close in ${m}m ${s}s"
+    } catch {}
+})
+$script:AutoCloseTimer.Start()
 
 # Show the form
 $result = $Window.ShowDialog()
@@ -788,6 +883,8 @@ if ($result -eq $true) {
         AutopilotGroupTag = $script:AutopilotGroupTag
         OnlineDomainJoinOU = $script:OnlineOU
         OnlineDomainJoinSelected = ($script:WorkplaceJoin -eq 'OnlineDomainJoin')
+    SelectedSoftware = $script:SelectedSoftware
+    SelectedSoftwareCsv = $script:SelectedSoftwareCsv
         FormSubmitted = $true
     }
     
@@ -851,6 +948,8 @@ if ($result -eq $true) {
         SelectedUserRole = $null
         AutopilotGroupTag = $null
         OnlineDomainJoinOU = $null
+        SelectedSoftware = @()
+        SelectedSoftwareCsv = ""
         FormSubmitted = $false
     }
 }
@@ -876,6 +975,7 @@ if (Get-Module -name "DeployR.Utility"){
     ${TSEnv:OnlineDomainJoinOU} = $FormResults.OnlineDomainJoinOU
     ${TSEnv:SelectedUserRole} = $FormResults.SelectedUserRole
     ${TSEnv:AutopilotGroupTag} = $FormResults.AutopilotGroupTag
+    ${TSEnv:SelectedSoftwareCsv} = $FormResults.SelectedSoftwareCsv
 
     write-Host "Set DeployR TS Environment Variables:" -ForegroundColor Cyan
     write-Host "NamingStrategy = $(${TSEnv:NamingStrategy})" -ForegroundColor Green
@@ -886,6 +986,9 @@ if (Get-Module -name "DeployR.Utility"){
     write-Host "OnlineDomainJoinOU = $(${TSEnv:OnlineDomainJoinOU})" -ForegroundColor Green
     write-Host "SelectedUserRole = $(${TSEnv:SelectedUserRole})" -ForegroundColor Green
     write-Host "AutopilotGroupTag = $(${TSEnv:AutopilotGroupTag})" -ForegroundColor Green
+    write-Host "Install_GreenShot = $(${TSEnv:Install_GreenShot})" -ForegroundColor Green
+    write-Host "Install_Office365 = $(${TSEnv:Install_Office365})" -ForegroundColor Green
+    write-Host "Install_AdobeReader = $(${TSEnv:Install_AdobeReader})" -ForegroundColor Green
 
 }
 else{
@@ -897,6 +1000,7 @@ else{
     $env:OnlineDomainJoinOU = $FormResults.OnlineDomainJoinOU
     $env:SelectedUserRole = $FormResults.SelectedUserRole
     $env:AutopilotGroupTag = $FormResults.AutopilotGroupTag
+    $env:SelectedSoftwareCsv = $FormResults.SelectedSoftwareCsv
     write-Host "Set Environment Variables for Testing outside DeployR:" -ForegroundColor Cyan
     write-Host "ComputerName = $($env:ComputerName)" -ForegroundColor Green
     write-Host "DomainSuffix = $($env:DomainSuffix)" -ForegroundColor Green
@@ -905,4 +1009,5 @@ else{
     write-Host "OnlineDomainJoinOU = $($env:OnlineDomainJoinOU)" -ForegroundColor Green
     write-Host "SelectedUserRole = $($env:SelectedUserRole)" -ForegroundColor Green
     write-Host "AutopilotGroupTag = $($env:AutopilotGroupTag)" -ForegroundColor Green
+    write-Host "SelectedSoftwareCsv = $($env:SelectedSoftwareCsv)" -ForegroundColor Green
 }
