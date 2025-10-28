@@ -73,9 +73,13 @@ if (Get-Module -name "DeployR.Utility"){
     $UserName = ${TSEnv:DomainJoinUsername}
     $Password = ${TSEnv:DomainJoinPassword}
     $Domain = ${TSEnv:DomainJoinDomain}
+    $Password = ConvertTo-SecureString -String $Password -AsPlainText -Force
 }
 else{
     Write-Host "Not IN TS"
+    $OU = 'OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com'
+    $UserName = 'CM_DJ'
+    $Domain = '2P.GARYTOWN.COM'
 }
 
 
