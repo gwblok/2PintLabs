@@ -21,12 +21,14 @@ Remediation at end will prompt to remediate:
 
 Change Log
 - 2025-10-22 - Updated .NET version to 8.0.21
+- 2025-10-29 - Updated PowerShell version to 7.4.13
 #>
 
 #Ensure Several things are installed, as well as configurations are done to help troubleshoot DeployR installations
 
 #Keep this updated as needed 
 $DotNetMinVersion = '8.0.21'
+$PowerShellMinVersion = '7.4.13'
 
 
 
@@ -36,7 +38,7 @@ $PreReqApps = @(
 [PSCustomObject]@{Title = 'Microsoft Windows Desktop Runtime'; Installed = $false ; MinVersion = $DotNetMinVersion; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
 [PSCustomObject]@{Title = 'Microsoft ASP.NET Core'; Installed = $false ; MinVersion = $DotNetMinVersion; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
 [PSCustomObject]@{Title = 'Windows Assessment and Deployment Kit Windows Preinstallation Environment'; Installed = $false; URL = 'https://learn.microsoft.com/en-us/windows-hardware/get-started/adk-install'}
-[PSCustomObject]@{Title = 'PowerShell 7-x64'; Installed = $false; URL = 'https://aka.ms/powershell-release?tag=lts'}
+[PSCustomObject]@{Title = 'PowerShell 7-x64'; Installed = $false; ; MinVersion = $PowerShellMinVersion; URL = 'https://aka.ms/powershell-release?tag=lts'}
 [PSCustomObject]@{Title = 'Microsoft SQL Server'; Installed = $false; URL = 'https://www.microsoft.com/en-us/download/details.aspx?id=104781'}
 [PSCustomObject]@{Title = 'SQL Server Management Studio'; Installed = $false; URL = 'https://learn.microsoft.com/en-us/ssms/install/install'}
 [PSCustomObject]@{Title = 'Microsoft Visual C++ 2015-2022 Redistributable (x64)'; Installed = $false; URL = 'https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170'}
@@ -124,6 +126,10 @@ Start-Transcript -Path $TranscriptFilePath -Force
 Write-Host "=========================================================================" -ForegroundColor DarkGray
 #Test if Applications are installed
 $installedApps = Get-InstalledApps | Where-Object {$_.DisplayName -notmatch " - Shared framework"}
+
+#Testing Specific Applications
+#$installedApps = Get-InstalledApps | Where-Object {$_.DisplayName -match "PowerShell 7"}
+
 Write-Host "Checking for Pre-Requisite Applications..." -ForegroundColor Cyan
 $PreReqAppsStatus = @()
 foreach ($app in $PreReqApps) {
@@ -213,6 +219,17 @@ foreach ($app in $PreReqAppsStatus) {
         Write-Host " ✗  $($app.Title)" -ForegroundColor Red
     }
 }
+
+#Double Check PowerShell is NOT 7.5 or above    
+$PowerShellVersionInstalled = $PSVersionTable.PSVersion.ToString()
+if ([version]$PowerShellVersionInstalled -ge [version]'7.5') {
+    Write-Host "=========================================================================" -ForegroundColor Red
+    Write-Host "✗ PowerShell 7.5.X is NOT supported." -ForegroundColor Red
+    Write-Host "   Installed Version: $PowerShellVersionInstalled" -ForegroundColor DarkGray
+    Write-Host "   Required  Version: $PowerShellMinVersion" -ForegroundColor DarkGray
+    Write-Host "=========================================================================" -ForegroundColor Red
+}
+
 
 $MissingApps = $PreReqAppsStatus | Where-Object { $_.Installed -eq $false }
 if ($MissingApps) {
