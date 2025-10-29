@@ -1088,8 +1088,13 @@ catch {
     Write-Warning "DeployR.Utility module not found. Environment variables will be set in the standard environment."
 }
 # Start up the logs
-if (!(Test-Path $Global:LogFolderPath)) {
-    $Global:LogFolderPath = "X:\_2P\Logs"
+if (!($Global:LogFolderPath)) {
+    if ($env:SystemDrive -eq "X:") {
+        $Global:LogFolderPath = "$env:SystemDrive\_2P\Logs"
+    }
+    else {
+        $Global:LogFolderPath = "C:\Windows\Temp\DeployRLogs"
+    }
 }
 $Global:LogFilePath = "$($Global:LogFolderPath)\FrontEnd.log"
 $Global:LogFileSize   = "40"
