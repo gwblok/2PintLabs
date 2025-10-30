@@ -11,6 +11,8 @@
 - Check for Certificate set in StifleR & DeployR is same and that the thumbprint exists
 - Check if all required services are running
 - Check for SQL String Connection based on DeployR Registry
+- Check for SQL Permissions of NT AUTHORITY\SYSTEM for sysadmin and dbcreator roles
+- Check for SQL Permissions of NT AUTHORITY\SYSTEM for db_owner on all databases
 
 
 
@@ -20,13 +22,20 @@ Remediation at end will prompt to remediate:
 - Missing Windows Components
 
 Change Log
-- 2025-10-22 - Updated .NET version to 8.0.21
+- 2025.10.22 - Updated .NET version to 8.0.21
+- 2025.10.29 - Updated PowerShell version to 7.4.13
+- 2025.10.29 - Added SQL Permissions checks for NT AUTHORITY\SYSTEM
+
+
+To DO
+- Add if Statements for SQL Permissions checks and remediation, first check connection string to get instance name
 #>
 
 #Ensure Several things are installed, as well as configurations are done to help troubleshoot DeployR installations
 
 #Keep this updated as needed 
 $DotNetMinVersion = '8.0.21'
+$PowerShellMinVersion = '7.4.13'
 
 
 
@@ -36,7 +45,7 @@ $PreReqApps = @(
 [PSCustomObject]@{Title = 'Microsoft Windows Desktop Runtime'; Installed = $false ; MinVersion = $DotNetMinVersion; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
 [PSCustomObject]@{Title = 'Microsoft ASP.NET Core'; Installed = $false ; MinVersion = $DotNetMinVersion; URL = 'https://dotnet.microsoft.com/en-us/download/dotnet/8.0'}
 [PSCustomObject]@{Title = 'Windows Assessment and Deployment Kit Windows Preinstallation Environment'; Installed = $false; URL = 'https://learn.microsoft.com/en-us/windows-hardware/get-started/adk-install'}
-[PSCustomObject]@{Title = 'PowerShell 7-x64'; Installed = $false; URL = 'https://aka.ms/powershell-release?tag=lts'}
+[PSCustomObject]@{Title = 'PowerShell 7-x64'; Installed = $false; ; MinVersion = $PowerShellMinVersion; URL = 'https://aka.ms/powershell-release?tag=lts'}
 [PSCustomObject]@{Title = 'Microsoft SQL Server'; Installed = $false; URL = 'https://www.microsoft.com/en-us/download/details.aspx?id=104781'}
 [PSCustomObject]@{Title = 'SQL Server Management Studio'; Installed = $false; URL = 'https://learn.microsoft.com/en-us/ssms/install/install'}
 [PSCustomObject]@{Title = 'Microsoft Visual C++ 2015-2022 Redistributable (x64)'; Installed = $false; URL = 'https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170'}
@@ -57,6 +66,7 @@ $FirewallRules = @(
 [PSCustomObject]@{DisplayName = '2Pint 2PXE 4011'; Port = 4011; Protocol = 'UDP'}
 )
 
+#region Functions
 function Get-InstalledApps
 {
     if (![Environment]::Is64BitProcess) {
@@ -113,6 +123,260 @@ function Test-SQLConnection {
         Write-Host "Connection failed: $($_.Exception.Message)" -ForegroundColor Red
     }
 }
+function Test-SystemSqlPermissions {
+    [CmdletBinding()]
+    param(
+    [string]
+    $Instance = 'localhost\SQLEXPRESS',
+    
+    [switch]
+    $UseInvokeSqlCmd
+    )
+    
+    $result = [PSCustomObject]@{
+        Instance    = $Instance
+        LoginExists = $false
+        IsSysadmin  = $false
+        IsDbCreator = $false
+        Error       = $null
+    }
+    
+    try {
+        # T-SQL to check if NT AUTHORITY\\SYSTEM exists as a login and check role membership
+        # Try matching by SID first; if SID is NULL (unlikely), fall back to name search for principals containing 'system'
+        $tsql = @"
+SET NOCOUNT ON;
+DECLARE @loginname sysname = N'NT AUTHORITY\\SYSTEM';
+DECLARE @sid varbinary(85) = SUSER_SID(@loginname);
+        
+;WITH principals AS (
+    SELECT principal_id, name, sid
+    FROM sys.server_principals
+    WHERE (sid IS NOT NULL AND sid = @sid)
+    OR ( @sid IS NULL AND LOWER(name) LIKE '%system%')
+    OR (LOWER(name) LIKE '%nt authority%system%')
+)
+SELECT
+    CASE WHEN EXISTS(SELECT 1 FROM principals) THEN 1 ELSE 0 END AS LoginExists,
+    CASE WHEN EXISTS(
+        SELECT 1 FROM principals p
+        JOIN sys.server_role_members srm ON p.principal_id = srm.member_principal_id
+        JOIN sys.server_principals r ON srm.role_principal_id = r.principal_id
+        WHERE r.name = 'sysadmin') THEN 1 ELSE 0 END AS IsSysadmin,
+    CASE WHEN EXISTS(
+        SELECT 1 FROM principals p
+        JOIN sys.server_role_members srm ON p.principal_id = srm.member_principal_id
+        JOIN sys.server_principals r ON srm.role_principal_id = r.principal_id
+        WHERE r.name = 'dbcreator') THEN 1 ELSE 0 END AS IsDbCreator;
+"@
+        
+        if ($UseInvokeSqlCmd) {
+            if (-not (Get-Module -ListAvailable -Name SqlServer)) {
+                throw "SqlServer module is not available; install it or run without -UseInvokeSqlCmd."
+            }
+            $rows = Invoke-Sqlcmd -ServerInstance $Instance -Query $tsql -ErrorAction Stop
+            if ($rows) {
+                $result.LoginExists = [bool]$rows.LoginExists
+                $result.IsSysadmin  = [bool]$rows.IsSysadmin
+                $result.IsDbCreator = [bool]$rows.IsDbCreator
+            }
+        }
+        else {
+            # Use System.Data.SqlClient to run the query
+            $connString = "Server=$Instance;Integrated Security=True;Connection Timeout=5;"
+            $conn = New-Object System.Data.SqlClient.SqlConnection $connString
+            $cmd = $conn.CreateCommand()
+            $cmd.CommandText = $tsql
+            $conn.Open()
+            $reader = $cmd.ExecuteReader()
+            if ($reader.Read()) {
+                $loginExists = $reader['LoginExists'] -as [int]
+                $isSys = $reader['IsSysadmin'] -as [int]
+                $isDb  = $reader['IsDbCreator'] -as [int]
+                $result.LoginExists = ($loginExists -eq 1)
+                $result.IsSysadmin  = ($isSys -eq 1)
+                $result.IsDbCreator = ($isDb -eq 1)
+            }
+            $reader.Close()
+            $conn.Close()
+        }
+        
+    }
+    catch {
+        $result.Error = $_.Exception.Message
+    }
+    
+    return $result
+}
+function Test-SqlDatabases {
+    [CmdletBinding()]
+    param(
+    [string]
+    $Instance = 'localhost\SQLEXPRESS',
+    
+    [switch]
+    $UseInvokeSqlCmd
+    )
+    
+    $result = [PSCustomObject]@{
+        Instance  = $Instance
+        Databases = @()
+        Error     = $null
+    }
+    
+    try {
+        # Get all databases from the instance (excluding system databases)
+        $tsql = @"
+SET NOCOUNT ON;
+SELECT 
+    d.name AS DatabaseName,
+    d.database_id AS DatabaseId,
+    d.create_date AS CreateDate,
+    d.state_desc AS State,
+    d.recovery_model_desc AS RecoveryModel
+FROM sys.databases d
+WHERE d.name NOT IN ('master', 'tempdb', 'model', 'msdb')
+ORDER BY d.name;
+"@
+        
+        if ($UseInvokeSqlCmd) {
+            if (-not (Get-Module -ListAvailable -Name SqlServer)) {
+                throw "SqlServer module is not available; install it or run without -UseInvokeSqlCmd."
+            }
+            $rows = Invoke-Sqlcmd -ServerInstance $Instance -Query $tsql -ErrorAction Stop
+            foreach ($row in $rows) {
+                $result.Databases += [PSCustomObject]@{
+                    Name          = $row.DatabaseName
+                    DatabaseId    = $row.DatabaseId
+                    CreateDate    = $row.CreateDate
+                    State         = $row.State
+                    RecoveryModel = $row.RecoveryModel
+                }
+            }
+        }
+        else {
+            # Use System.Data.SqlClient to run the query
+            $connString = "Server=$Instance;Integrated Security=True;Connection Timeout=5;"
+            $conn = New-Object System.Data.SqlClient.SqlConnection $connString
+            $cmd = $conn.CreateCommand()
+            $cmd.CommandText = $tsql
+            $conn.Open()
+            $reader = $cmd.ExecuteReader()
+            while ($reader.Read()) {
+                $result.Databases += [PSCustomObject]@{
+                    Name          = $reader['DatabaseName'] -as [string]
+                    DatabaseId    = $reader['DatabaseId'] -as [int]
+                    CreateDate    = $reader['CreateDate'] -as [DateTime]
+                    State         = $reader['State'] -as [string]
+                    RecoveryModel = $reader['RecoveryModel'] -as [string]
+                }
+            }
+            $reader.Close()
+            $conn.Close()
+        }
+        
+    }
+    catch {
+        $result.Error = $_.Exception.Message
+    }
+    
+    return $result
+}
+function Test-SystemDatabaseOwnership {
+    [CmdletBinding()]
+    param(
+    [string]
+    $Instance = 'localhost\SQLEXPRESS',
+    
+    [string[]]
+    $DatabaseNames = @('DeployR', 'iPXEAnywhere35'),
+    
+    [switch]
+    $UseInvokeSqlCmd
+    )
+    
+    $result = [PSCustomObject]@{
+        Instance            = $Instance
+        DatabasePermissions = @()
+        Error               = $null
+    }
+    
+    try {
+        # For each database, check if SYSTEM has db_owner role
+        foreach ($dbName in $DatabaseNames) {
+            $tsql = @"
+SET NOCOUNT ON;
+DECLARE @dbName sysname = (SELECT TOP 1 name FROM sys.databases WHERE name = '$dbName');
+DECLARE @sql nvarchar(max);
+DECLARE @hasDbOwner bit = 0;
+DECLARE @loginSid varbinary(85) = SUSER_SID(N'NT AUTHORITY\SYSTEM');
+            
+IF @dbName IS NOT NULL
+BEGIN
+    -- Check if the login's SID is mapped to a user in the database and if that user is in db_owner role
+    -- This handles cases where the login is mapped as 'dbo' or another username
+    SET @sql = N'USE [' + @dbName + N'];
+    SELECT @hasDbOwner = CASE 
+        WHEN EXISTS(
+            SELECT 1 FROM sys.database_principals dp
+            JOIN sys.database_role_members drm ON dp.principal_id = drm.member_principal_id
+            JOIN sys.database_principals r ON drm.role_principal_id = r.principal_id
+            WHERE dp.sid = @loginSid AND r.name = ''db_owner''
+        ) THEN 1
+        WHEN EXISTS(
+            SELECT 1 FROM sys.database_principals dp
+            WHERE dp.sid = @loginSid AND dp.name = ''dbo''
+        ) THEN 1
+        ELSE 0
+    END;';
+    EXEC sp_executesql @sql, N'@loginSid varbinary(85), @hasDbOwner bit OUTPUT', @loginSid = @loginSid, @hasDbOwner = @hasDbOwner OUTPUT;
+END
+            
+SELECT @dbName AS ActualDbName, CASE WHEN @dbName IS NULL THEN 0 ELSE 1 END AS DbExists, @hasDbOwner AS HasDbOwner;
+"@
+            
+            if ($UseInvokeSqlCmd) {
+                if (-not (Get-Module -ListAvailable -Name SqlServer)) {
+                    throw "SqlServer module is not available; install it or run without -UseInvokeSqlCmd."
+                }
+                $row = Invoke-Sqlcmd -ServerInstance $Instance -Query $tsql -ErrorAction Stop
+                $result.DatabasePermissions += [PSCustomObject]@{
+                    SearchName   = $dbName
+                    ActualDbName = $row.ActualDbName
+                    DbExists     = [bool]$row.DbExists
+                    HasDbOwner   = [bool]$row.HasDbOwner
+                }
+            }
+            else {
+                # Use System.Data.SqlClient to run the query
+                $connString = "Server=$Instance;Integrated Security=True;Connection Timeout=5;"
+                $conn = New-Object System.Data.SqlClient.SqlConnection $connString
+                $cmd = $conn.CreateCommand()
+                $cmd.CommandText = $tsql
+                $conn.Open()
+                $reader = $cmd.ExecuteReader()
+                if ($reader.Read()) {
+                    $result.DatabasePermissions += [PSCustomObject]@{
+                        SearchName   = $dbName
+                        ActualDbName = if ($reader['ActualDbName'] -isnot [DBNull]) { $reader['ActualDbName'] -as [string] } else { $null }
+                        DbExists     = (($reader['DbExists'] -as [int]) -eq 1)
+                        HasDbOwner   = (($reader['HasDbOwner'] -as [int]) -eq 1)
+                    }
+                }
+                $reader.Close()
+                $conn.Close()
+            }
+        }
+        
+    }
+    catch {
+        $result.Error = $_.Exception.Message
+    }
+    
+    return $result
+}
+
+#endregion
 
 $TranscriptFilePath = "$($env:windir)temp\Check-DeployRPreReqs.log"
 if (Test-Path -Path $TranscriptFilePath) {
@@ -124,6 +388,10 @@ Start-Transcript -Path $TranscriptFilePath -Force
 Write-Host "=========================================================================" -ForegroundColor DarkGray
 #Test if Applications are installed
 $installedApps = Get-InstalledApps | Where-Object {$_.DisplayName -notmatch " - Shared framework"}
+
+#Testing Specific Applications
+#$installedApps = Get-InstalledApps | Where-Object {$_.DisplayName -match "PowerShell 7"}
+
 Write-Host "Checking for Pre-Requisite Applications..." -ForegroundColor Cyan
 $PreReqAppsStatus = @()
 foreach ($app in $PreReqApps) {
@@ -213,6 +481,17 @@ foreach ($app in $PreReqAppsStatus) {
         Write-Host " ✗  $($app.Title)" -ForegroundColor Red
     }
 }
+
+#Double Check PowerShell is NOT 7.5 or above    
+$PowerShellVersionInstalled = $PSVersionTable.PSVersion.ToString()
+if ([version]$PowerShellVersionInstalled -ge [version]'7.5') {
+    Write-Host "=========================================================================" -ForegroundColor Red
+    Write-Host "✗ PowerShell 7.5.X is NOT supported." -ForegroundColor Red
+    Write-Host "   Installed Version: $PowerShellVersionInstalled" -ForegroundColor DarkGray
+    Write-Host "   Required  Version: $PowerShellMinVersion" -ForegroundColor DarkGray
+    Write-Host "=========================================================================" -ForegroundColor Red
+}
+
 
 $MissingApps = $PreReqAppsStatus | Where-Object { $_.Installed -eq $false }
 if ($MissingApps) {
@@ -317,6 +596,10 @@ if ($Installed_Microsoft_SQL_Server){
         Write-Host "  Service Name: $($SQLService.Name)" -ForegroundColor DarkGray
         Write-Host "  Start Type:   $($SQLService.StartType)" -ForegroundColor DarkGray
         $Global:SQLServiceRunning = $true
+
+
+
+
     }
     else {
         Write-Host "Microsoft SQL Server service is NOT running." -ForegroundColor Red
@@ -509,6 +792,51 @@ if ($Installed_2Pint_Software_DeployR){
         write-host " $($DeployRRegData.ConnectionString)"
         Test-SQLConnection -ConnectionString $DeployRRegData.ConnectionString
     }
+    #Check SQL Principal Rights for NT AUTHORITY\SYSTEM
+Write-Host "=========================================================================" -ForegroundColor DarkGray
+Write-Host "Testing NT AUTHORITY\SYSTEM permissions on local SQL Express..." -ForegroundColor Cyan
+$out = Test-SystemSqlPermissions -Instance 'localhost\SQLEXPRESS'
+if ($out.Error) {
+    Write-Host "Error: $($out.Error)" -ForegroundColor Red
+}
+else {
+    Write-Host "Instance: $($out.Instance)" -ForegroundColor Green
+    Write-Host "  LoginExists: $($out.LoginExists)" -ForegroundColor ($(if ($out.LoginExists) {'Green'} else {'Red'}))
+    Write-Host "  IsSysadmin : $($out.IsSysadmin)" -ForegroundColor ($(if ($out.IsSysadmin) {'Green'} else {'Yellow'}))
+    Write-Host "  IsDbCreator: $($out.IsDbCreator)" -ForegroundColor ($(if ($out.IsDbCreator) {'Green'} else {'Yellow'}))
+}
+Write-Host "=========================================================================" -ForegroundColor DarkGray
+Write-Host "Checking NT AUTHORITY\SYSTEM db_owner permissions for all databases..." -ForegroundColor Cyan
+$dbOut = Test-SqlDatabases -Instance 'localhost\SQLEXPRESS'
+if ($dbOut.Error) {
+    Write-Host "Error: Cannot check permissions - failed to get database list" -ForegroundColor Red
+}
+elseif ($dbOut.Databases.Count -eq 0) {
+    Write-Host "No user databases found to check" -ForegroundColor Yellow
+}
+else {
+    # Extract database names and check permissions
+    $dbNames = $dbOut.Databases | ForEach-Object { $_.Name }
+    $dbOwnerOut = Test-SystemDatabaseOwnership -Instance 'localhost\SQLEXPRESS' -DatabaseNames $dbNames
+    
+    if ($dbOwnerOut.Error) {
+        Write-Host "Error: $($dbOwnerOut.Error)" -ForegroundColor Red
+    }
+    else {
+        Write-Host "Instance: $($dbOwnerOut.Instance)" -ForegroundColor Green
+        foreach ($dbPerm in $dbOwnerOut.DatabasePermissions) {
+            if (-not $dbPerm.DbExists) {
+                Write-Host "  Database '$($dbPerm.SearchName)': DATABASE NOT FOUND" -ForegroundColor Red
+            }
+            else {
+                $color = if ($dbPerm.HasDbOwner) {'Green'} else {'Red'}
+                $status = if ($dbPerm.HasDbOwner) {'HAS db_owner'} else {'MISSING db_owner'}
+                Write-Host "  Database '$($dbPerm.ActualDbName)': $status" -ForegroundColor $color
+            }
+        }
+    }
+}
+
     Write-Host "=========================================================================" -ForegroundColor DarkGray
     Write-Host "Testing DeployR Certificate..." -ForegroundColor Cyan
     #Test Certificate
