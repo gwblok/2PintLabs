@@ -59,6 +59,7 @@ $FirewallRules = @(
 [PSCustomObject]@{DisplayName = '2Pint 2PXE 4011'; Port = 4011; Protocol = 'UDP'}
 )
 
+#region Functions
 function Get-InstalledApps
 {
     if (![Environment]::Is64BitProcess) {
@@ -115,6 +116,90 @@ function Test-SQLConnection {
         Write-Host "Connection failed: $($_.Exception.Message)" -ForegroundColor Red
     }
 }
+function Test-SystemSqlPermissions {
+    [CmdletBinding()]
+    param(
+        [string]
+        $Instance = 'localhost\SQLEXPRESS',
+
+        [switch]
+        $UseInvokeSqlCmd
+    )
+
+    $result = [PSCustomObject]@{
+        Instance    = $Instance
+        IsSysadmin  = $false
+        IsDbCreator = $false
+        Error       = $null
+    }
+
+    try {
+        # T-SQL to check membership of NT AUTHORITY\\SYSTEM in server roles
+        # Try matching by SID first; if SID is NULL (unlikely), fall back to name search for principals containing 'system'
+        $tsql = @"
+SET NOCOUNT ON;
+DECLARE @loginname sysname = N'NT AUTHORITY\\SYSTEM';
+DECLARE @sid varbinary(85) = SUSER_SID(@loginname);
+
+;WITH principals AS (
+    SELECT principal_id, name, sid
+    FROM sys.server_principals
+    WHERE (sid IS NOT NULL AND sid = @sid)
+    OR ( @sid IS NULL AND LOWER(name) LIKE '%system%')
+    OR (LOWER(name) LIKE '%nt authority%system%')
+)
+SELECT
+    CASE WHEN EXISTS(
+        SELECT 1 FROM principals p
+        JOIN sys.server_role_members srm ON p.principal_id = srm.member_principal_id
+        JOIN sys.server_principals r ON srm.role_principal_id = r.principal_id
+        WHERE r.name = 'sysadmin') THEN 1 ELSE 0 END AS IsSysadmin,
+    CASE WHEN EXISTS(
+        SELECT 1 FROM principals p
+        JOIN sys.server_role_members srm ON p.principal_id = srm.member_principal_id
+        JOIN sys.server_principals r ON srm.role_principal_id = r.principal_id
+        WHERE r.name = 'dbcreator') THEN 1 ELSE 0 END AS IsDbCreator;
+"@
+
+        if ($UseInvokeSqlCmd) {
+            if (-not (Get-Module -ListAvailable -Name SqlServer)) {
+                throw "SqlServer module is not available; install it or run without -UseInvokeSqlCmd."
+            }
+            $rows = Invoke-Sqlcmd -ServerInstance $Instance -Query $tsql -ErrorAction Stop
+            if ($rows) {
+                $result.IsSysadmin  = [bool]$rows.IsSysadmin
+                $result.IsDbCreator = [bool]$rows.IsDbCreator
+            }
+        }
+        else {
+            # Use System.Data.SqlClient to run the query
+            $connString = "Server=$Instance;Integrated Security=True;Connection Timeout=5;"
+            $conn = New-Object System.Data.SqlClient.SqlConnection $connString
+            $cmd = $conn.CreateCommand()
+            $cmd.CommandText = $tsql
+            $conn.Open()
+            $reader = $cmd.ExecuteReader()
+            if ($reader.Read()) {
+                $isSys = $reader['IsSysadmin'] -as [int]
+                $isDb  = $reader['IsDbCreator'] -as [int]
+                $result.IsSysadmin  = ($isSys -eq 1)
+                $result.IsDbCreator = ($isDb -eq 1)
+            }
+            $reader.Close()
+            $conn.Close()
+        }
+
+    }
+    catch {
+        $result.Error = $_.Exception.Message
+    }
+
+    return $result
+}
+
+
+
+#endregion
 
 $TranscriptFilePath = "$($env:windir)temp\Check-DeployRPreReqs.log"
 if (Test-Path -Path $TranscriptFilePath) {
@@ -334,6 +419,30 @@ if ($Installed_Microsoft_SQL_Server){
         Write-Host "  Service Name: $($SQLService.Name)" -ForegroundColor DarkGray
         Write-Host "  Start Type:   $($SQLService.StartType)" -ForegroundColor DarkGray
         $Global:SQLServiceRunning = $true
+
+
+        #Check SQL Principal Rights for NT AUTHORITY\SYSTEM
+        Write-Host " Checking SQL Principal Rights for 'NT AUTHORITY\SYSTEM'..." -ForegroundColor Cyan
+        $sqlPrincipalRights = Test-SystemSqlPermissions
+        if ($sqlPrincipalRights.LoginExists -eq 1) {
+            Write-Host "  SQL Principal 'NT AUTHORITY\SYSTEM' exists." -ForegroundColor Green
+            if ($sqlPrincipalRights.IsSysadmin -eq 1) {
+                Write-Host "    'NT AUTHORITY\SYSTEM' is a member of the 'sysadmin' server role." -ForegroundColor Green
+            }
+            else {
+                Write-Host "    'NT AUTHORITY\SYSTEM' is NOT a member of the 'sysadmin' server role." -ForegroundColor Red
+            }
+            if ($sqlPrincipalRights.IsDbCreator -eq 1) {
+                Write-Host "    'NT AUTHORITY\SYSTEM' is a member of the 'dbcreator' server role." -ForegroundColor Green
+            }
+            else {
+                Write-Host "    'NT AUTHORITY\SYSTEM' is NOT a member of the 'dbcreator' server role." -ForegroundColor Red
+            }
+        }
+        else {
+            Write-Host "SQL Principal 'NT AUTHORITY\SYSTEM' does NOT exist." -ForegroundColor Red
+        }
+
     }
     else {
         Write-Host "Microsoft SQL Server service is NOT running." -ForegroundColor Red
