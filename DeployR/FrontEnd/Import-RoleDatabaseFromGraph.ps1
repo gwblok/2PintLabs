@@ -224,3 +224,5 @@ try {
 
     return $merged
 }
+
+$UpdateJSON = Import-RoleDatabaseFromGraph -ExcludeCategories Production -OutJson .\DeployR\FrontEnd\RoleDatabase.json -ReplaceExisting

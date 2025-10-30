@@ -144,6 +144,18 @@
     "PrimaryUserDisplayName": "Gary Blok"
   },
   {
+    "DeviceName": "HPZBSG10-GWB",
+    "AzureADRegistered": true,
+    "SerialNumber": "0002770Y6Y",
+    "Manufacturer": "HP",
+    "Model": "HP ZBook Studio 16 inch G10 Mobile Workstation PC",
+    "WiFiMAC": "14755B231F13",
+    "EthernetMAC": "",
+    "Category": "Lab",
+    "PrimaryUserUPN": "gary",
+    "PrimaryUserDisplayName": "Gary Blok"
+  },
+  {
     "DeviceName": "L-TPT14SG6-21QX",
     "AzureADRegistered": true,
     "SerialNumber": "PF5A3XJZ",

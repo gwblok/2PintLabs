@@ -71,6 +71,137 @@ $HardwareIdOptions = @(
     "MAC Address"
 )
 
+#Region Collection Hardware Information:
+#Collectio
+$LocalInfo = @{}		
+$LocalInfo['IsDesktop'] = "False"
+$LocalInfo['IsLaptop'] = "False"
+$LocalInfo['IsServer'] = "False"
+$LocalInfo['IsSFF'] = "False"
+$LocalInfo['IsTablet'] = "False"
+Get-CimInstance -ClassName Win32_SystemEnclosure | ForEach-Object {
+	if ($_.ChassisTypes[0] -in "8", "9", "10", "11", "12", "14", "18", "21") { $LocalInfo['IsLaptop'] = "True"; $LocalInfo['Chassis'] = "Laptop"}
+	if ($_.ChassisTypes[0] -in "3", "4", "5", "6", "7", "15", "16") { $LocalInfo['IsDesktop'] = "True"; $LocalInfo['Chassis'] = "Desktop"}
+	if ($_.ChassisTypes[0] -in "23") { $LocalInfo['IsServer'] = "True"; $LocalInfo['Chassis'] = "Server"}
+	if ($_.ChassisTypes[0] -in "34", "35", "36") { $LocalInfo['IsSFF'] = "True"; $LocalInfo['Chassis'] = "Small Form Factor"}
+	if ($_.ChassisTypes[0] -in "13", "31", "32", "30") {$LocalInfo['IsTablet'] = "True"; $LocalInfo['Chassis'] = "Tablet"}
+}
+$Chassis = $LocalInfo['Chassis']
+
+$macList = @()
+Get-CimInstance -ClassName Win32_NetworkAdapterConfiguration -Filter "IPEnabled = 1" | ForEach-Object {
+	$_.MacAddress | ForEach-Object { $macList += $_ }
+}
+$ipList = @()
+Get-CimInstance -ClassName Win32_NetworkAdapterConfiguration -Filter "IPEnabled = 1" | ForEach-Object {
+	$_.IPAddress | ForEach-Object { $ipList += $_ }
+
+}
+$gwList = @()
+Get-CimInstance -ClassName Win32_NetworkAdapterConfiguration -Filter "IPEnabled = 1" | ForEach-Object {
+	if ($_.DefaultIPGateway) {
+		$_.DefaultIPGateway | ForEach-Object { $gwList += $_ }
+	}
+}
+$SerialNumber = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
+#Round Memory to Nearest GB
+$Memory = [math]::Round((Get-CimInstance -ClassName Win32_ComputerSystem).TotalPhysicalMemory / 1024 / 1024 / 1024) 
+
+$LocalInfo = @{}
+$LocalInfo['Make'] = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufacturer.Trim()	
+$LocalInfo['IsVM'] = "False"
+Switch -Wildcard ($LocalInfo['Make']) {
+	"*Microsoft*" {
+		$LocalInfo['MakeAlias'] = "Microsoft"
+		$LocalInfo['ModelAlias'] = (Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model).Trim()
+		$LocalInfo['SystemAlias'] = Get-CimInstance -ClassName MS_SystemInformation -Namespace root\wmi | Select-Object -ExpandProperty SystemSKU
+		# Logic for Hyper-V Testing
+		If ($LocalInfo['ModelAlias'] -eq "Virtual Machine") {
+			$LocalInfo['SystemAlias'] = Get-CimInstance -ClassName MS_SystemInformation -Namespace root\wmi | Select-Object -ExpandProperty SystemVersion
+			$LocalInfo['IsVM'] = "True"
+		}
+	}
+	"*HP*" {
+		$LocalInfo['MakeAlias'] = "HP"
+		$LocalInfo['ModelAlias'] = (Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model).Trim()
+		$LocalInfo['SystemAlias'] = (Get-CimInstance -ClassName MS_SystemInformation -NameSpace root\wmi).BaseBoardProduct.Trim()
+	}
+	"*VMWare*" {
+		$LocalInfo['MakeAlias'] = "VMWare"
+        # $LocalInfo['ModelAlias'] = (Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model).Trim() # Default, sets alias to same as model
+        # $LocalInfo['ModelAlias'] = ((Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model).Trim()).replace(",","_") # Remove the "," and replace with "_"
+        $LocalInfo['ModelAlias'] = ((Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model).Trim()).replace(" ","_").replace(",","_") # Remove the "," and replace with "_", Remove the " " and replace with "_"
+
+		$LocalInfo['SystemAlias'] = Get-CimInstance -ClassName MS_SystemInformation -Namespace root\wmi | Select-Object -ExpandProperty SystemSKU
+		$LocalInfo['IsVM'] = "True"
+	}
+	"*QEMU*" {
+		$LocalInfo['MakeAlias'] = "QEMU"
+		$LocalInfo['ModelAlias'] = (Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model).Trim()
+		$LocalInfo['SystemAlias'] = Get-CimInstance -ClassName MS_SystemInformation -Namespace root\wmi | Select-Object -ExpandProperty SystemSKU
+		$LocalInfo['IsVM'] = "True"
+	}
+	"*Innotek*" {
+		$LocalInfo['MakeAlias'] = "Innotek"
+		$LocalInfo['ModelAlias'] = (Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model).Trim()
+		$LocalInfo['SystemAlias'] = Get-CimInstance -ClassName MS_SystemInformation -Namespace root\wmi | Select-Object -ExpandProperty SystemSKU
+		$LocalInfo['IsVM'] = "True"
+	}
+	"*Hewlett-Packard*" {
+		$LocalInfo['MakeAlias'] = "HP"
+		$LocalInfo['ModelAlias'] = (Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model).Trim()
+		$LocalInfo['SystemAlias'] = (Get-CimInstance -ClassName MS_SystemInformation -NameSpace root\wmi).BaseBoardProduct.Trim()
+	}
+	"*Dell*" {
+		$LocalInfo['MakeAlias'] = "Dell"
+		$LocalInfo['ModelAlias'] = (Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model).Trim()
+		$LocalInfo['SystemAlias'] = (Get-CimInstance -ClassName MS_SystemInformation -NameSpace root\wmi ).SystemSku.Trim()
+	}
+	"*Lenovo*" {
+		$LocalInfo['MakeAlias'] = "Lenovo"
+		$LocalInfo['ModelAlias'] = (Get-CimInstance -ClassName Win32_ComputerSystemProduct | Select-Object -ExpandProperty Version).Trim()
+		$LocalInfo['SystemAlias'] = ((Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model).SubString(0, 4)).Trim()
+	}
+	"*Intel(R) Client Systems*" {
+		$LocalInfo['MakeAlias'] = "Intel(R) Client Systems"
+		$LocalInfo['ModelAlias'] = (Get-CimInstance -ClassName Win32_ComputerSystemProduct | Select-Object -ExpandProperty Version).Trim()
+		$LocalInfo['SystemAlias'] = ((Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model).Trim())
+		$LocalInfo['SystemAlias'] = $LocalInfo['SystemAlias'].SubString(0, $LocalInfo['SystemAlias'].IndexOf("i")).Trim()
+	}
+	"*Panasonic*" {
+		$LocalInfo['MakeAlias'] = "Panasonic Corporation"
+		$LocalInfo['ModelAlias'] = (Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model).Trim()
+		$LocalInfo['SystemAlias'] = (Get-CimInstance -ClassName MS_SystemInformation -NameSpace root\wmi ).BaseBoardProduct.Trim()
+	}
+	"*Viglen*" {
+		$LocalInfo['MakeAlias'] = "Viglen"
+		$LocalInfo['ModelAlias'] = (Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model).Trim()
+		$LocalInfo['SystemAlias'] = (Get-CimInstance -ClassName Win32_BaseBoard | Select-Object -ExpandProperty SKU).Trim()
+	}
+	"*AZW*" {
+		$LocalInfo['MakeAlias'] = "AZW"
+		$LocalInfo['ModelAlias'] = (Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model).Trim()
+		$LocalInfo['SystemAlias'] = (Get-CimInstance -ClassName MS_SystemInformation -NameSpace root\wmi ).BaseBoardProduct.Trim()
+	}
+	"*Fujitsu*" {
+		$LocalInfo['MakeAlias'] = "Fujitsu"
+		$LocalInfo['ModelAlias'] = (Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Model).Trim()
+		$LocalInfo['SystemAlias'] = (Get-CimInstance -ClassName Win32_BaseBoard | Select-Object -ExpandProperty SKU).Trim()
+	}
+	Default {
+		$LocalInfo['MakeAlias'] = "NA"
+		$LocalInfo['ModelAlias'] = "NA"
+		$LocalInfo['SystemAlias'] = "NA"
+	}
+	# Closing for switch block
+}
+$MakeAlias = $LocalInfo['MakeAlias']
+$ModelAlias = $LocalInfo['ModelAlias']
+$SystemAlias = $LocalInfo['SystemAlias']
+
+#endregion
+
+
 # (Workplace join radio buttons are defined directly in XAML; the explicit options array was removed)
 
 # Software options - edit this array to add/remove software shown in the Software tab.
@@ -275,6 +406,12 @@ function Get-HardwareId {
                                              GroupName="WorkplaceJoin"
                                              Margin="0,0,0,8"/>
                                 
+                                <!-- Primary User UPN field (shown when EntraID is selected) -->
+                                <StackPanel Name="spEntraIDOptions" Visibility="Collapsed" Margin="20,0,0,8">
+                                    <TextBlock Text="Primary User UPN:" FontSize="11" Margin="0,0,0,3"/>
+                                    <TextBox Name="txtPrimaryUserUPN" Height="24" FontSize="11"/>
+                                </StackPanel>
+                                
                                 <RadioButton Name="rbAutopilot" 
                                              Content="Autopilot Registration" 
                                              FontSize="12" 
@@ -332,6 +469,7 @@ function Get-HardwareId {
                     <StackPanel Margin="0,6,0,0">
                         <TextBlock Text="Select User's Role:" FontSize="13" FontWeight="Bold" Margin="0,0,0,5" />
                         <ComboBox Name="cmbUserRole" Height="28" FontSize="12"/>
+                        <TextBlock Name="txtRoleSource" Text="" FontSize="10" Foreground="Gray" Margin="0,8,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -342,6 +480,63 @@ function Get-HardwareId {
                         <TextBlock Text="Select software to install:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
                         <!-- Dynamic software list populated from SoftwareList.json -->
                         <StackPanel Name="spSoftwareList" Margin="6,4,0,0" />
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Hardware">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8">
+                    <StackPanel Margin="0,6,0,0">
+                        <TextBlock Text="Hardware Information" FontSize="13" FontWeight="Bold" Margin="0,0,0,12"/>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <!-- Make -->
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Make:" FontWeight="Bold" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Name="txtHwMake" Text="" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            
+                            <!-- Model -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Model:" FontWeight="Bold" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Name="txtHwModel" Text="" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            
+                            <!-- System -->
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="System:" FontWeight="Bold" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Name="txtHwSystem" Text="" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            
+                            <!-- Serial Number -->
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Serial Number:" FontWeight="Bold" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Name="txtHwSerial" Text="" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            
+                            <!-- Memory -->
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Memory:" FontWeight="Bold" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1" Name="txtHwMemory" Text="" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            
+                            <!-- MAC List -->
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="MAC Address(es):" FontWeight="Bold" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="5" Grid.Column="1" Name="txtHwMacList" Text="" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            
+                            <!-- IP List -->
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="IP Address(es):" FontWeight="Bold" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="6" Grid.Column="1" Name="txtHwIpList" Text="" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            
+                            <!-- Gateway List -->
+                            <TextBlock Grid.Row="7" Grid.Column="0" Text="Gateway(s):" FontWeight="Bold" Margin="0,0,0,8"/>
+                            <TextBlock Grid.Row="7" Grid.Column="1" Name="txtHwGwList" Text="" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                        </Grid>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -403,7 +598,10 @@ $rbEntraID = $Window.FindName("rbEntraID")
 $rbAutopilot = $Window.FindName("rbAutopilot")
 $rbOnlineDomainJoin = $Window.FindName("rbOnlineDomainJoin")
 $rbDomainJoin = $Window.FindName("rbDomainJoin")
+$spEntraIDOptions = $Window.FindName("spEntraIDOptions")
+$txtPrimaryUserUPN = $Window.FindName("txtPrimaryUserUPN")
 $cmbUserRole = $Window.FindName("cmbUserRole")
+$txtRoleSource = $Window.FindName("txtRoleSource")
 $cmbAutopilotGroupTag = $Window.FindName("cmbAutopilotGroupTag")
 $txtAutopilotLabel = $Window.FindName("txtAutopilotLabel")
 $txtOnlineOULabel = $Window.FindName("txtOnlineOULabel")
@@ -413,6 +611,26 @@ $txtStatus = $Window.FindName("txtStatus")
 $btnOK = $Window.FindName("btnOK")
 $btnCancel = $Window.FindName("btnCancel")
 $spSoftwareList = $Window.FindName("spSoftwareList")
+
+# Hardware tab controls
+$txtHwMake = $Window.FindName("txtHwMake")
+$txtHwModel = $Window.FindName("txtHwModel")
+$txtHwSystem = $Window.FindName("txtHwSystem")
+$txtHwSerial = $Window.FindName("txtHwSerial")
+$txtHwMemory = $Window.FindName("txtHwMemory")
+$txtHwMacList = $Window.FindName("txtHwMacList")
+$txtHwIpList = $Window.FindName("txtHwIpList")
+$txtHwGwList = $Window.FindName("txtHwGwList")
+
+# Populate hardware information
+$txtHwMake.Text = if ($MakeAlias) { $MakeAlias } else { "N/A" }
+$txtHwModel.Text = if ($ModelAlias) { $ModelAlias } else { "N/A" }
+$txtHwSystem.Text = if ($SystemAlias) { $SystemAlias } else { "N/A" }
+$txtHwSerial.Text = if ($SerialNumber) { $SerialNumber } else { "N/A" }
+$txtHwMemory.Text = if ($Memory) { "$Memory GB" } else { "N/A" }
+$txtHwMacList.Text = if ($macList -and $macList.Count -gt 0) { $macList -join "`n" } else { "N/A" }
+$txtHwIpList.Text = if ($ipList -and $ipList.Count -gt 0) { $ipList -join "`n" } else { "N/A" }
+$txtHwGwList.Text = if ($gwList -and $gwList.Count -gt 0) { $gwList -join "`n" } else { "N/A" }
 
 # Initialize online OU script variable
 $script:OnlineOU = $null
@@ -447,6 +665,16 @@ function Set-OnlineDomainJoinControlsState {
         $cmbOnlineOU.Visibility = 'Collapsed'
         $cmbOnlineOU.IsEnabled = $false
         $txtOnlineJoinInfo.Visibility = 'Collapsed'
+    }
+}
+
+function Set-EntraIDOptionsState {
+    param([bool]$Enabled)
+    if ($Enabled) {
+        $spEntraIDOptions.Visibility = 'Visible'
+    }
+    else {
+        $spEntraIDOptions.Visibility = 'Collapsed'
     }
 }
 
@@ -499,6 +727,89 @@ if (-not $scriptDir) {
     else { $scriptDir = (Get-Location).Path }
 }
 
+# Load RoleDatabase.json early to match device and pre-populate fields
+$script:MatchedDevice = $null
+$script:RoleDbData = $null
+$script:DeviceFound = $false
+
+# Get current device serial number
+$currentSerial = (Get-CimInstance -ClassName Win32_BIOS -ErrorAction SilentlyContinue).SerialNumber
+
+# Try to load RoleDatabase.json from GitHub
+$roleDatabaseUrl = 'https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/FrontEnd/RoleDatabase.json'
+try {
+    $script:RoleDbData = Invoke-RestMethod -Uri $roleDatabaseUrl -UseBasicParsing -ErrorAction Stop
+    if ($script:RoleDbData -and $script:RoleDbData.Count -gt 0) {
+        # Try to match current device by serial number
+        if ($currentSerial) {
+            foreach ($device in $script:RoleDbData) {
+                if ($device.SerialNumber -and ($device.SerialNumber.ToString().Trim() -eq $currentSerial.Trim())) {
+                    $script:MatchedDevice = $device
+                    $script:DeviceFound = $true
+                    Write-Host "Device match found in RoleDatabase.json for serial: $currentSerial"
+                    break
+                }
+            }
+        }
+    }
+}
+catch {
+    Write-Warning "Failed to fetch RoleDatabase.json from GitHub for device matching: $_"
+}
+
+# If no match from GitHub, try local RoleDatabase.json
+if (-not $script:DeviceFound) {
+    $localRoleDbPath = Join-Path -Path $scriptDir -ChildPath 'RoleDatabase.json'
+    if (Test-Path $localRoleDbPath) {
+        try {
+            $script:RoleDbData = Get-Content -Path $localRoleDbPath -Raw | ConvertFrom-Json
+            if ($script:RoleDbData -and $currentSerial) {
+                foreach ($device in $script:RoleDbData) {
+                    if ($device.SerialNumber -and ($device.SerialNumber.ToString().Trim() -eq $currentSerial.Trim())) {
+                        $script:MatchedDevice = $device
+                        $script:DeviceFound = $true
+                        Write-Host "Device match found in local RoleDatabase.json for serial: $currentSerial"
+                        break
+                    }
+                }
+            }
+        }
+        catch {
+            Write-Warning "Failed to load local RoleDatabase.json: $_"
+        }
+    }
+}
+
+# Try to load roles from GitHub RoleDatabase.json (fetch Category values)
+$roleSource = "built-in script"
+$roleDatabaseUrl = 'https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/FrontEnd/RoleDatabase.json'
+try {
+    # Re-use already loaded data if available
+    $roleDbData = if ($script:RoleDbData) { $script:RoleDbData } else { Invoke-RestMethod -Uri $roleDatabaseUrl -UseBasicParsing -ErrorAction Stop }
+    if ($roleDbData -and $roleDbData.Count -gt 0) {
+        # Extract unique Category values (case-insensitive)
+        $categories = @()
+        foreach ($entry in $roleDbData) {
+            if ($entry.Category -and ($entry.Category.ToString().Trim() -ne '')) {
+                $categories += $entry.Category.ToString().Trim()
+            }
+        }
+        $uniqueCategories = $categories | Sort-Object -Unique
+        
+        if ($uniqueCategories.Count -gt 0) {
+            # Replace UserRoleOptions with GitHub categories
+            $UserRoleOptions = @([PSCustomObject]@{ DisplayName = 'Default - None'; Value = $null })
+            foreach ($cat in $uniqueCategories) {
+                $UserRoleOptions += [PSCustomObject]@{ DisplayName = $cat; Value = $cat }
+            }
+            $roleSource = "GitHub RoleDatabase.json"
+        }
+    }
+}
+catch {
+    Write-Warning "Failed to fetch RoleDatabase.json from GitHub; using built-in roles: $_"
+}
+
 # Try to load roles from Roles.json (optional). Expected format: { "roles": [ { "DisplayName": "Lab Computer - IT", "Value": "IT" }, ... ] }
 $rolesJsonPath = Join-Path -Path $scriptDir -ChildPath 'Roles.json'
 if (Test-Path $rolesJsonPath) {
@@ -509,7 +820,10 @@ if (Test-Path $rolesJsonPath) {
             foreach ($r in $rolesData.roles) {
                 $loaded += [PSCustomObject]@{ DisplayName = $r.DisplayName; Value = (if ($r.Value) { $r.Value } else { $null }) }
             }
-            if ($loaded.Count -gt 0) { $UserRoleOptions = $loaded }
+            if ($loaded.Count -gt 0) { 
+                $UserRoleOptions = $loaded
+                $roleSource = "local Roles.json"
+            }
         }
     }
     catch {
@@ -528,6 +842,10 @@ foreach ($role in $UserRoleOptions) {
 }
 # select first item by default if present
 if ($cmbUserRole.Items.Count -gt 0) { $cmbUserRole.SelectedIndex = 0 }
+
+# Update status to show where roles were loaded from
+$txtStatus.Text = "Roles populated from: $roleSource"
+$txtRoleSource.Text = "Roles populated from: $roleSource"
 
 # Populate Autopilot Group Tag ComboBox
 $cmbAutopilotGroupTag.Items.Add("Enterprise") | Out-Null
@@ -712,6 +1030,13 @@ $rbEntraID.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
 $rbAutopilot.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
 $rbOnlineDomainJoin.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$true })
 $rbDomainJoin.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
+
+# Wire EntraID options visibility
+$rbWorkgroup.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
+$rbEntraID.Add_Checked({ Set-EntraIDOptionsState -Enabled:$true })
+$rbAutopilot.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
+$rbOnlineDomainJoin.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
+$rbDomainJoin.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
 
 # Ensure Online Domain Join also turns off Autopilot controls when selected
 $rbOnlineDomainJoin.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
@@ -927,6 +1252,27 @@ $script:AutoCloseTimer.Add_Tick({
     } catch {}
 })
 $script:AutoCloseTimer.Start()
+
+# Apply device-specific defaults if matched in RoleDatabase.json
+if ($script:DeviceFound -and $script:MatchedDevice) {
+    # Pre-populate device name from JSON if available
+    if ($script:MatchedDevice.DeviceName) {
+        $rbManualName.IsChecked = $true
+        $txtManualName.Text = $script:MatchedDevice.DeviceName.ToString().Trim()
+    }
+    
+    # Set default to EntraID Join
+    $rbEntraID.IsChecked = $true
+    
+    # Pre-populate Primary User UPN if available
+    if ($script:MatchedDevice.PrimaryUserUPN) {
+        $txtPrimaryUserUPN.Text = $script:MatchedDevice.PrimaryUserUPN.ToString().Trim()
+    }
+}
+else {
+    # No device match or no JSON found - default to Local Workgroup
+    $rbWorkgroup.IsChecked = $true
+}
 
 # Show the form
 $result = $Window.ShowDialog()
