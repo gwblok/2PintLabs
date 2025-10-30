@@ -731,6 +731,7 @@ if (-not $scriptDir) {
 $script:MatchedDevice = $null
 $script:RoleDbData = $null
 $script:DeviceFound = $false
+$script:GitHubJSONDB = $false
 
 # Get current device serial number
 $currentSerial = (Get-CimInstance -ClassName Win32_BIOS -ErrorAction SilentlyContinue).SerialNumber
@@ -740,6 +741,7 @@ $roleDatabaseUrl = 'https://raw.githubusercontent.com/gwblok/2PintLabs/refs/head
 try {
     $script:RoleDbData = Invoke-RestMethod -Uri $roleDatabaseUrl -UseBasicParsing -ErrorAction Stop
     if ($script:RoleDbData -and $script:RoleDbData.Count -gt 0) {
+        $script:GitHubJSONDB = $true
         # Try to match current device by serial number
         if ($currentSerial) {
             foreach ($device in $script:RoleDbData) {
@@ -892,8 +894,34 @@ else {
     }
 }
 
-# Initialize Domain Suffix field with default value
-if (-not [string]::IsNullOrWhiteSpace($DefaultDomainSuffix)) {
+# Get DNS suffix from the machine
+$dnsSuffix = $null
+try {
+    # Try to get primary DNS suffix from network adapter configuration
+    $adapter = Get-CimInstance -ClassName Win32_NetworkAdapterConfiguration -Filter "IPEnabled = 1" -ErrorAction SilentlyContinue | 
+                Where-Object { $_.DNSDomain } | 
+                Select-Object -First 1
+    if ($adapter -and $adapter.DNSDomain) {
+        $dnsSuffix = $adapter.DNSDomain.Trim()
+    }
+    
+    # Fallback: try to get from computer system
+    if (-not $dnsSuffix) {
+        $computerSystem = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction SilentlyContinue
+        if ($computerSystem -and $computerSystem.Domain -and $computerSystem.Domain -ne 'WORKGROUP') {
+            $dnsSuffix = $computerSystem.Domain.Trim()
+        }
+    }
+}
+catch {
+    Write-Warning "Failed to retrieve DNS suffix: $_"
+}
+
+# Initialize Domain Suffix field with DNS suffix from machine, or fall back to default value
+if (-not [string]::IsNullOrWhiteSpace($dnsSuffix)) {
+    $txtDomainSuffix.Text = $dnsSuffix
+}
+elseif (-not [string]::IsNullOrWhiteSpace($DefaultDomainSuffix)) {
     $txtDomainSuffix.Text = $DefaultDomainSuffix
 }
 
@@ -1198,6 +1226,15 @@ $btnOK.Add_Click({
     if ([string]::IsNullOrWhiteSpace($script:DomainSuffix) -or $script:DomainSuffix -eq "contoso.local") {
         $script:DomainSuffix = $null
     }
+    
+    # Store Primary User UPN if EntraID is selected
+    $script:EntraIDUserUPN = $null
+    if ($rbEntraID.IsChecked -and $txtPrimaryUserUPN) {
+        $upn = $txtPrimaryUserUPN.Text.Trim()
+        if (-not [string]::IsNullOrWhiteSpace($upn)) {
+            $script:EntraIDUserUPN = $upn
+        }
+    }
     # Capture software selections from dynamic 'Software' tab
     # Build a map of Id -> bool and a list of selected Ids
     $script:SelectedSoftware = @()
@@ -1268,6 +1305,19 @@ if ($script:DeviceFound -and $script:MatchedDevice) {
     if ($script:MatchedDevice.PrimaryUserUPN) {
         $txtPrimaryUserUPN.Text = $script:MatchedDevice.PrimaryUserUPN.ToString().Trim()
     }
+    
+    # Set the role based on Category from JSON
+    if ($script:MatchedDevice.Category) {
+        $categoryValue = $script:MatchedDevice.Category.ToString().Trim()
+        # Find and select the matching role in the ComboBox
+        for ($i = 0; $i -lt $cmbUserRole.Items.Count; $i++) {
+            $item = $cmbUserRole.Items[$i]
+            if ($item.Content -eq $categoryValue) {
+                $cmbUserRole.SelectedIndex = $i
+                break
+            }
+        }
+    }
 }
 else {
     # No device match or no JSON found - default to Local Workgroup
@@ -1280,6 +1330,8 @@ $result = $Window.ShowDialog()
 # Create and return PSObject with form results
 if ($result -eq $true) {
     $FormResults = [PSCustomObject]@{
+        JSONDBMatch = $script:DeviceFound
+        GitHubJSONDB = $script:GitHubJSONDB
         NamingStrategy = $script:NamingStrategy
         GeneratedComputerName = $script:GeneratedComputerName
         DomainSuffix = $script:DomainSuffix
@@ -1289,6 +1341,7 @@ if ($result -eq $true) {
         AutopilotGroupTag = $script:AutopilotGroupTag
         OnlineDomainJoinOU = $script:OnlineOU
         OnlineDomainJoinSelected = ($script:WorkplaceJoin -eq 'OnlineDomainJoin')
+        EntraIDUserUPN = $script:EntraIDUserUPN
         SelectedSoftware = $script:SelectedSoftware
         SelectedSoftwareMap = $script:SelectedSoftwareMap
         SelectedSoftwareCsv = $script:SelectedSoftwareCsv
@@ -1452,25 +1505,46 @@ Write-CMTraceLog -Message "=====================================================
 write-host "========================================" -ForegroundColor DarkGray
 # Set the provided variables
 if (Get-Module -name "DeployR.Utility"){
+    ${TSEnv:GitHubJSONDB} = $script:GitHubJSONDB
+    ${TSEnv:JSONDBMatch} = $FormResults.JSONDBMatch
     ${TSEnv:NamingStrategy} = $FormResults.NamingStrategy
     ${TSEnv:ComputerName} = $FormResults.GeneratedComputerName
     ${TSEnv:DomainSuffix} = $FormResults.DomainSuffix
     ${TSEnv:HardwareIdType} = $FormResults.HardwareIdType
     ${TSEnv:WorkplaceJoin} = $FormResults.WorkplaceJoin
-    ${TSEnv:OnlineDomainJoinOU} = $FormResults.OnlineDomainJoinOU
+    if ($FormResults.EntraIDUserUPN) {
+        ${TSEnv:EntraIDUserUPN} = $FormResults.EntraIDUserUPN
+    }
+    if ($FormResults.OnlineDomainJoinOU) {
+        ${TSEnv:OnlineDomainJoinOU} = $FormResults.OnlineDomainJoinOU
+    }
+    if (($FormResults.WorkplaceJoin) -eq "Autopilot"){
+        if ($FormResults.AutopilotGroupTag) {
+            ${TSEnv:AutopilotGroupTag} = $FormResults.AutopilotGroupTag
+        }
+    }
+
     ${TSEnv:SelectedUserRole} = $FormResults.SelectedUserRole
-    ${TSEnv:AutopilotGroupTag} = $FormResults.AutopilotGroupTag
     ${TSEnv:SelectedSoftwareCsv} = $FormResults.SelectedSoftwareCsv
 
     Write-CMTraceLog -Message  "Set DeployR TS Environment Variables:" -Type "Info" -Component "Main"
+    Write-CMTraceLog -Message "GitHubJSONDB = $(${TSEnv:GitHubJSONDB})" -Type "Info" -Component "Main"
+    Write-CMTraceLog -Message "JSONDBMatch = $(${TSEnv:JSONDBMatch})" -Type "Info" -Component "Main"
     Write-CMTraceLog -Message "NamingStrategy = $(${TSEnv:NamingStrategy})" -Type "Info" -Component "Main"
     Write-CMTraceLog -Message "ComputerName = $(${TSEnv:ComputerName})" -Type "Info" -Component "Main"
     Write-CMTraceLog -Message "DomainSuffix = $(${TSEnv:DomainSuffix})" -Type "Info" -Component "Main"
     Write-CMTraceLog -Message "HardwareIdType = $(${TSEnv:HardwareIdType})" -Type "Info" -Component "Main"
     Write-CMTraceLog -Message "WorkplaceJoin = $(${TSEnv:WorkplaceJoin})" -Type "Info" -Component "Main"
-    Write-CMTraceLog -Message "OnlineDomainJoinOU = $(${TSEnv:OnlineDomainJoinOU})" -Type "Info" -Component "Main"
+    if ($FormResults.EntraIDUserUPN){
+        Write-CMTraceLog -Message "EntraIDUserUPN = $(${TSEnv:EntraIDUserUPN})" -Type "Info" -Component "Main"
+    }
+    if ($FormResults.AutopilotGroupTag){
+        Write-CMTraceLog -Message "AutopilotGroupTag = $(${TSEnv:AutopilotGroupTag})" -Type "Info" -Component "Main"
+    }
+    if ($FormResults.OnlineDomainJoinOU){
+        Write-CMTraceLog -Message "OnlineDomainJoinOU = $(${TSEnv:OnlineDomainJoinOU})" -Type "Info" -Component "Main"
+    }
     Write-CMTraceLog -Message "SelectedUserRole = $(${TSEnv:SelectedUserRole})" -Type "Info" -Component "Main"
-    Write-CMTraceLog -Message "AutopilotGroupTag = $(${TSEnv:AutopilotGroupTag})" -Type "Info" -Component "Main"
 
     # Export individual software selections as Install_<id> = 'True'/'False'
     try {
@@ -1492,9 +1566,17 @@ else{
     $env:DomainSuffix = $FormResults.DomainSuffix
     $env:HardwareIdType = $FormResults.HardwareIdType
     $env:WorkplaceJoin = $FormResults.WorkplaceJoin
-    $env:OnlineDomainJoinOU = $FormResults.OnlineDomainJoinOU
+    if ($FormResults.EntraIDUserUPN) {
+        $env:EntraIDUserUPN = $FormResults.EntraIDUserUPN
+    }
+    if ($FormResults.AutopilotGroupTag) {
+        $env:AutopilotGroupTag = $FormResults.AutopilotGroupTag
+    }
+    if ($FormResults.OnlineDomainJoinOU) {
+        $env:OnlineDomainJoinOU = $FormResults.OnlineDomainJoinOU
+    }
     $env:SelectedUserRole = $FormResults.SelectedUserRole
-    $env:AutopilotGroupTag = $FormResults.AutopilotGroupTag
+    
     $env:SelectedSoftwareCsv = $FormResults.SelectedSoftwareCsv
     # Export individual software selections as environment variables for testing
     try {
@@ -1514,9 +1596,10 @@ else{
     write-Host "Set Environment Variables for Testing outside DeployR:" -ForegroundColor Cyan
     write-Host "ComputerName = $($env:ComputerName)" -ForegroundColor Green
     write-Host "DomainSuffix = $($env:DomainSuffix)" -ForegroundColor Green
-    write-Host "HardwareIdType = $($env:HardwareIdType)" -ForegroundColor Green
+    if ($env:HardwareIdType) { write-Host "HardwareIdType = $($env:HardwareIdType)" -ForegroundColor Green }
     write-Host "WorkplaceJoin = $($env:WorkplaceJoin)" -ForegroundColor Green
-    write-Host "OnlineDomainJoinOU = $($env:OnlineDomainJoinOU)" -ForegroundColor Green
+    if ($env:OnlineDomainJoinOU) { write-Host "OnlineDomainJoinOU = $($env:OnlineDomainJoinOU)" -ForegroundColor Green }
+    if ($env:EntraIDUserUPN) { write-Host "EntraIDUserUPN = $($env:EntraIDUserUPN)" -ForegroundColor Green }
     write-Host "SelectedUserRole = $($env:SelectedUserRole)" -ForegroundColor Green
     write-Host "AutopilotGroupTag = $($env:AutopilotGroupTag)" -ForegroundColor Green
     write-Host "SelectedSoftwareCsv = $($env:SelectedSoftwareCsv)" -ForegroundColor Green
