@@ -17,6 +17,26 @@
     Date: November 3, 2025
 #>
 
+
+Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
+#Set-DeployRHost "http://localhost:7282"
+Connect-DeployR -Passcode (Get-Content "D:\DeployRPasscode.txt" -Raw) -ErrorAction Stop
+
+
+#Function to Create Apps in DeployR
+Function New-DeployRApp {
+    Param (
+        [string]$AppName,
+        [string]$AppSourceFolder,
+        [string]$AppDescription = "No Description Provided",
+        [string]$InstallationCommandLine = ""
+    )
+
+    $NewDRCI = New-DeployRContentItem -Type Folder -Name $AppName -Description $AppDescription -Purpose Application
+    New-DeployRContentItemVersion -ContentItemId $NewDRCI.id -SourceFolder $AppSourceFolder -InstallationCommandLine $InstallationCommandLine
+}
+
+
 # Function to get latest Firefox download URL
 function Get-FirefoxLatestUrl {
     [CmdletBinding()]
@@ -362,6 +382,165 @@ function Get-AllLatestUrls {
     
     return $urls
 }
+
+
+function Save-AppInstaller {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        # Root folder that will contain AppName\Version
+        [Parameter(Mandatory, Position=0)]
+        [string]$RootPath,
+
+        # Either pass a PSCustomObject with AppName, Version, URL...
+        [Parameter(ParameterSetName='Object', Mandatory, ValueFromPipeline)]
+        [PSObject]$InputObject,
+
+        # ...or pass explicit fields
+        [Parameter(ParameterSetName='Fields', Mandatory)]
+        [string]$AppName,
+
+        [Parameter(ParameterSetName='Fields', Mandatory)]
+        [string]$Version,
+
+        [Parameter(ParameterSetName='Fields', Mandatory)]
+        [Uri]$Url,
+
+        # Overwrite existing file if present
+        [switch]$Force,
+
+        # BITS priority (Foreground is fastest)
+        [ValidateSet('Foreground','High','Normal','Low')]
+        [string]$BitsPriority = 'Foreground'
+    )
+
+    begin {
+        # Ensure root exists
+        if (-not (Test-Path -Path $RootPath -PathType Container)) {
+            New-Item -Path $RootPath -ItemType Directory -Force | Out-Null
+        }
+
+        function Get-FileNameFromUrl {
+            param([Uri]$ResolvedUrl, [string]$FallbackName)
+            # Try to get filename from URL path
+            $name = [System.IO.Path]::GetFileName($ResolvedUrl.AbsolutePath)
+            if ([string]::IsNullOrWhiteSpace($name) -or $name -notmatch '\.') {
+                # Try HEAD for Content-Disposition filename
+                try {
+                    $resp = Invoke-WebRequest -Uri $ResolvedUrl -Method Head -MaximumRedirection 0 -ErrorAction Stop
+                    # If server responds 200 with content-disposition (rare on HEAD)
+                    $cd = $resp.Headers['Content-Disposition']
+                    if ($cd -and $cd -match 'filename="?([^";]+)"?') {
+                        return $Matches[1]
+                    }
+                } catch {
+                    # If redirect, try Location header to get the last segment
+                    try {
+                        $loc = $_.Exception.Response.Headers['Location']
+                        if ($loc) {
+                            $redir = [Uri]::new($ResolvedUrl, $loc)
+                            $redirName = [System.IO.Path]::GetFileName($redir.AbsolutePath)
+                            if ($redirName) { return $redirName }
+                        }
+                    } catch { }
+                }
+                # Fallback
+                return "$FallbackName.exe"
+            }
+            return $name
+        }
+    }
+
+    process {
+        # Normalize inputs for both parameter sets
+        if ($PSCmdlet.ParameterSetName -eq 'Object') {
+            $App = $InputObject.AppName
+            $Ver = $InputObject.Version
+            $U   = $InputObject.URL
+            if ($U -and -not ($U -is [Uri])) {
+                try { $U = [Uri]$U } catch { }
+            }
+        } else {
+            $App = $AppName
+            $Ver = $Version
+            $U   = $Url
+        }
+
+        if (-not $App) { throw "AppName not provided." }
+        if (-not $Ver) { throw "Version not provided." }
+        if (-not $U)   { throw "URL not provided." }
+        if (-not ($U.Scheme -in @('http','https'))) { throw "URL must be HTTP/HTTPS." }
+
+        $targetDir = Join-Path $RootPath $App | Join-Path -ChildPath $Ver
+        if (-not (Test-Path $targetDir)) {
+            if ($PSCmdlet.ShouldProcess($targetDir, "Create directory")) {
+                New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+            }
+        }
+
+        $fallbackName = "$App-$Ver"
+        $fileName = Get-FileNameFromUrl -ResolvedUrl $U -FallbackName $fallbackName
+        $destPath = Join-Path $targetDir $fileName
+
+        if ((Test-Path $destPath) -and -not $Force) {
+            Write-Verbose "File already exists, skipping: $destPath"
+            return [PSCustomObject]@{
+                AppName        = $App
+                Version        = $Ver
+                URL            = $U.AbsoluteUri
+                Destination    = $destPath
+                Skipped        = $true
+                Reason         = "File exists"
+            }
+        }
+
+        $jobName = "$App $Ver"
+        if ($PSCmdlet.ShouldProcess($destPath, "BITS download from $($U.AbsoluteUri)")) {
+            try {
+                # Ensure destination directory exists (in case of race)
+                New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+
+                if (Test-Path $destPath -and $Force) {
+                    Remove-Item -Path $destPath -Force -ErrorAction SilentlyContinue
+                }
+
+                Start-BitsTransfer `
+                    -Source $U.AbsoluteUri `
+                    -Destination $destPath `
+                    -DisplayName $jobName `
+                    -Description "Downloading $App $Ver" `
+                    -Priority $BitsPriority `
+                    -ErrorAction Stop
+
+                return [PSCustomObject]@{
+                    AppName        = $App
+                    Version        = $Ver
+                    URL            = $U.AbsoluteUri
+                    Destination    = $destPath
+                    Skipped        = $false
+                    Success        = $true
+                }
+            }
+            catch {
+                Write-Error "BITS download failed for $App $Ver $($_.Exception.Message)"
+                return [PSCustomObject]@{
+                    AppName        = $App
+                    Version        = $Ver
+                    URL            = $U.AbsoluteUri
+                    Destination    = $destPath
+                    Skipped        = $false
+                    Success        = $false
+                    Error          = $_.Exception.Message
+                }
+            }
+        }
+    }
+}
+
+# Examples:
+# Get-FirefoxLatestUrl | Save-AppInstaller -RootPath 'D:\Installers' -Verbose
+# Save-AppInstaller -RootPath 'D:\Installers' -AppName '7-Zip' -Version '23.01' -Url 'https://www.7-zip.org/a/7z2301-x64.exe' -Verbose
+
+
 
 # Example usage
 <#
