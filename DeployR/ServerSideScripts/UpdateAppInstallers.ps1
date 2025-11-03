@@ -729,7 +729,7 @@ Foreach ($app in $apps) {
         Write-Host "  ✗ $($app.AppName) does not exist in DeployR or is outdated. Will proceed to upload after download." -ForegroundColor Red
         $result = Save-AppInstaller -RootPath $RootPath -InputObject $app -Verbose
         $results += $result
-        $NewApp = New-DeployRApp -AppName $app.AppName -AppSourceFolder ($result.Destination | Split-Path) -AppDescription "$($app.Version)" -InstallationCommandLine "test"
+        $NewApp = New-DeployRApp -AppName $app.AppName -AppSourceFolder ($result.Destination | Split-Path) -AppDescription "$($app.Version)" -InstallationCommandLine "$($app.SilentInstallCommand)"
     }
 }
 
