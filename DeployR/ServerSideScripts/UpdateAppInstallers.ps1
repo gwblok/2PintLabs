@@ -17,6 +17,10 @@
     Date: November 3, 2025
 #>
 
+# Configure root download path
+$RootPath = "D:\DeployRSource\Apps"
+
+
 if (Test-Path 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility') {
     Write-Host "DeployR.Utility module found."
     Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
@@ -26,8 +30,7 @@ if (Test-Path 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.
 } else {
     Write-Host "DeployR.Utility module not found. Please ensure DeployR Client is installed."
 }
-
-
+#region Functions
 #Function to Create Apps in DeployR
 Function New-DeployRApp {
     Param (
@@ -615,14 +618,14 @@ $allUrls = Get-AllLatestUrls -Architecture x64
 Write-Host "Firefox URL: $($allUrls.Firefox)"
 Write-Host "Notepad++ URL: $($allUrls.NotepadPlusPlus)"
 #>
+#endregion
 
 #region Execution Area
 # =============================================================================
 # EXECUTION AREA - Download All Applications
 # =============================================================================
 
-# Configure root download path
-$RootPath = "C:\Drivers"
+
 $Architecture = 'x64'
 
 Write-Host "`n=== Starting Application Downloads ===" -ForegroundColor Cyan
