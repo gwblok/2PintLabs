@@ -25,7 +25,7 @@ if (Test-Path 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.
     Write-Host "DeployR.Utility module found."
     Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
     #Set-DeployRHost "http://localhost:7282"
-    Connect-DeployR -Passcode (Get-Content "D:\DeployRPasscode.txt" -Raw) -ErrorAction Stop
+    Connect-DeployR #-Passcode (Get-Content "D:\DeployRPasscode.txt" -Raw) -ErrorAction Stop
 
 } else {
     Write-Host "DeployR.Utility module not found. Please ensure DeployR Client is installed."
@@ -40,10 +40,44 @@ Function New-DeployRApp {
         [string]$InstallationCommandLine = ""
     )
 
-    $NewDRCI = New-DeployRContentItem -Type Folder -Name $AppName -Description $AppDescription -Purpose Application
-    New-DeployRContentItemVersion -ContentItemId $NewDRCI.id -SourceFolder $AppSourceFolder -InstallationCommandLine $InstallationCommandLine
+    $NewDRCI = New-DeployRContentItem -Type Folder -Name $AppName -Description "Script Generated" -Purpose Application
+    New-DeployRContentItemVersion -ContentItemId $NewDRCI.id -SourceFolder $AppSourceFolder -InstallationCommandLine $InstallationCommandLine -Description $AppDescription
+}
+Function Test-DeployRAppExists {
+    Param (
+        [string]$AppName,
+        [string]$AppVersion
+    )
+
+    $existingApp = Get-DeployRApplication | Where-Object { $_.Name -eq $AppName } -ErrorAction SilentlyContinue
+    if ($null -ne $existingApp) {
+        $LatestVersion = ($existingApp.versions | Select-Object -ExpandProperty Description | Sort-Object -Descending | Select-Object -First 1)
+        return [PSCustomObject]@{
+            Name          = $existingApp.Name
+            LatestVersion = $LatestVersion
+        }
+    } else {
+        return $false
+    }
 }
 
+
+Function Update-DeployRApp {
+    Param (
+        [string]$AppName,
+        [string]$AppVersion = "No Description Provided",
+        [string]$AppSourceFolder,
+        [string]$InstallationCommandLine = ""
+    )
+
+    $existingApp = Get-DeployRApplication -Name $AppName -ErrorAction Stop
+    if ($null -ne $existingApp) {
+        Write-Host "Updating DeployR Application: $AppName"
+        New-DeployRContentItemVersion -ContentItemId $existingApp.id -SourceFolder $AppSourceFolder -InstallationCommandLine $InstallationCommandLine -Description $AppVersion
+    } else {
+        Write-Host "DeployR Application not found: $AppName"
+    }
+}
 
 # Function to get latest Firefox download URL
 function Get-FirefoxLatestUrl {
@@ -645,16 +679,37 @@ $PaintDotNet = Get-PaintDotNetLatestUrl
 
 # Display retrieved application info
 $apps = @($Firefox, $Thunderbird, $NotepadPlusPlus, $VLC, $SevenZip, $Greenshot, $PaintDotNet)
+#$apps = @($Firefox)
 foreach ($app in $apps) {
     if ($app) {
         Write-Host "  ✓ $($app.AppName) v$($app.Version)" -ForegroundColor Green
     }
 }
-
 # Download each application
 Write-Host "`n--- Downloading Applications ---" -ForegroundColor Yellow
 
 $results = @()
+Foreach ($app in $apps) {
+    Write-Output "Testing DeployR for $($app.AppName) v$($app.Version)"
+    $AppTestResults = Test-DeployRAppExists -AppName $app.AppName -AppVersion $app.Version
+    if ($AppTestResults) {
+        write-Host " Testing Version $($AppTestResults.LatestVersion) vs $($app.Version)" -ForegroundColor Yellow
+        if ($AppTestResults.LatestVersion -eq $app.Version) {
+            Write-Host "  ⊙ $($app.AppName) already exists in DeployR with the latest version. Skipping upload." -ForegroundColor Yellow
+        } else {
+            Write-Host "  ✗ $($app.AppName) exists in DeployR but is outdated. Will proceed to upload after download." -ForegroundColor Red
+            $result = Save-AppInstaller -RootPath $RootPath -InputObject $app -Verbose
+            $results += $result 
+        }
+    } else {
+        Write-Host "  ✗ $($app.AppName) does not exist in DeployR or is outdated. Will proceed to upload after download." -ForegroundColor Red
+        $result = Save-AppInstaller -RootPath $RootPath -InputObject $app -Verbose
+        $results += $result
+        $NewApp = New-DeployRApp -AppName $app.AppName -AppSourceFolder ($result.Destination | Split-Path) -AppDescription "$($app.Version)" -InstallationCommandLine "test"
+    }
+}
+
+<#
 $results += Save-AppInstaller -RootPath $RootPath -InputObject $Firefox -Verbose
 $results += Save-AppInstaller -RootPath $RootPath -InputObject $Thunderbird -Verbose
 $results += Save-AppInstaller -RootPath $RootPath -InputObject $NotepadPlusPlus -Verbose
@@ -662,6 +717,7 @@ $results += Save-AppInstaller -RootPath $RootPath -InputObject $VLC -Verbose
 $results += Save-AppInstaller -RootPath $RootPath -InputObject $SevenZip -Verbose
 $results += Save-AppInstaller -RootPath $RootPath -InputObject $Greenshot -Verbose
 $results += Save-AppInstaller -RootPath $RootPath -InputObject $PaintDotNet -Verbose
+#>
 
 # Summary
 Write-Host "`n=== Download Summary ===" -ForegroundColor Cyan
