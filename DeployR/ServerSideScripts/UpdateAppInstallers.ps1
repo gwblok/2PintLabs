@@ -26,6 +26,7 @@ if (Test-Path 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.
     Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
     #Set-DeployRHost "http://localhost:7282"
     Connect-DeployR #-Passcode (Get-Content "D:\DeployRPasscode.txt" -Raw) -ErrorAction Stop
+    $AllApps = Get-DeployRApplication
 
 } else {
     Write-Host "DeployR.Utility module not found. Please ensure DeployR Client is installed."
@@ -46,10 +47,17 @@ Function New-DeployRApp {
 Function Test-DeployRAppExists {
     Param (
         [string]$AppName,
-        [string]$AppVersion
+        [string]$AppVersion,
+        [Parameter(Mandatory=$false)]
+        [PSObject[]]$AllApps
     )
 
-    $existingApp = Get-DeployRApplication | Where-Object { $_.Name -eq $AppName } -ErrorAction SilentlyContinue
+    # Use provided AllApps collection if available, otherwise query DeployR
+    if ($null -eq $AllApps -or $AllApps.Count -eq 0) {
+        $AllApps = Get-DeployRApplication
+    }
+
+    $existingApp = $AllApps | Where-Object { $_.Name -eq $AppName } -ErrorAction SilentlyContinue
     if ($null -ne $existingApp) {
         $LatestVersion = ($existingApp.versions | Select-Object -ExpandProperty Description | Sort-Object -Descending | Select-Object -First 1)
         return [PSCustomObject]@{
@@ -67,10 +75,18 @@ Function Update-DeployRApp {
         [string]$AppName,
         [string]$AppVersion = "No Description Provided",
         [string]$AppSourceFolder,
-        [string]$InstallationCommandLine = ""
+        [string]$InstallationCommandLine = "",
+        [Parameter(Mandatory=$false)]
+        [PSObject[]]$AllApps
     )
 
-    $existingApp = Get-DeployRApplication -Name $AppName -ErrorAction Stop
+    # Use provided AllApps collection if available, otherwise query DeployR
+    if ($null -eq $AllApps -or $AllApps.Count -eq 0) {
+        $existingApp = Get-DeployRApplication -Name $AppName -ErrorAction Stop
+    } else {
+        $existingApp = $AllApps | Where-Object { $_.Name -eq $AppName } -ErrorAction SilentlyContinue | Select-Object -First 1
+    }
+    
     if ($null -ne $existingApp) {
         Write-Host "Updating DeployR Application: $AppName"
         New-DeployRContentItemVersion -ContentItemId $existingApp.id -SourceFolder $AppSourceFolder -InstallationCommandLine $InstallationCommandLine -Description $AppVersion
@@ -108,6 +124,7 @@ function Get-FirefoxLatestUrl {
             AppName = "Firefox"
             Version = $version
             URL = $downloadPage
+            SilentInstallCommand = "msiexec.exe /i `"Firefox Setup.msi`" /qn"
         }
     }
     catch {
@@ -145,6 +162,7 @@ function Get-ThunderbirdLatestUrl {
             AppName = "Thunderbird"
             Version = $version
             URL = $downloadPage
+            SilentInstallCommand = "msiexec.exe /i `"Thunderbird Setup.msi`" /qn"
         }
     }
     catch {
@@ -178,6 +196,7 @@ function Get-NotepadPlusPlusLatestUrl {
                 AppName = "Notepad++"
                 Version = $version
                 URL = $installer.browser_download_url
+                SilentInstallCommand = "`"$($installer.name)`" /S"
             }
         }
         else {
@@ -234,6 +253,7 @@ function Get-VLCLatestUrl {
                 AppName = "VLC Media Player"
                 Version = $version
                 URL = $url
+                SilentInstallCommand = "`"vlc-$version-win64.exe`" /S"
             }
         }
         else {
@@ -285,6 +305,7 @@ function Get-7ZipLatestUrl {
                 AppName = "7-Zip"
                 Version = $version
                 URL = $url
+                SilentInstallCommand = "`"$($downloadLink.href)`" /S"
             }
         }
         else {
@@ -319,6 +340,7 @@ function Get-GreenshotLatestUrl {
                 AppName = "Greenshot"
                 Version = $version
                 URL = $installer.browser_download_url
+                SilentInstallCommand = "`"$($installer.name)`" /VERYSILENT /NORESTART"
             }
         }
         else {
@@ -365,6 +387,7 @@ function Get-PaintDotNetLatestUrl {
                 AppName = "Paint.NET"
                 Version = $version
                 URL = $url
+                SilentInstallCommand = "`"paint.net.$version.install.x64.exe`" /auto DESKTOPSHORTCUT=0"
             }
         }
         else {
@@ -384,6 +407,7 @@ function Get-PaintDotNetLatestUrl {
                     AppName = "Paint.NET"
                     Version = $version
                     URL = $installer.browser_download_url
+                    SilentInstallCommand = "`"paint.net.$version.install.x64.exe`" /auto DESKTOPSHORTCUT=0"
                 }
             }
             else {
@@ -691,7 +715,7 @@ Write-Host "`n--- Downloading Applications ---" -ForegroundColor Yellow
 $results = @()
 Foreach ($app in $apps) {
     Write-Output "Testing DeployR for $($app.AppName) v$($app.Version)"
-    $AppTestResults = Test-DeployRAppExists -AppName $app.AppName -AppVersion $app.Version
+    $AppTestResults = Test-DeployRAppExists -AppName $app.AppName -AppVersion $app.Version -AllApps $AllApps
     if ($AppTestResults) {
         write-Host " Testing Version $($AppTestResults.LatestVersion) vs $($app.Version)" -ForegroundColor Yellow
         if ($AppTestResults.LatestVersion -eq $app.Version) {
