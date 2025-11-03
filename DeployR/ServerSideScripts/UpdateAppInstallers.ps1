@@ -89,7 +89,7 @@ Function Update-DeployRApp {
     
     if ($null -ne $existingApp) {
         Write-Host "Updating DeployR Application: $AppName"
-        New-DeployRContentItemVersion -ContentItemId $existingApp.id -SourceFolder $AppSourceFolder -InstallationCommandLine $InstallationCommandLine -Description $AppVersion
+        $NewDRCIV = New-DeployRContentItemVersion -ContentItemId $existingApp.id -SourceFolder $AppSourceFolder -InstallationCommandLine $InstallationCommandLine -Description $AppVersion
     } else {
         Write-Host "DeployR Application not found: $AppName"
     }
@@ -702,8 +702,8 @@ $Greenshot = Get-GreenshotLatestUrl
 $PaintDotNet = Get-PaintDotNetLatestUrl
 
 # Display retrieved application info
-$apps = @($Firefox, $Thunderbird, $NotepadPlusPlus, $VLC, $SevenZip, $Greenshot, $PaintDotNet)
-#$apps = @($Firefox)
+#$apps = @($Firefox, $Thunderbird, $NotepadPlusPlus, $VLC, $SevenZip, $Greenshot, $PaintDotNet)
+$apps = @($SevenZip)
 foreach ($app in $apps) {
     if ($app) {
         Write-Host "  ✓ $($app.AppName) v$($app.Version)" -ForegroundColor Green
