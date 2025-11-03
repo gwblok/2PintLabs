@@ -276,40 +276,33 @@ function Get-7ZipLatestUrl {
     )
     
     try {
-        $7zipPage = Invoke-WebRequest -Uri "https://www.7-zip.org/download.html" -UseBasicParsing -ErrorAction Stop
+        # Use GitHub API to get latest release
+        $apiUrl = "https://api.github.com/repos/ip7z/7zip/releases/latest"
+        $release = Invoke-RestMethod -Uri $apiUrl -UseBasicParsing -ErrorAction Stop
         
+        $version = $release.tag_name
+        
+        # Get MSI installer based on architecture
         if ($Architecture -eq 'x64') {
-            $downloadLink = $7zipPage.Links | Where-Object { $_.href -match '7z(\d+)-x64\.exe$' } | Select-Object -First 1
+            $installer = $release.assets | Where-Object { $_.name -match '^7z\d+-x64\.msi$' } | Select-Object -First 1
         }
         else {
-            $downloadLink = $7zipPage.Links | Where-Object { $_.href -match '7z(\d+)\.exe$' -and $_.href -notmatch 'x64' } | Select-Object -First 1
+            $installer = $release.assets | Where-Object { $_.name -match '^7z\d+\.msi$' -and $_.name -notmatch 'x64' } | Select-Object -First 1
         }
         
-        if ($downloadLink) {
-            $url = "https://www.7-zip.org/$($downloadLink.href)"
-            
-            # Extract version from URL (e.g., 7z2301.exe -> 23.01)
-            if ($downloadLink.href -match '7z(\d+)') {
-                $versionNum = $matches[1]
-                # Convert 2301 to 23.01
-                $version = "$($versionNum.Substring(0,2)).$($versionNum.Substring(2))"
-            }
-            else {
-                $version = "Unknown"
-            }
-            
-            Write-Verbose "7-Zip URL: $url"
+        if ($installer) {
+            Write-Verbose "7-Zip URL: $($installer.browser_download_url)"
             Write-Verbose "7-Zip Version: $version"
             
             return [PSCustomObject]@{
                 AppName = "7-Zip"
                 Version = $version
-                URL = $url
-                SilentInstallCommand = "`"$($downloadLink.href)`" /S"
+                URL = $installer.browser_download_url
+                SilentInstallCommand = "msiexec.exe /i `"$($installer.name)`" /quiet /norestart"
             }
         }
         else {
-            Write-Error "Could not find 7-Zip download link"
+            Write-Error "Could not find 7-Zip MSI installer in latest release"
             return $null
         }
     }
@@ -723,7 +716,8 @@ Foreach ($app in $apps) {
         } else {
             Write-Host "  ✗ $($app.AppName) exists in DeployR but is outdated. Will proceed to upload after download." -ForegroundColor Red
             $result = Save-AppInstaller -RootPath $RootPath -InputObject $app -Verbose
-            $results += $result 
+            $results += $result
+            Update-DeployRApp -AppName $app.AppName -AppVersion $app.Version -AppSourceFolder ($result.Destination | Split-Path) -InstallationCommandLine "$($app.SilentInstallCommand)" -AllApps $AllApps
         }
     } else {
         Write-Host "  ✗ $($app.AppName) does not exist in DeployR or is outdated. Will proceed to upload after download." -ForegroundColor Red
