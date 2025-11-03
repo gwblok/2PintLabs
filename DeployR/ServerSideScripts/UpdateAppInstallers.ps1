@@ -17,10 +17,15 @@
     Date: November 3, 2025
 #>
 
+if (Test-Path 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility') {
+    Write-Host "DeployR.Utility module found."
+    Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
+    #Set-DeployRHost "http://localhost:7282"
+    Connect-DeployR -Passcode (Get-Content "D:\DeployRPasscode.txt" -Raw) -ErrorAction Stop
 
-Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
-#Set-DeployRHost "http://localhost:7282"
-Connect-DeployR -Passcode (Get-Content "D:\DeployRPasscode.txt" -Raw) -ErrorAction Stop
+} else {
+    Write-Host "DeployR.Utility module not found. Please ensure DeployR Client is installed."
+}
 
 
 #Function to Create Apps in DeployR
@@ -49,7 +54,10 @@ function Get-FirefoxLatestUrl {
     )
     
     try {
-        $downloadPage = "https://download.mozilla.org/?product=firefox-latest-ssl&os=win$Architecture&lang=$Language"
+        # Mozilla uses 'win64' and 'win' (not 'winx64' and 'winx86')
+        # Using MSI installer for enterprise deployment
+        $osParam = if ($Architecture -eq 'x64') { 'win64' } else { 'win' }
+        $downloadPage = "https://download.mozilla.org/?product=firefox-msi-latest-ssl&os=$osParam&lang=$Language"
         
         # Get version from Mozilla's product details API
         $versionApi = "https://product-details.mozilla.org/1.0/firefox_versions.json"
@@ -83,7 +91,10 @@ function Get-ThunderbirdLatestUrl {
     )
     
     try {
-        $downloadPage = "https://download.mozilla.org/?product=thunderbird-latest-ssl&os=win$Architecture&lang=$Language"
+        # Mozilla uses 'win64' and 'win' (not 'winx64' and 'winx86')
+        # Using MSI installer for enterprise deployment
+        $osParam = if ($Architecture -eq 'x64') { 'win64' } else { 'win' }
+        $downloadPage = "https://download.mozilla.org/?product=thunderbird-msi-latest-ssl&os=$osParam&lang=$Language"
         
         # Get version from Mozilla's product details API
         $versionApi = "https://product-details.mozilla.org/1.0/thunderbird_versions.json"
@@ -163,7 +174,11 @@ function Get-VLCLatestUrl {
         
         if ($downloadLink) {
             $url = $downloadLink.href
-            if ($url -notmatch '^https?://') {
+            # Handle protocol-relative URLs (starting with //)
+            if ($url -match '^//') {
+                $url = "https:$url"
+            }
+            elseif ($url -notmatch '^https?://') {
                 $url = "https://www.videolan.org$url"
             }
             
@@ -499,29 +514,74 @@ function Save-AppInstaller {
                 # Ensure destination directory exists (in case of race)
                 New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
 
-                if (Test-Path $destPath -and $Force) {
+                if ((Test-Path $destPath) -and $Force) {
                     Remove-Item -Path $destPath -Force -ErrorAction SilentlyContinue
                 }
 
-                Start-BitsTransfer `
-                    -Source $U.AbsoluteUri `
-                    -Destination $destPath `
-                    -DisplayName $jobName `
-                    -Description "Downloading $App $Ver" `
-                    -Priority $BitsPriority `
-                    -ErrorAction Stop
+                # Try BITS first
+                $bitsSuccess = $false
+                try {
+                    $bitsParams = @{
+                        Source = $U.AbsoluteUri
+                        Destination = $destPath
+                        DisplayName = $jobName
+                        Description = "Downloading $App $Ver"
+                        Priority = $BitsPriority
+                        ErrorAction = 'Stop'
+                    }
+                    Start-BitsTransfer @bitsParams
+                    
+                    $bitsSuccess = $true
+                    Write-Verbose "Downloaded via BITS: $destPath"
+                }
+                catch {
+                    Write-Warning "BITS transfer failed for $App $Ver, falling back to Invoke-WebRequest: $($_.Exception.Message)"
+                    
+                    # Fallback to Invoke-WebRequest for URLs that BITS can't handle (like GitHub releases)
+                    try {
+                        Invoke-WebRequest -Uri $U.AbsoluteUri -OutFile $destPath -UseBasicParsing -ErrorAction Stop
+                        $bitsSuccess = $true
+                        Write-Verbose "Downloaded via Invoke-WebRequest: $destPath"
+                    }
+                    catch {
+                        throw "Both BITS and Invoke-WebRequest failed: $($_.Exception.Message)"
+                    }
+                }
+
+                # Extract ZIP file if downloaded
+                $extractedFiles = @()
+                if ([System.IO.Path]::GetExtension($destPath) -eq '.zip') {
+                    Write-Verbose "ZIP file detected, extracting contents..."
+                    try {
+                        $extractPath = [System.IO.Path]::GetDirectoryName($destPath)
+                        Expand-Archive -Path $destPath -DestinationPath $extractPath -Force -ErrorAction Stop
+                        Write-Verbose "Extracted ZIP contents to: $extractPath"
+                        
+                        # Get list of extracted files
+                        $extractedFiles = Get-ChildItem -Path $extractPath -File | Where-Object { $_.FullName -ne $destPath } | Select-Object -ExpandProperty FullName
+                        
+                        # Remove the ZIP file
+                        Remove-Item -Path $destPath -Force -ErrorAction Stop
+                        Write-Verbose "Cleaned up ZIP file: $destPath"
+                    }
+                    catch {
+                        Write-Warning "Failed to extract or cleanup ZIP file: $($_.Exception.Message)"
+                    }
+                }
 
                 return [PSCustomObject]@{
                     AppName        = $App
                     Version        = $Ver
                     URL            = $U.AbsoluteUri
                     Destination    = $destPath
+                    ExtractedFiles = $extractedFiles
                     Skipped        = $false
                     Success        = $true
                 }
             }
             catch {
-                Write-Error "BITS download failed for $App $Ver $($_.Exception.Message)"
+                $errorMsg = "Download failed for $App $Ver : $($_.Exception.Message)"
+                Write-Error $errorMsg
                 return [PSCustomObject]@{
                     AppName        = $App
                     Version        = $Ver
@@ -556,3 +616,72 @@ Write-Host "Firefox URL: $($allUrls.Firefox)"
 Write-Host "Notepad++ URL: $($allUrls.NotepadPlusPlus)"
 #>
 
+#region Execution Area
+# =============================================================================
+# EXECUTION AREA - Download All Applications
+# =============================================================================
+
+# Configure root download path
+$RootPath = "C:\Drivers"
+$Architecture = 'x64'
+
+Write-Host "`n=== Starting Application Downloads ===" -ForegroundColor Cyan
+Write-Host "Root Path: $RootPath" -ForegroundColor Gray
+Write-Host "Architecture: $Architecture" -ForegroundColor Gray
+
+# Create input objects for each application
+Write-Host "`n--- Retrieving Application Information ---" -ForegroundColor Yellow
+
+$Firefox = Get-FirefoxLatestUrl -Architecture $Architecture
+$Thunderbird = Get-ThunderbirdLatestUrl -Architecture $Architecture
+$NotepadPlusPlus = Get-NotepadPlusPlusLatestUrl -Architecture $Architecture
+$VLC = Get-VLCLatestUrl -Architecture $Architecture
+$SevenZip = Get-7ZipLatestUrl -Architecture $Architecture
+$Greenshot = Get-GreenshotLatestUrl
+$PaintDotNet = Get-PaintDotNetLatestUrl
+
+# Display retrieved application info
+$apps = @($Firefox, $Thunderbird, $NotepadPlusPlus, $VLC, $SevenZip, $Greenshot, $PaintDotNet)
+foreach ($app in $apps) {
+    if ($app) {
+        Write-Host "  ✓ $($app.AppName) v$($app.Version)" -ForegroundColor Green
+    }
+}
+
+# Download each application
+Write-Host "`n--- Downloading Applications ---" -ForegroundColor Yellow
+
+$results = @()
+$results += Save-AppInstaller -RootPath $RootPath -InputObject $Firefox -Verbose
+$results += Save-AppInstaller -RootPath $RootPath -InputObject $Thunderbird -Verbose
+$results += Save-AppInstaller -RootPath $RootPath -InputObject $NotepadPlusPlus -Verbose
+$results += Save-AppInstaller -RootPath $RootPath -InputObject $VLC -Verbose
+$results += Save-AppInstaller -RootPath $RootPath -InputObject $SevenZip -Verbose
+$results += Save-AppInstaller -RootPath $RootPath -InputObject $Greenshot -Verbose
+$results += Save-AppInstaller -RootPath $RootPath -InputObject $PaintDotNet -Verbose
+
+# Summary
+Write-Host "`n=== Download Summary ===" -ForegroundColor Cyan
+$successCount = ($results | Where-Object { $_.Success -eq $true }).Count
+$skippedCount = ($results | Where-Object { $_.Skipped -eq $true }).Count
+$failedCount = ($results | Where-Object { $_.Success -eq $false -and $_.Skipped -eq $false }).Count
+
+Write-Host "  Successful: $successCount" -ForegroundColor Green
+Write-Host "  Skipped: $skippedCount" -ForegroundColor Yellow
+Write-Host "  Failed: $failedCount" -ForegroundColor $(if ($failedCount -gt 0) { 'Red' } else { 'Gray' })
+
+# Display detailed results
+Write-Host "`n--- Detailed Results ---" -ForegroundColor Yellow
+foreach ($result in $results) {
+    $status = if ($result.Success) { "✓" } elseif ($result.Skipped) { "⊙" } else { "✗" }
+    $color = if ($result.Success) { "Green" } elseif ($result.Skipped) { "Yellow" } else { "Red" }
+    
+    Write-Host "  $status $($result.AppName) v$($result.Version)" -ForegroundColor $color
+    if ($result.ExtractedFiles -and $result.ExtractedFiles.Count -gt 0) {
+        Write-Host "    Extracted: $($result.ExtractedFiles.Count) file(s)" -ForegroundColor Gray
+    }
+}
+
+Write-Host "`n=== Complete ===" -ForegroundColor Cyan
+
+#endregion
