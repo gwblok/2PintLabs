@@ -415,6 +415,94 @@ function Get-PaintDotNetLatestUrl {
     }
 }
 
+# Function to get latest OBS Studio download URL
+function Get-OBSStudioLatestUrl {
+    [CmdletBinding()]
+    param(
+        [ValidateSet('x64', 'arm64')]
+        [string]$Architecture = 'x64'
+    )
+    
+    try {
+        $apiUrl = "https://api.github.com/repos/obsproject/obs-studio/releases/latest"
+        $release = Invoke-RestMethod -Uri $apiUrl -UseBasicParsing -ErrorAction Stop
+        
+        $version = $release.tag_name -replace '^v?', ''
+        
+        # Look for Windows installer based on architecture
+        if ($Architecture -eq 'x64') {
+            $installer = $release.assets | Where-Object { $_.name -match 'OBS-Studio-.+-Windows-x64-Installer\.exe$' } | Select-Object -First 1
+        }
+        else {
+            $installer = $release.assets | Where-Object { $_.name -match 'OBS-Studio-.+-Windows-arm64-Installer\.exe$' } | Select-Object -First 1
+        }
+        
+        if ($installer) {
+            Write-Verbose "OBS Studio URL: $($installer.browser_download_url)"
+            Write-Verbose "OBS Studio Version: $version"
+            
+            return [PSCustomObject]@{
+                AppName = "OBS Studio"
+                Version = $version
+                URL = $installer.browser_download_url
+                SilentInstallCommand = "`"$($installer.name)`" /S"
+            }
+        }
+        else {
+            Write-Error "Could not find OBS Studio installer in latest release"
+            return $null
+        }
+    }
+    catch {
+        Write-Error "Failed to get OBS Studio info: $_"
+        return $null
+    }
+}
+
+# Function to get latest VS Code download URL
+function Get-VSCodeLatestUrl {
+    [CmdletBinding()]
+    param(
+        [ValidateSet('x64', 'arm64')]
+        [string]$Architecture = 'x64'
+    )
+    
+    try {
+        # VS Code uses a stable download URL that redirects to the latest version
+        if ($Architecture -eq 'x64') {
+            $downloadUrl = "https://code.visualstudio.com/sha/download?build=stable&os=win32-x64"
+        }
+        else {
+            $downloadUrl = "https://code.visualstudio.com/sha/download?build=stable&os=win32-arm64"
+        }
+        
+        # Get version from the updates page
+        $updatesPage = Invoke-WebRequest -Uri "https://code.visualstudio.com/updates" -UseBasicParsing -ErrorAction Stop
+        
+        # Extract version from the page title or header (e.g., "September 2025 (version 1.105)")
+        if ($updatesPage.Content -match 'version\s+([\d.]+)') {
+            $version = $matches[1]
+        }
+        else {
+            $version = "Latest"
+        }
+        
+        Write-Verbose "VS Code URL: $downloadUrl"
+        Write-Verbose "VS Code Version: $version"
+        
+        return [PSCustomObject]@{
+            AppName = "VS Code"
+            Version = $version
+            URL = $downloadUrl
+            SilentInstallCommand = "VSCodeSetup.exe /VERYSILENT /NORESTART /MERGETASKS=!runcode"
+        }
+    }
+    catch {
+        Write-Error "Failed to get VS Code info: $_"
+        return $null
+    }
+}
+
 # Function to get all latest URLs
 function Get-AllLatestUrls {
     [CmdletBinding()]
@@ -433,6 +521,8 @@ function Get-AllLatestUrls {
         SevenZip = Get-7ZipLatestUrl -Architecture $Architecture
         Greenshot = Get-GreenshotLatestUrl
         PaintDotNet = Get-PaintDotNetLatestUrl
+        OBSStudio = Get-OBSStudioLatestUrl -Architecture $Architecture
+        VSCode = Get-VSCodeLatestUrl -Architecture $Architecture
     }
     
     Write-Host "`n=== Results ===" -ForegroundColor Cyan
@@ -693,9 +783,11 @@ $VLC = Get-VLCLatestUrl -Architecture $Architecture
 $SevenZip = Get-7ZipLatestUrl -Architecture $Architecture
 $Greenshot = Get-GreenshotLatestUrl
 $PaintDotNet = Get-PaintDotNetLatestUrl
+$OBSStudio = Get-OBSStudioLatestUrl -Architecture $Architecture
+$VSCode = Get-VSCodeLatestUrl -Architecture $Architecture
 
 # Display retrieved application info
-#$apps = @($Firefox, $Thunderbird, $NotepadPlusPlus, $VLC, $SevenZip, $Greenshot, $PaintDotNet)
+#$apps = @($Firefox, $Thunderbird, $NotepadPlusPlus, $VLC, $SevenZip, $Greenshot, $PaintDotNet, $OBSStudio, $VSCode)
 $apps = @($SevenZip)
 foreach ($app in $apps) {
     if ($app) {
@@ -706,6 +798,13 @@ foreach ($app in $apps) {
 Write-Host "`n--- Downloading Applications ---" -ForegroundColor Yellow
 
 $results = @()
+$deployRStats = @{
+    Updated = @()
+    Created = @()
+    Skipped = @()
+    Failed = @()
+}
+
 Foreach ($app in $apps) {
     Write-Output "Testing DeployR for $($app.AppName) v$($app.Version)"
     $AppTestResults = Test-DeployRAppExists -AppName $app.AppName -AppVersion $app.Version -AllApps $AllApps
@@ -713,17 +812,77 @@ Foreach ($app in $apps) {
         write-Host " Testing Version $($AppTestResults.LatestVersion) vs $($app.Version)" -ForegroundColor Yellow
         if ($AppTestResults.LatestVersion -eq $app.Version) {
             Write-Host "  ⊙ $($app.AppName) already exists in DeployR with the latest version. Skipping upload." -ForegroundColor Yellow
+            $deployRStats.Skipped += [PSCustomObject]@{
+                AppName = $app.AppName
+                Version = $app.Version
+                Action = "Skipped - Already up to date"
+            }
         } else {
             Write-Host "  ✗ $($app.AppName) exists in DeployR but is outdated. Will proceed to upload after download." -ForegroundColor Red
             $result = Save-AppInstaller -RootPath $RootPath -InputObject $app -Verbose
             $results += $result
-            Update-DeployRApp -AppName $app.AppName -AppVersion $app.Version -AppSourceFolder ($result.Destination | Split-Path) -InstallationCommandLine "$($app.SilentInstallCommand)" -AllApps $AllApps
+            if ($result.Success) {
+                Write-Host " Updating DeployR Application for $($app.AppName) to version $($app.Version)" -ForegroundColor Cyan
+                try {
+                    Update-DeployRApp -AppName $app.AppName -AppVersion $app.Version -AppSourceFolder ($result.Destination | Split-Path) -InstallationCommandLine "$($app.SilentInstallCommand)" -AllApps $AllApps
+                    $deployRStats.Updated += [PSCustomObject]@{
+                        AppName = $app.AppName
+                        Version = $app.Version
+                        PreviousVersion = $AppTestResults.LatestVersion
+                        Action = "Updated"
+                    }
+                }
+                catch {
+                    Write-Error "Failed to update DeployR app: $_"
+                    $deployRStats.Failed += [PSCustomObject]@{
+                        AppName = $app.AppName
+                        Version = $app.Version
+                        Action = "Failed to update in DeployR"
+                        Error = $_.Exception.Message
+                    }
+                }
+            }
+            else {
+                $deployRStats.Failed += [PSCustomObject]@{
+                    AppName = $app.AppName
+                    Version = $app.Version
+                    Action = "Failed to download"
+                    Error = $result.Error
+                }
+            }
         }
     } else {
         Write-Host "  ✗ $($app.AppName) does not exist in DeployR or is outdated. Will proceed to upload after download." -ForegroundColor Red
         $result = Save-AppInstaller -RootPath $RootPath -InputObject $app -Verbose
         $results += $result
-        $NewApp = New-DeployRApp -AppName $app.AppName -AppSourceFolder ($result.Destination | Split-Path) -AppDescription "$($app.Version)" -InstallationCommandLine "$($app.SilentInstallCommand)"
+        if ($result.Success) {
+            Write-Host " Creating New DeployR Application for $($app.AppName) version $($app.Version)" -ForegroundColor Cyan
+            try {
+                $NewApp = New-DeployRApp -AppName $app.AppName -AppSourceFolder ($result.Destination | Split-Path) -AppDescription "$($app.Version)" -InstallationCommandLine "$($app.SilentInstallCommand)"
+                $deployRStats.Created += [PSCustomObject]@{
+                    AppName = $app.AppName
+                    Version = $app.Version
+                    Action = "Created"
+                }
+            }
+            catch {
+                Write-Error "Failed to create DeployR app: $_"
+                $deployRStats.Failed += [PSCustomObject]@{
+                    AppName = $app.AppName
+                    Version = $app.Version
+                    Action = "Failed to create in DeployR"
+                    Error = $_.Exception.Message
+                }
+            }
+        }
+        else {
+            $deployRStats.Failed += [PSCustomObject]@{
+                AppName = $app.AppName
+                Version = $app.Version
+                Action = "Failed to download"
+                Error = $result.Error
+            }
+        }
     }
 }
 
@@ -738,24 +897,68 @@ $results += Save-AppInstaller -RootPath $RootPath -InputObject $PaintDotNet -Ver
 #>
 
 # Summary
-Write-Host "`n=== Download Summary ===" -ForegroundColor Cyan
-$successCount = ($results | Where-Object { $_.Success -eq $true }).Count
-$skippedCount = ($results | Where-Object { $_.Skipped -eq $true }).Count
-$failedCount = ($results | Where-Object { $_.Success -eq $false -and $_.Skipped -eq $false }).Count
+Write-Host "`n=== Summary ===" -ForegroundColor Cyan
 
-Write-Host "  Successful: $successCount" -ForegroundColor Green
-Write-Host "  Skipped: $skippedCount" -ForegroundColor Yellow
-Write-Host "  Failed: $failedCount" -ForegroundColor $(if ($failedCount -gt 0) { 'Red' } else { 'Gray' })
+# Download Statistics
+Write-Host "`n--- Download Statistics ---" -ForegroundColor Yellow
+$downloadSuccessCount = ($results | Where-Object { $_.Success -eq $true }).Count
+$downloadSkippedCount = ($results | Where-Object { $_.Skipped -eq $true }).Count
+$downloadFailedCount = ($results | Where-Object { $_.Success -eq $false -and $_.Skipped -eq $false }).Count
 
-# Display detailed results
-Write-Host "`n--- Detailed Results ---" -ForegroundColor Yellow
-foreach ($result in $results) {
-    $status = if ($result.Success) { "✓" } elseif ($result.Skipped) { "⊙" } else { "✗" }
-    $color = if ($result.Success) { "Green" } elseif ($result.Skipped) { "Yellow" } else { "Red" }
-    
-    Write-Host "  $status $($result.AppName) v$($result.Version)" -ForegroundColor $color
-    if ($result.ExtractedFiles -and $result.ExtractedFiles.Count -gt 0) {
-        Write-Host "    Extracted: $($result.ExtractedFiles.Count) file(s)" -ForegroundColor Gray
+Write-Host "  Downloaded: $downloadSuccessCount" -ForegroundColor Green
+Write-Host "  Skipped (file exists): $downloadSkippedCount" -ForegroundColor Yellow
+Write-Host "  Failed: $downloadFailedCount" -ForegroundColor $(if ($downloadFailedCount -gt 0) { 'Red' } else { 'Gray' })
+
+# DeployR Statistics
+Write-Host "`n--- DeployR Statistics ---" -ForegroundColor Yellow
+Write-Host "  Created: $($deployRStats.Created.Count)" -ForegroundColor Green
+Write-Host "  Updated: $($deployRStats.Updated.Count)" -ForegroundColor Cyan
+Write-Host "  Skipped (up to date): $($deployRStats.Skipped.Count)" -ForegroundColor Yellow
+Write-Host "  Failed: $($deployRStats.Failed.Count)" -ForegroundColor $(if ($deployRStats.Failed.Count -gt 0) { 'Red' } else { 'Gray' })
+
+# Detailed DeployR Actions
+if ($deployRStats.Created.Count -gt 0) {
+    Write-Host "`n--- Created in DeployR ---" -ForegroundColor Green
+    foreach ($item in $deployRStats.Created) {
+        Write-Host "  ✓ $($item.AppName) v$($item.Version)" -ForegroundColor Green
+    }
+}
+
+if ($deployRStats.Updated.Count -gt 0) {
+    Write-Host "`n--- Updated in DeployR ---" -ForegroundColor Cyan
+    foreach ($item in $deployRStats.Updated) {
+        Write-Host "  ↑ $($item.AppName) v$($item.PreviousVersion) → v$($item.Version)" -ForegroundColor Cyan
+    }
+}
+
+if ($deployRStats.Skipped.Count -gt 0) {
+    Write-Host "`n--- Skipped (Already Up to Date) ---" -ForegroundColor Yellow
+    foreach ($item in $deployRStats.Skipped) {
+        Write-Host "  ⊙ $($item.AppName) v$($item.Version)" -ForegroundColor Yellow
+    }
+}
+
+if ($deployRStats.Failed.Count -gt 0) {
+    Write-Host "`n--- Failed Operations ---" -ForegroundColor Red
+    foreach ($item in $deployRStats.Failed) {
+        Write-Host "  ✗ $($item.AppName) v$($item.Version) - $($item.Action)" -ForegroundColor Red
+        if ($item.Error) {
+            Write-Host "    Error: $($item.Error)" -ForegroundColor DarkRed
+        }
+    }
+}
+
+# Download Details (if any downloads occurred)
+if ($results.Count -gt 0) {
+    Write-Host "`n--- Download Details ---" -ForegroundColor Yellow
+    foreach ($result in $results) {
+        $status = if ($result.Success) { "✓" } elseif ($result.Skipped) { "⊙" } else { "✗" }
+        $color = if ($result.Success) { "Green" } elseif ($result.Skipped) { "Yellow" } else { "Red" }
+        
+        Write-Host "  $status $($result.AppName) v$($result.Version)" -ForegroundColor $color
+        if ($result.ExtractedFiles -and $result.ExtractedFiles.Count -gt 0) {
+            Write-Host "    Extracted: $($result.ExtractedFiles.Count) file(s)" -ForegroundColor Gray
+        }
     }
 }
 
