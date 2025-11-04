@@ -224,46 +224,30 @@ function Get-VLCLatestUrl {
     )
     
     try {
-        $vlcPage = Invoke-WebRequest -Uri "https://www.videolan.org/vlc/" -UseBasicParsing -ErrorAction Stop
+        # Get version from VLC's last release directory
+        $lastUrl = "https://get.videolan.org/vlc/last/"
+        $page = Invoke-WebRequest -Uri $lastUrl -UseBasicParsing -ErrorAction Stop
         
-        if ($Architecture -eq 'x64') {
-            $downloadLink = $vlcPage.Links | Where-Object { $_.href -match 'vlc-([\d.]+)(-\d+)?-win64\.exe$' } | Select-Object -First 1
+        # Extract version from tar.xz filename (e.g., vlc-3.0.21.tar.xz)
+        if ($page.Content -match 'vlc-([\d.]+)\.tar\.xz') {
+            $version = $matches[1]
         }
         else {
-            $downloadLink = $vlcPage.Links | Where-Object { $_.href -match 'vlc-([\d.]+)(-\d+)?-win32\.exe$' } | Select-Object -First 1
+            throw "Could not determine VLC version"
         }
         
-        if ($downloadLink) {
-            $url = $downloadLink.href
-            # Handle protocol-relative URLs (starting with //)
-            if ($url -match '^//') {
-                $url = "https:$url"
-            }
-            elseif ($url -notmatch '^https?://') {
-                $url = "https://www.videolan.org$url"
-            }
-            
-            # Extract version from URL
-            if ($url -match 'vlc-([\d.]+)') {
-                $version = $matches[1]
-            }
-            else {
-                $version = "Unknown"
-            }
-            
-            Write-Verbose "VLC URL: $url"
-            Write-Verbose "VLC Version: $version"
-            
-            return [PSCustomObject]@{
-                AppName = "VLC Media Player"
-                Version = $version
-                URL = $url
-                SilentInstallCommand = "FILENAME /S"
-            }
-        }
-        else {
-            Write-Error "Could not find VLC download link"
-            return $null
+        # Construct download URL using version number (will redirect to mirror)
+        $archPath = if ($Architecture -eq 'x64') { 'win64' } else { 'win32' }
+        $url = "https://get.videolan.org/vlc/$version/$archPath/vlc-$version-$archPath.exe"
+        
+        Write-Verbose "VLC URL: $url"
+        Write-Verbose "VLC Version: $version"
+        
+        return [PSCustomObject]@{
+            AppName = "VLC Media Player"
+            Version = $version
+            URL = $url
+            SilentInstallCommand = "FILENAME /L=1033 /S"
         }
     }
     catch {
