@@ -124,7 +124,7 @@ function Get-FirefoxLatestUrl {
             AppName = "Firefox"
             Version = $version
             URL = $downloadPage
-            SilentInstallCommand = "msiexec.exe /i `"Firefox Setup.msi`" /qn"
+            SilentInstallCommand = "msiexec.exe /i FILENAME /qn"
         }
     }
     catch {
@@ -162,7 +162,7 @@ function Get-ThunderbirdLatestUrl {
             AppName = "Thunderbird"
             Version = $version
             URL = $downloadPage
-            SilentInstallCommand = "msiexec.exe /i `"Thunderbird Setup.msi`" /qn"
+            SilentInstallCommand = "msiexec.exe /i FILENAME /qn"
         }
     }
     catch {
@@ -196,7 +196,7 @@ function Get-NotepadPlusPlusLatestUrl {
                 AppName = "Notepad++"
                 Version = $version
                 URL = $installer.browser_download_url
-                SilentInstallCommand = "`"$($installer.name)`" /S"
+                SilentInstallCommand = "FILENAME /S"
             }
         }
         else {
@@ -253,7 +253,7 @@ function Get-VLCLatestUrl {
                 AppName = "VLC Media Player"
                 Version = $version
                 URL = $url
-                SilentInstallCommand = "`"vlc-$version-win64.exe`" /S"
+                SilentInstallCommand = "FILENAME /S"
             }
         }
         else {
@@ -298,7 +298,7 @@ function Get-7ZipLatestUrl {
                 AppName = "7-Zip"
                 Version = $version
                 URL = $installer.browser_download_url
-                SilentInstallCommand = "msiexec.exe /i `"$($installer.name)`" /quiet /norestart"
+                SilentInstallCommand = "msiexec.exe /i FILENAME /quiet /norestart"
             }
         }
         else {
@@ -333,7 +333,7 @@ function Get-GreenshotLatestUrl {
                 AppName = "Greenshot"
                 Version = $version
                 URL = $installer.browser_download_url
-                SilentInstallCommand = "`"$($installer.name)`" /VERYSILENT /NORESTART"
+                SilentInstallCommand = "FILENAME /VERYSILENT /NORESTART"
             }
         }
         else {
@@ -380,7 +380,7 @@ function Get-PaintDotNetLatestUrl {
                 AppName = "Paint.NET"
                 Version = $version
                 URL = $url
-                SilentInstallCommand = "`"paint.net.$version.install.x64.exe`" /auto DESKTOPSHORTCUT=0"
+                SilentInstallCommand = "FILENAME /auto DESKTOPSHORTCUT=0"
             }
         }
         else {
@@ -400,7 +400,7 @@ function Get-PaintDotNetLatestUrl {
                     AppName = "Paint.NET"
                     Version = $version
                     URL = $installer.browser_download_url
-                    SilentInstallCommand = "`"paint.net.$version.install.x64.exe`" /auto DESKTOPSHORTCUT=0"
+                    SilentInstallCommand = "FILENAME /auto DESKTOPSHORTCUT=0"
                 }
             }
             else {
@@ -445,7 +445,7 @@ function Get-OBSStudioLatestUrl {
                 AppName = "OBS Studio"
                 Version = $version
                 URL = $installer.browser_download_url
-                SilentInstallCommand = "`"$($installer.name)`" /S"
+                SilentInstallCommand = "FILENAME /S"
             }
         }
         else {
@@ -494,7 +494,7 @@ function Get-VSCodeLatestUrl {
             AppName = "VS Code"
             Version = $version
             URL = $downloadUrl
-            SilentInstallCommand = "VSCodeSetup.exe /VERYSILENT /NORESTART /MERGETASKS=!runcode"
+            SilentInstallCommand = "FILENAME /VERYSILENT /NORESTART /MERGETASKS=!runcode"
         }
     }
     catch {
@@ -660,13 +660,13 @@ function Save-AppInstaller {
                     }
                 }
                 
-                # Replace the filename inside quotes (keep the quotes from original)
-                # Match: "anything.exe" or "anything.msi" and replace just the content inside quotes
-                $installCmd = $installCmd -replace '(?<=")[^"]*\.(exe|msi)(?=")', $actualInstallerFileName
-                
-                # Also handle unquoted patterns at start, but NOT system tools
-                if ($installCmd -notmatch '^\s*(msiexec|cmd|powershell|cscript|wscript)\.exe') {
-                    $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', """$actualInstallerFileName"""
+                # Build dynamic install command if one was provided
+                $installCmd = ""
+                if ($PSCmdlet.ParameterSetName -eq 'Object' -and $InputObject.SilentInstallCommand) {
+                    $installCmd = $InputObject.SilentInstallCommand
+                    
+                    # Replace the simple FILENAME placeholder with quoted actual installer filename
+                    $installCmd = $installCmd -replace 'FILENAME', "`"$actualInstallerFileName`""
                 }
             }
             
@@ -756,14 +756,8 @@ function Save-AppInstaller {
                 if ($PSCmdlet.ParameterSetName -eq 'Object' -and $InputObject.SilentInstallCommand) {
                     $installCmd = $InputObject.SilentInstallCommand
                     
-                    # Replace the filename inside quotes (keep the quotes from original)
-                    # Match: "anything.exe" or "anything.msi" and replace just the content inside quotes
-                    $installCmd = $installCmd -replace '(?<=")[^"]*\.(exe|msi)(?=")', $actualInstallerFileName
-                    
-                    # Also handle unquoted patterns at start, but NOT system tools
-                    if ($installCmd -notmatch '^\s*(msiexec|cmd|powershell|cscript|wscript)\.exe') {
-                        $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', """$actualInstallerFileName"""
-                    }
+                    # Replace the simple FILENAME placeholder with quoted actual installer filename
+                    $installCmd = $installCmd -replace 'FILENAME', "`"$actualInstallerFileName`""
                 }
 
                 return [PSCustomObject]@{
