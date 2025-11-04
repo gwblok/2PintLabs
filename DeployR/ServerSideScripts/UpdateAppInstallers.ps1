@@ -647,18 +647,25 @@ function Save-AppInstaller {
             $installCmd = ""
             if ($PSCmdlet.ParameterSetName -eq 'Object' -and $InputObject.SilentInstallCommand) {
                 $installCmd = $InputObject.SilentInstallCommand
-                $actualFileName = [System.IO.Path]::GetFileName($destPath)
                 
-                # Replace quoted installer name patterns in the command (most common case)
-                # This handles: "Firefox Setup.msi" or "installer.exe"
-                # Use a callback to replace only the filename part, keeping the quotes
-                $installCmd = $installCmd -replace '"([^"]*\.(exe|msi))"', "`"$actualFileName`""
+                # Get the actual installer filename from the destination path
+                $actualInstallerFileName = [System.IO.Path]::GetFileName($destPath)
                 
-                # Also handle unquoted patterns, but NOT at the start if it looks like a system tool
-                # Avoid replacing: msiexec.exe, cmd.exe, powershell.exe, etc.
-                # Only replace if it's clearly an installer filename (not a system command)
+                # If it's a directory (for extracted ZIPs), find the actual installer
+                $destDir = [System.IO.Path]::GetDirectoryName($destPath)
+                if (Test-Path $destDir) {
+                    $installerFile = Get-ChildItem -Path $destDir | Where-Object { -not $_.PSIsContainer -and $_.Name -match '\.(exe|msi)$' } | Select-Object -First 1
+                    if ($installerFile) {
+                        $actualInstallerFileName = $installerFile.Name
+                    }
+                }
+                
+                # Replace any generic filename patterns with the actual installer filename
+                $installCmd = $installCmd -replace '"[^"]*\.(exe|msi)"', "`"$actualInstallerFileName`""
+                
+                # Also handle unquoted patterns at start, but NOT system tools
                 if ($installCmd -notmatch '^\s*(msiexec|cmd|powershell|cscript|wscript)\.exe') {
-                    $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', "`"$actualFileName`""
+                    $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', "`"$actualInstallerFileName`""
                 }
             }
             
@@ -715,6 +722,8 @@ function Save-AppInstaller {
 
                 # Extract ZIP file if downloaded
                 $extractedFiles = @()
+                $actualInstallerFileName = [System.IO.Path]::GetFileName($destPath)
+                
                 if ([System.IO.Path]::GetExtension($destPath) -eq '.zip') {
                     Write-Verbose "ZIP file detected, extracting contents..."
                     try {
@@ -723,7 +732,14 @@ function Save-AppInstaller {
                         Write-Verbose "Extracted ZIP contents to: $extractPath"
                         
                         # Get list of extracted files
-                        $extractedFiles = Get-ChildItem -Path $extractPath -File | Where-Object { $_.FullName -ne $destPath } | Select-Object -ExpandProperty FullName
+                        $extractedFiles = Get-ChildItem -Path $extractPath | Where-Object { -not $_.PSIsContainer -and $_.FullName -ne $destPath } | Select-Object -ExpandProperty FullName
+                        
+                        # Find the actual installer file (.exe or .msi) for the install command
+                        $installerFile = Get-ChildItem -Path $extractPath | Where-Object { -not $_.PSIsContainer -and $_.Name -match '\.(exe|msi)$' } | Select-Object -First 1
+                        if ($installerFile) {
+                            $actualInstallerFileName = $installerFile.Name
+                            Write-Verbose "Found installer file: $actualInstallerFileName"
+                        }
                         
                         # Remove the ZIP file
                         Remove-Item -Path $destPath -Force -ErrorAction Stop
@@ -739,27 +755,13 @@ function Save-AppInstaller {
                 if ($PSCmdlet.ParameterSetName -eq 'Object' -and $InputObject.SilentInstallCommand) {
                     $installCmd = $InputObject.SilentInstallCommand
                     
-                    # Replace any generic filename patterns with actual filename
-                    $actualFileName = [System.IO.Path]::GetFileName($destPath)
+                    # Replace any generic filename patterns with the actual installer filename
+                    # This handles both quoted and unquoted patterns
+                    $installCmd = $installCmd -replace '"[^"]*\.(exe|msi)"', "`"$actualInstallerFileName`""
                     
-                    # If extracted files exist, use the first .exe or .msi file found
-                    if ($extractedFiles -and $extractedFiles.Count -gt 0) {
-                        $installer = $extractedFiles | Where-Object { $_ -match '\.(exe|msi)$' } | Select-Object -First 1
-                        if ($installer) {
-                            $actualFileName = [System.IO.Path]::GetFileName($installer)
-                        }
-                    }
-                    
-                    # Replace quoted installer name patterns in the command (most common case)
-                    # This handles: "Firefox Setup.msi" or "installer.exe"
-                    # Use a callback to replace only the filename part, keeping the quotes
-                    $installCmd = $installCmd -replace '"([^"]*\.(exe|msi))"', "`"$actualFileName`""
-                    
-                    # Also handle unquoted patterns, but NOT at the start if it looks like a system tool
-                    # Avoid replacing: msiexec.exe, cmd.exe, powershell.exe, etc.
-                    # Only replace if it's clearly an installer filename (not a system command)
+                    # Also handle unquoted patterns at start, but NOT system tools
                     if ($installCmd -notmatch '^\s*(msiexec|cmd|powershell|cscript|wscript)\.exe') {
-                        $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', "`"$actualFileName`""
+                        $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', "`"$actualInstallerFileName`""
                     }
                 }
 
