@@ -651,7 +651,8 @@ function Save-AppInstaller {
                 
                 # Replace quoted installer name patterns in the command (most common case)
                 # This handles: "Firefox Setup.msi" or "installer.exe"
-                $installCmd = $installCmd -replace '"[^"]*\.(exe|msi)"', "`"$actualFileName`""
+                # Use a callback to replace only the filename part, keeping the quotes
+                $installCmd = $installCmd -replace '"([^"]*\.(exe|msi))"', "`"$actualFileName`""
                 
                 # Also handle unquoted patterns, but NOT at the start if it looks like a system tool
                 # Avoid replacing: msiexec.exe, cmd.exe, powershell.exe, etc.
@@ -751,7 +752,8 @@ function Save-AppInstaller {
                     
                     # Replace quoted installer name patterns in the command (most common case)
                     # This handles: "Firefox Setup.msi" or "installer.exe"
-                    $installCmd = $installCmd -replace '"[^"]*\.(exe|msi)"', "`"$actualFileName`""
+                    # Use a callback to replace only the filename part, keeping the quotes
+                    $installCmd = $installCmd -replace '"([^"]*\.(exe|msi))"', "`"$actualFileName`""
                     
                     # Also handle unquoted patterns, but NOT at the start if it looks like a system tool
                     # Avoid replacing: msiexec.exe, cmd.exe, powershell.exe, etc.
