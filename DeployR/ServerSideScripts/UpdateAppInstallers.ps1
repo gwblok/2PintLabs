@@ -649,10 +649,16 @@ function Save-AppInstaller {
                 $installCmd = $InputObject.SilentInstallCommand
                 $actualFileName = [System.IO.Path]::GetFileName($destPath)
                 
-                # Replace quoted installer name patterns in the command
+                # Replace quoted installer name patterns in the command (most common case)
+                # This handles: "Firefox Setup.msi" or "installer.exe"
                 $installCmd = $installCmd -replace '"[^"]*\.(exe|msi)"', "`"$actualFileName`""
-                # Also handle unquoted patterns at the start of the command
-                $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', "`"$actualFileName`""
+                
+                # Also handle unquoted patterns, but NOT at the start if it looks like a system tool
+                # Avoid replacing: msiexec.exe, cmd.exe, powershell.exe, etc.
+                # Only replace if it's clearly an installer filename (not a system command)
+                if ($installCmd -notmatch '^\s*(msiexec|cmd|powershell|cscript|wscript)\.exe') {
+                    $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', "`"$actualFileName`""
+                }
             }
             
             return [PSCustomObject]@{
@@ -743,10 +749,16 @@ function Save-AppInstaller {
                         }
                     }
                     
-                    # Replace quoted installer name patterns in the command
+                    # Replace quoted installer name patterns in the command (most common case)
+                    # This handles: "Firefox Setup.msi" or "installer.exe"
                     $installCmd = $installCmd -replace '"[^"]*\.(exe|msi)"', "`"$actualFileName`""
-                    # Also handle unquoted patterns at the start of the command
-                    $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', "`"$actualFileName`""
+                    
+                    # Also handle unquoted patterns, but NOT at the start if it looks like a system tool
+                    # Avoid replacing: msiexec.exe, cmd.exe, powershell.exe, etc.
+                    # Only replace if it's clearly an installer filename (not a system command)
+                    if ($installCmd -notmatch '^\s*(msiexec|cmd|powershell|cscript|wscript)\.exe') {
+                        $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', "`"$actualFileName`""
+                    }
                 }
 
                 return [PSCustomObject]@{
