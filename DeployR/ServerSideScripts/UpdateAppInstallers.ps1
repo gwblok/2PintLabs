@@ -236,9 +236,9 @@ function Get-VLCLatestUrl {
             throw "Could not determine VLC version"
         }
         
-        # Construct download URL using version number (will redirect to mirror)
+        # Construct download URL using version number (direct from videolan.org, no mirror redirect)
         $archPath = if ($Architecture -eq 'x64') { 'win64' } else { 'win32' }
-        $url = "https://get.videolan.org/vlc/$version/$archPath/vlc-$version-$archPath.exe"
+        $url = "https://download.videolan.org/vlc/$version/$archPath/vlc-$version-$archPath.exe"
         
         Write-Verbose "VLC URL: $url"
         Write-Verbose "VLC Version: $version"
