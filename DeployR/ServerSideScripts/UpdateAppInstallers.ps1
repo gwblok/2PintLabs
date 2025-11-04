@@ -580,32 +580,50 @@ function Save-AppInstaller {
 
         function Get-FileNameFromUrl {
             param([Uri]$ResolvedUrl, [string]$FallbackName)
-            # Try to get filename from URL path
-            $name = [System.IO.Path]::GetFileName($ResolvedUrl.AbsolutePath)
-            if ([string]::IsNullOrWhiteSpace($name) -or $name -notmatch '\.') {
-                # Try HEAD for Content-Disposition filename
-                try {
-                    $resp = Invoke-WebRequest -Uri $ResolvedUrl -Method Head -MaximumRedirection 0 -ErrorAction Stop
-                    # If server responds 200 with content-disposition (rare on HEAD)
-                    $cd = $resp.Headers['Content-Disposition']
-                    if ($cd -and $cd -match 'filename="?([^";]+)"?') {
-                        return $Matches[1]
-                    }
-                } catch {
-                    # If redirect, try Location header to get the last segment
-                    try {
-                        $loc = $_.Exception.Response.Headers['Location']
-                        if ($loc) {
-                            $redir = [Uri]::new($ResolvedUrl, $loc)
-                            $redirName = [System.IO.Path]::GetFileName($redir.AbsolutePath)
-                            if ($redirName) { return $redirName }
-                        }
-                    } catch { }
+            
+            # First, try to follow redirects to get the final filename
+            try {
+                $resp = Invoke-WebRequest -Uri $ResolvedUrl -Method Head -MaximumRedirection 0 -ErrorAction Stop
+                # If server responds 200, check content-disposition
+                $cd = $resp.Headers['Content-Disposition']
+                if ($cd -and $cd -match 'filename="?([^";]+)"?') {
+                    $name = $Matches[1]
+                    # Decode URL encoding if present
+                    return [System.Web.HttpUtility]::UrlDecode($name)
                 }
-                # Fallback
-                return "$FallbackName.exe"
+                
+                # Get filename from the current URL
+                $name = [System.IO.Path]::GetFileName($ResolvedUrl.AbsolutePath)
+                if ($name -and $name -match '\.(exe|msi|zip)$') {
+                    return [System.Web.HttpUtility]::UrlDecode($name)
+                }
+            } catch {
+                # If redirect (302, 301), follow the Location header
+                if ($_.Exception.Response) {
+                    $loc = $_.Exception.Response.Headers['Location']
+                    if ($loc) {
+                        try {
+                            $redir = if ($loc -match '^https?://') { [Uri]$loc } else { [Uri]::new($ResolvedUrl, $loc) }
+                            $redirName = [System.IO.Path]::GetFileName($redir.AbsolutePath)
+                            if ($redirName -and $redirName -match '\.(exe|msi|zip)$') {
+                                return [System.Web.HttpUtility]::UrlDecode($redirName)
+                            }
+                        } catch { }
+                    }
+                }
             }
-            return $name
+            
+            # Last resort: try to get filename from URL path
+            $name = [System.IO.Path]::GetFileName($ResolvedUrl.AbsolutePath)
+            if ($name -and $name -match '\.(exe|msi|zip)$') {
+                return [System.Web.HttpUtility]::UrlDecode($name)
+            }
+            
+            # Fallback - but preserve extension if we can detect it from URL
+            if ($ResolvedUrl.AbsoluteUri -match '\.(msi|exe|zip)($|\?)') {
+                return "$FallbackName.$($Matches[1])"
+            }
+            return "$FallbackName.exe"
         }
     }
 
