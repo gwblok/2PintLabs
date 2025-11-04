@@ -661,11 +661,12 @@ function Save-AppInstaller {
                 }
                 
                 # Replace any generic filename patterns with the actual installer filename
-                $installCmd = $installCmd -replace '"[^"]*\.(exe|msi)"', "`"$actualInstallerFileName`""
+                # Pattern includes quotes, so replacement should too (but just once!)
+                $installCmd = $installCmd -replace '"[^"]*\.(exe|msi)"', """$actualInstallerFileName"""
                 
                 # Also handle unquoted patterns at start, but NOT system tools
                 if ($installCmd -notmatch '^\s*(msiexec|cmd|powershell|cscript|wscript)\.exe') {
-                    $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', "`"$actualInstallerFileName`""
+                    $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', """$actualInstallerFileName"""
                 }
             }
             
@@ -756,12 +757,12 @@ function Save-AppInstaller {
                     $installCmd = $InputObject.SilentInstallCommand
                     
                     # Replace any generic filename patterns with the actual installer filename
-                    # This handles both quoted and unquoted patterns
-                    $installCmd = $installCmd -replace '"[^"]*\.(exe|msi)"', "`"$actualInstallerFileName`""
+                    # Pattern includes quotes, so replacement should too (but just once!)
+                    $installCmd = $installCmd -replace '"[^"]*\.(exe|msi)"', """$actualInstallerFileName"""
                     
                     # Also handle unquoted patterns at start, but NOT system tools
                     if ($installCmd -notmatch '^\s*(msiexec|cmd|powershell|cscript|wscript)\.exe') {
-                        $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', "`"$actualInstallerFileName`""
+                        $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', """$actualInstallerFileName"""
                     }
                 }
 
