@@ -649,6 +649,7 @@ function Save-AppInstaller {
                 Destination    = $destPath
                 Skipped        = $true
                 Reason         = "File exists"
+                ActualInstallCommand = ""
             }
         }
 
@@ -713,6 +714,28 @@ function Save-AppInstaller {
                     }
                 }
 
+                # Build dynamic install command if one was provided
+                $installCmd = ""
+                if ($PSCmdlet.ParameterSetName -eq 'Object' -and $InputObject.SilentInstallCommand) {
+                    $installCmd = $InputObject.SilentInstallCommand
+                    
+                    # Replace any generic filename patterns with actual filename
+                    $actualFileName = [System.IO.Path]::GetFileName($destPath)
+                    
+                    # If extracted files exist, use the first .exe or .msi file found
+                    if ($extractedFiles -and $extractedFiles.Count -gt 0) {
+                        $installer = $extractedFiles | Where-Object { $_ -match '\.(exe|msi)$' } | Select-Object -First 1
+                        if ($installer) {
+                            $actualFileName = [System.IO.Path]::GetFileName($installer)
+                        }
+                    }
+                    
+                    # Replace quoted installer name patterns in the command
+                    $installCmd = $installCmd -replace '"[^"]*\.(exe|msi)"', "`"$actualFileName`""
+                    # Also handle unquoted patterns at the start of the command
+                    $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', "`"$actualFileName`""
+                }
+
                 return [PSCustomObject]@{
                     AppName        = $App
                     Version        = $Ver
@@ -721,6 +744,7 @@ function Save-AppInstaller {
                     ExtractedFiles = $extractedFiles
                     Skipped        = $false
                     Success        = $true
+                    ActualInstallCommand = $installCmd
                 }
             }
             catch {
@@ -734,6 +758,7 @@ function Save-AppInstaller {
                     Skipped        = $false
                     Success        = $false
                     Error          = $_.Exception.Message
+                    ActualInstallCommand = ""
                 }
             }
         }
@@ -824,7 +849,10 @@ Foreach ($app in $apps) {
             if ($result.Success) {
                 Write-Host " Updating DeployR Application for $($app.AppName) to version $($app.Version)" -ForegroundColor Cyan
                 try {
-                    Update-DeployRApp -AppName $app.AppName -AppVersion $app.Version -AppSourceFolder ($result.Destination | Split-Path) -InstallationCommandLine "$($app.SilentInstallCommand)" -AllApps $AllApps
+                    # Use the actual install command from the download result if available
+                    $installCommand = if ($result.ActualInstallCommand) { $result.ActualInstallCommand } else { $app.SilentInstallCommand }
+                    Write-Host "    Install Command: $installCommand" -ForegroundColor Gray
+                    Update-DeployRApp -AppName $app.AppName -AppVersion $app.Version -AppSourceFolder ($result.Destination | Split-Path) -InstallationCommandLine "$installCommand" -AllApps $AllApps
                     $deployRStats.Updated += [PSCustomObject]@{
                         AppName = $app.AppName
                         Version = $app.Version
@@ -858,7 +886,10 @@ Foreach ($app in $apps) {
         if ($result.Success) {
             Write-Host " Creating New DeployR Application for $($app.AppName) version $($app.Version)" -ForegroundColor Cyan
             try {
-                $NewApp = New-DeployRApp -AppName $app.AppName -AppSourceFolder ($result.Destination | Split-Path) -AppDescription "$($app.Version)" -InstallationCommandLine "$($app.SilentInstallCommand)"
+                # Use the actual install command from the download result if available
+                $installCommand = if ($result.ActualInstallCommand) { $result.ActualInstallCommand } else { $app.SilentInstallCommand }
+                Write-Host "    Install Command: $installCommand" -ForegroundColor Gray
+                $NewApp = New-DeployRApp -AppName $app.AppName -AppSourceFolder ($result.Destination | Split-Path) -AppDescription "$($app.Version)" -InstallationCommandLine "$installCommand"
                 $deployRStats.Created += [PSCustomObject]@{
                     AppName = $app.AppName
                     Version = $app.Version

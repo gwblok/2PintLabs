@@ -1,3 +1,94 @@
+<#
+.SYNOPSIS
+    Backs up DeployR configuration items to multiple locations based on server identity.
+
+.DESCRIPTION
+    This script performs automated backups of DeployR content items, step definitions, and task sequences
+    to local storage, GitHub repository, and OneDrive based on the server it's running on.
+
+.BACKUP TYPES AND RULES
+
+    1. CONTENT ITEMS
+       What's Backed Up:
+       - Custom content items (excludes built-in items with ID starting with '00000000-')
+       - Only "Other" purpose content items (contentItemPurpose -match "Other")
+       - Production content only (versions.status -eq "Active")
+       
+       Exclusion Rules:
+       - Items with "Test" in the name
+       - "DeployR client" items
+       - In Development items (only Active/Production items are backed up)
+       
+    2. STEP DEFINITIONS
+       What's Backed Up:
+       - All custom step definitions (excludes built-in steps with ID starting with '0000*')
+       - Includes all versions of each step definition
+       - Associated content items referenced by the step definition options
+       
+       Exclusion Rules (GitHub only):
+       - Step definitions with "Delete" in the name are excluded from GitHub sync
+       
+    3. TASK SEQUENCES
+       What's Backed Up:
+       - All custom task sequences (excludes built-in sequences with ID starting with '0000*')
+       - GitHub Module task sequences: Only sequences with "GitModule" or "GitHub" in the name
+       - Includes all versions of each task sequence
+       
+       Exclusion Rules:
+       - Built-in task sequences (ID starts with '0000*')
+       - For GitHub backup: Only GitModule/GitHub named sequences
+
+.BACKUP DESTINATIONS
+
+    LOCAL BACKUP (Always Enabled):
+    - Location: D:\Backups\[DateStamp]
+    - Structure:
+      - ContentItems\[ItemName-ID]
+      - StepDefinitions\[StepName-ID]
+      - TaskSequences\[TSName-ID]
+    - Purpose: Complete backup of all custom DeployR items for disaster recovery
+    
+    ONEDRIVE BACKUP (Server Specific):
+    - Enabled When: Running on 214-DEPLOYR.2p.garytown.com
+    - Location: C:\Users\gary.blok\OneDrive - garytown\DeployR-Sync\[ServerFQDN]
+    - Purpose: Cloud backup and cross-machine synchronization
+    - Behavior: Copies the latest backup folder with timestamp prefix
+    
+    GITHUB BACKUP (Server Specific):
+    - Enabled When: Running on:
+      - 214-DEPLOYR.2p.garytown.com (On-Premises)
+      - dr.2PintLabs.com (Azure)
+    - Location: D:\GitHub\2PintLabs\DeployR\
+      - CustomSteps\[StepName-ID]
+      - CustomSteps\ReferencedContent\[ContentName-ID]
+      - CustomTaskSequenceModules\[TSName-ID]
+    - Purpose: Version control and sharing custom steps/modules
+    - Behavior: Overwrites existing folders (always keeps latest version)
+    - Controlled by flags:
+      - $EnableBackup2GitHub (master switch)
+      - $EnableBackup2GitHubTS (task sequence module export)
+      - $EnableBackup2GitHubStepDefs (step definition export)
+
+.SERVER BEHAVIOR
+    214-DEPLOYR.2p.garytown.com (On-Premises):
+    - Full backup to all three destinations
+    - Includes step definitions, task sequences, and content items to GitHub
+    
+    dr.2PintLabs.com (Azure):
+    - Local backup always enabled
+    - GitHub backup for task sequences only
+    - No OneDrive sync
+    
+    Other Servers:
+    - Local backup only (no GitHub or OneDrive sync)
+
+.NOTES
+    Author: Gary Blok
+    Purpose: Automated DeployR backup and synchronization
+    Requirements: DeployR.Utility PowerShell module
+    Backup Frequency: Run via scheduled task or manual execution
+#>
+
 $BackupLocation = "D:\Backups"
 $TempLocation = "$BackupLocation\Temp"
 $DateStamp = (Get-Date).ToString("yyyyMMdd-HHmmss")
@@ -126,7 +217,7 @@ if ($EnableBackup2GitHub -and $GitHubCustomSteps -and $GitHubCustomStepsReferenc
         }
         #Get all task sequences except the built-in ones
         write-host "Getting all task sequence modules..." -ForegroundColor Yellow
-        $TaskSequences = (Get-DeployRMetadata -Type TaskSequence | Where-Object {$_.id -notlike '0000*' -and ($_.name -match "Module" -or $_.name -match "GitHub")}) 
+        $TaskSequences = (Get-DeployRMetadata -Type TaskSequence | Where-Object {$_.id -notlike '0000*' -and ($_.name -match "GitModule" -or $_.name -match "GitHub")}) 
         
         foreach ($ts in $TaskSequences) {
             write-host "Backing up task sequence: $($ts.name) | $($ts.id)" -ForegroundColor Cyan
