@@ -642,6 +642,19 @@ function Save-AppInstaller {
 
         if ((Test-Path $destPath) -and -not $Force) {
             Write-Verbose "File already exists, skipping: $destPath"
+            
+            # Build install command even for skipped files
+            $installCmd = ""
+            if ($PSCmdlet.ParameterSetName -eq 'Object' -and $InputObject.SilentInstallCommand) {
+                $installCmd = $InputObject.SilentInstallCommand
+                $actualFileName = [System.IO.Path]::GetFileName($destPath)
+                
+                # Replace quoted installer name patterns in the command
+                $installCmd = $installCmd -replace '"[^"]*\.(exe|msi)"', "`"$actualFileName`""
+                # Also handle unquoted patterns at the start of the command
+                $installCmd = $installCmd -replace '^[^\s]+\.(exe|msi)', "`"$actualFileName`""
+            }
+            
             return [PSCustomObject]@{
                 AppName        = $App
                 Version        = $Ver
@@ -649,7 +662,7 @@ function Save-AppInstaller {
                 Destination    = $destPath
                 Skipped        = $true
                 Reason         = "File exists"
-                ActualInstallCommand = ""
+                ActualInstallCommand = $installCmd
             }
         }
 
@@ -846,7 +859,8 @@ Foreach ($app in $apps) {
             Write-Host "  ✗ $($app.AppName) exists in DeployR but is outdated. Will proceed to upload after download." -ForegroundColor Red
             $result = Save-AppInstaller -RootPath $RootPath -InputObject $app -Verbose
             $results += $result
-            if ($result.Success) {
+            # Check if download succeeded OR file was already present (skipped)
+            if ($result.Success -or $result.Skipped) {
                 Write-Host " Updating DeployR Application for $($app.AppName) to version $($app.Version)" -ForegroundColor Cyan
                 try {
                     # Use the actual install command from the download result if available
@@ -883,7 +897,8 @@ Foreach ($app in $apps) {
         Write-Host "  ✗ $($app.AppName) does not exist in DeployR or is outdated. Will proceed to upload after download." -ForegroundColor Red
         $result = Save-AppInstaller -RootPath $RootPath -InputObject $app -Verbose
         $results += $result
-        if ($result.Success) {
+        # Check if download succeeded OR file was already present (skipped)
+        if ($result.Success -or $result.Skipped) {
             Write-Host " Creating New DeployR Application for $($app.AppName) version $($app.Version)" -ForegroundColor Cyan
             try {
                 # Use the actual install command from the download result if available
