@@ -787,8 +787,8 @@ $OBSStudio = Get-OBSStudioLatestUrl -Architecture $Architecture
 $VSCode = Get-VSCodeLatestUrl -Architecture $Architecture
 
 # Display retrieved application info
-#$apps = @($Firefox, $Thunderbird, $NotepadPlusPlus, $VLC, $SevenZip, $Greenshot, $PaintDotNet, $OBSStudio, $VSCode)
-$apps = @($SevenZip)
+$apps = @($Firefox, $Thunderbird, $NotepadPlusPlus, $VLC, $SevenZip, $Greenshot, $PaintDotNet, $OBSStudio, $VSCode)
+#$apps = @($SevenZip)
 foreach ($app in $apps) {
     if ($app) {
         Write-Host "  ✓ $($app.AppName) v$($app.Version)" -ForegroundColor Green
