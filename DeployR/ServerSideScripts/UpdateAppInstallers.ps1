@@ -25,7 +25,7 @@ if (Test-Path 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.
     Write-Host "DeployR.Utility module found."
     Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
     #Set-DeployRHost "http://localhost:7282"
-    Connect-DeployR #-Passcode (Get-Content "D:\DeployRPasscode.txt" -Raw) -ErrorAction Stop
+    Connect-DeployR -Passcode (Get-Content "D:\DeployRPasscode.txt" -Raw) -ErrorAction Stop
     $AllApps = Get-DeployRApplication
 
 } else {
