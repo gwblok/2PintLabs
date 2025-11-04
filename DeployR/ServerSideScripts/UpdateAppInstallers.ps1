@@ -581,34 +581,48 @@ function Save-AppInstaller {
         function Get-FileNameFromUrl {
             param([Uri]$ResolvedUrl, [string]$FallbackName)
             
+            # Helper function to decode URL-encoded strings
+            function Decode-UrlString {
+                param([string]$EncodedString)
+                return [System.Uri]::UnescapeDataString($EncodedString)
+            }
+            
             # First, try to follow redirects to get the final filename
             try {
                 $resp = Invoke-WebRequest -Uri $ResolvedUrl -Method Head -MaximumRedirection 0 -ErrorAction Stop
                 # If server responds 200, check content-disposition
                 $cd = $resp.Headers['Content-Disposition']
                 if ($cd -and $cd -match 'filename="?([^";]+)"?') {
-                    $name = $Matches[1]
-                    # Decode URL encoding if present
-                    return [System.Web.HttpUtility]::UrlDecode($name)
+                    $name = Decode-UrlString -EncodedString $Matches[1]
+                    Write-Verbose "Got filename from Content-Disposition: $name"
+                    return $name
                 }
                 
                 # Get filename from the current URL
                 $name = [System.IO.Path]::GetFileName($ResolvedUrl.AbsolutePath)
                 if ($name -and $name -match '\.(exe|msi|zip)$') {
-                    return [System.Web.HttpUtility]::UrlDecode($name)
+                    $decoded = Decode-UrlString -EncodedString $name
+                    Write-Verbose "Got filename from URL path: $decoded"
+                    return $decoded
                 }
             } catch {
                 # If redirect (302, 301), follow the Location header
                 if ($_.Exception.Response) {
-                    $loc = $_.Exception.Response.Headers['Location']
+                    # Try accessing Location as a property (returns System.Uri)
+                    $loc = $_.Exception.Response.Headers.Location
                     if ($loc) {
                         try {
-                            $redir = if ($loc -match '^https?://') { [Uri]$loc } else { [Uri]::new($ResolvedUrl, $loc) }
+                            # Location is already a Uri object
+                            $redir = $loc
                             $redirName = [System.IO.Path]::GetFileName($redir.AbsolutePath)
                             if ($redirName -and $redirName -match '\.(exe|msi|zip)$') {
-                                return [System.Web.HttpUtility]::UrlDecode($redirName)
+                                $decoded = Decode-UrlString -EncodedString $redirName
+                                Write-Verbose "Got filename from redirect Location header: $decoded"
+                                return $decoded
                             }
-                        } catch { }
+                        } catch { 
+                            Write-Verbose "Failed to process redirect: $($_.Exception.Message)"
+                        }
                     }
                 }
             }
@@ -616,13 +630,18 @@ function Save-AppInstaller {
             # Last resort: try to get filename from URL path
             $name = [System.IO.Path]::GetFileName($ResolvedUrl.AbsolutePath)
             if ($name -and $name -match '\.(exe|msi|zip)$') {
-                return [System.Web.HttpUtility]::UrlDecode($name)
+                $decoded = Decode-UrlString -EncodedString $name
+                Write-Verbose "Got filename from URL path (last resort): $decoded"
+                return $decoded
             }
             
             # Fallback - but preserve extension if we can detect it from URL
             if ($ResolvedUrl.AbsoluteUri -match '\.(msi|exe|zip)($|\?)') {
+                Write-Verbose "Using fallback with detected extension: .$($Matches[1])"
                 return "$FallbackName.$($Matches[1])"
             }
+            
+            Write-Verbose "Using fallback with .exe extension"
             return "$FallbackName.exe"
         }
     }
