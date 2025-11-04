@@ -1,4 +1,9 @@
 <#
+
+CURRENT ISSUES:
+GreenShot hangs and waits for user input
+VLC is saying it's a 16bit app, so check the download
+
 .SYNOPSIS
     Functions to retrieve the latest download URLs for popular applications.
 
@@ -333,7 +338,7 @@ function Get-GreenshotLatestUrl {
                 AppName = "Greenshot"
                 Version = $version
                 URL = $installer.browser_download_url
-                SilentInstallCommand = "FILENAME /VERYSILENT /NORESTART"
+                SilentInstallCommand = "FILENAME /VERYSILENT"
             }
         }
         else {
