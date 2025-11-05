@@ -111,3 +111,20 @@ if ($version) {
     Write-Host "Version entered: $version"
 }
 #>
+
+
+ $UserInput = Show-InputPopup -Message "Please enter your input:" -Title "User Input"
+
+#Pull Vars from TS:
+try {
+    Import-Module DeployR.Utility -ErrorAction SilentlyContinue
+}
+catch {}
+if (Get-Module -name "DeployR.Utility"){
+   ${TSEnv:UserInput} = $UserInput
+   Write-Output "Set TSEnv UserInput to $UserInput"
+}
+else{
+    Write-Output "Running outside of DeployR, not setting TSEnv variables."
+    Write-Output "UserInput: $UserInput"
+}
