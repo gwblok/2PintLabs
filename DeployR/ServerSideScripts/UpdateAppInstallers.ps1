@@ -30,7 +30,8 @@ if (Test-Path 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.
     Write-Host "DeployR.Utility module found."
     Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
     #Set-DeployRHost "http://localhost:7282"
-    Connect-DeployR -Passcode (Get-Content "D:\DeployRPasscode.txt" -Raw) -ErrorAction Stop
+    $Passcode = (Get-Item -path 'HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings').GetValue("ClientPasscode")
+    Connect-DeployR -Passcode $Passcode -ErrorAction Stop
     $AllApps = Get-DeployRApplication
 
 } else {
@@ -236,37 +237,9 @@ function Get-VLCLatestUrl {
             throw "Could not determine VLC version"
         }
         
-        # Construct download URL using direct mirrors with fallback
-        # Using direct mirrors instead of get/download.videolan.org which have redirect issues
+        # Construct download URL using version number (direct from videolan.org, no mirror redirect)
         $archPath = if ($Architecture -eq 'x64') { 'win64' } else { 'win32' }
-        
-        # Primary and fallback mirrors
-        $mirrors = @(
-            "https://mirror.clarkson.edu/videolan/vlc/$version/$archPath/vlc-$version-$archPath.exe",
-            "https://mirror.fcix.net/videolan-ftp/vlc/$version/$archPath/vlc-$version-$archPath.exe"
-        )
-        
-        # Try each mirror until one responds successfully
-        $url = $null
-        foreach ($mirror in $mirrors) {
-            try {
-                Write-Verbose "Testing mirror: $mirror"
-                $response = Invoke-WebRequest -Uri $mirror -Method Head -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop
-                if ($response.StatusCode -eq 200) {
-                    $url = $mirror
-                    Write-Verbose "Mirror available: $mirror"
-                    break
-                }
-            }
-            catch {
-                Write-Verbose "Mirror unavailable: $mirror - $_"
-                continue
-            }
-        }
-        
-        if (-not $url) {
-            throw "All VLC mirrors unavailable"
-        }
+        $url = "https://download.videolan.org/vlc/$version/$archPath/vlc-$version-$archPath.exe"
         
         Write-Verbose "VLC URL: $url"
         Write-Verbose "VLC Version: $version"
