@@ -81,7 +81,21 @@ function Merge-Entries {
     function Connect-GraphAuth {
         param([switch]$Force)
         if (-not (Get-Module -ListAvailable -Name Microsoft.Graph)) {
-            throw 'Microsoft.Graph module not available. Run: Install-Module Microsoft.Graph'
+            Write-Warning 'Microsoft.Graph module not available.'
+            $response = Read-Host 'Would you like to install it now? (Y/N)'
+            if ($response -eq 'Y' -or $response -eq 'y') {
+                Write-Host 'Installing Microsoft.Graph module...' -ForegroundColor Cyan
+                try {
+                    Install-Module Microsoft.Graph -Scope CurrentUser -Force -ErrorAction Stop
+                    Write-Host 'Microsoft.Graph module installed successfully.' -ForegroundColor Green
+                }
+                catch {
+                    throw "Failed to install Microsoft.Graph module: $($_.Exception.Message)"
+                }
+            }
+            else {
+                throw 'Microsoft.Graph module not available. Run: Install-Module Microsoft.Graph -Scope CurrentUser'
+            }
         }
         if ($Force -or -not (Get-MgContext -ErrorAction SilentlyContinue)) {
             Write-Host 'Connecting to Microsoft Graph... you will be prompted to sign-in and consent to scopes.'
