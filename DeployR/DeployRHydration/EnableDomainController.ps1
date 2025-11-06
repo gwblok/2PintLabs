@@ -1,11 +1,43 @@
+function Enable-DomainController {
 <#
 .SYNOPSIS
     Promotes Windows Server 2025 to a Primary Domain Controller with DNS.
 
 .DESCRIPTION
-    This script installs the Active Directory Domain Services (AD DS) and DNS Server features,
+    This function installs the Active Directory Domain Services (AD DS) and DNS Server features,
     then promotes the server to be the first Domain Controller in a new forest for the domain
     2PintLabs.local. The DNS Server role is installed and configured as part of the promotion.
+
+.PARAMETER DomainName
+    The fully qualified domain name for the new forest. Default is "2PintLabs.local".
+
+.PARAMETER DomainNetbiosName
+    The NetBIOS name for the domain. Default is "2PINTLABS".
+
+.PARAMETER SafeModeAdministratorPassword
+    The Directory Services Restore Mode (DSRM) password as a SecureString. 
+    If not provided, defaults to "P@ssw0rd".
+
+.PARAMETER SkipReboot
+    If specified, the server will not reboot automatically after promotion.
+
+.PARAMETER AutoAccept
+    If specified, skips all confirmation prompts and proceeds automatically.
+
+.EXAMPLE
+    Enable-DomainController
+    Promotes the server to a DC with default settings, prompting for confirmation.
+
+.EXAMPLE
+    Enable-DomainController -AutoAccept
+    Promotes the server to a DC automatically without prompts.
+
+.EXAMPLE
+    $password = ConvertTo-SecureString "MyP@ssw0rd!" -AsPlainText -Force
+    Enable-DomainController -SafeModeAdministratorPassword $password -AutoAccept
+
+.EXAMPLE
+    Enable-DomainController -DomainName "MyDomain.local" -DomainNetbiosName "MYDOMAIN" -AutoAccept
 
 .NOTES
     Author: Gary Blok
@@ -14,10 +46,13 @@
     Requirements:
     - Windows Server 2025
     - Administrative privileges
-    - Server must have a static IP address configured
-    - Server name should be set before running this script
+    - Server name should be set before running this function
     
-    After running this script, the server will reboot automatically.
+    After running this function, the server will reboot automatically unless -SkipReboot is specified.
+
+    Changes:
+    - 25.11.5 - Set Static IP to .200 if DHCP is detected
+    - 25.11.5 - Converted to function
 #>
 
 [CmdletBinding()]
@@ -32,7 +67,10 @@ param(
     [SecureString]$SafeModeAdministratorPassword,
     
     [Parameter(Mandatory=$false)]
-    [switch]$SkipReboot
+    [switch]$SkipReboot,
+    
+    [Parameter(Mandatory=$false)]
+    [switch]$AutoAccept
 )
 
 # Set error action preference
@@ -69,6 +107,40 @@ function Get-SafeModePassword {
     return $defaultPassword
 }
 
+# Function to set local administrator password
+function Set-LocalAdministratorPassword {
+    param(
+        [string]$Password = "P@ssw0rd"
+    )
+    
+    try {
+        Write-ColorOutput "`nChecking local Administrator account..." -Color Cyan
+        
+        # Get the Administrator account (SID ends with -500)
+        $adminAccount = Get-LocalUser | Where-Object { $_.SID -like "*-500" }
+        
+        if ($adminAccount) {
+            Write-ColorOutput "  Administrator account found: $($adminAccount.Name)" -Color Gray
+            
+            # Check if account is enabled
+            if (-not $adminAccount.Enabled) {
+                Enable-LocalUser -Name $adminAccount.Name
+                Write-ColorOutput "  ✓ Administrator account enabled" -Color Green
+            }
+            
+            # Set the password
+            $securePassword = ConvertTo-SecureString $Password -AsPlainText -Force
+            Set-LocalUser -Name $adminAccount.Name -Password $securePassword
+            Write-ColorOutput "  ✓ Administrator password set to: $Password" -Color Green
+            
+        } else {
+            Write-ColorOutput "  ⚠ Could not find local Administrator account" -Color Yellow
+        }
+    } catch {
+        Write-ColorOutput "  ⚠ Failed to set Administrator password: $($_.Exception.Message)" -Color Yellow
+    }
+}
+
 # Main script execution
 try {
     Write-ColorOutput "`n========================================" -Color Cyan
@@ -77,9 +149,12 @@ try {
     
     # Check if running as administrator
     if (-not (Test-Administrator)) {
-        Write-ColorOutput "ERROR: This script must be run as Administrator!" -Color Red
-        exit 1
+        Write-ColorOutput "ERROR: This function must be run as Administrator!" -Color Red
+        return
     }
+    
+    # Set local Administrator password
+    Set-LocalAdministratorPassword
     
     # Display current configuration
     Write-ColorOutput "Server Information:" -Color Yellow
@@ -92,18 +167,58 @@ try {
     $ipConfig = Get-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4
     
     Write-ColorOutput "`nNetwork Configuration:" -Color Yellow
-    Write-ColorOutput "  IP Address: $($ipConfig.IPAddress)" -Color White
+    Write-ColorOutput "  Current IP Address: $($ipConfig.IPAddress)" -Color White
     Write-ColorOutput "  Interface: $($adapter.Name)" -Color White
     
     # Check if IP is static
     $ipInterface = Get-NetIPInterface -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4
     if ($ipInterface.Dhcp -eq "Enabled") {
-        Write-ColorOutput "`nWARNING: Network adapter is using DHCP. It's recommended to use a static IP address for Domain Controllers." -Color Yellow
-        $continue = Read-Host "Do you want to continue anyway? (yes/no)"
-        if ($continue -ne "yes") {
-            Write-ColorOutput "Script cancelled by user." -Color Red
-            exit 0
+        Write-ColorOutput "`nDHCP detected. Converting to static IP..." -Color Yellow
+        
+        # Calculate new IP with .200 as last octet
+        $currentIP = $ipConfig.IPAddress
+        $ipParts = $currentIP.Split('.')
+        $ipParts[3] = "200"
+        $newStaticIP = $ipParts -join '.'
+        
+        # Get current gateway and DNS
+        $gateway = (Get-NetRoute -InterfaceIndex $adapter.InterfaceIndex -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue).NextHop
+        $dnsServers = (Get-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4).ServerAddresses
+        
+        Write-ColorOutput "  Setting static IP: $newStaticIP" -Color Cyan
+        Write-ColorOutput "  Subnet Mask: 255.255.255.0 (/24)" -Color Gray
+        if ($gateway) {
+            Write-ColorOutput "  Gateway: $gateway" -Color Gray
         }
+        
+        try {
+            # Remove existing IP configuration
+            Remove-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 -Confirm:$false -ErrorAction SilentlyContinue
+            Remove-NetRoute -InterfaceIndex $adapter.InterfaceIndex -DestinationPrefix "0.0.0.0/0" -Confirm:$false -ErrorAction SilentlyContinue
+            
+            # Set new static IP
+            New-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex `
+                -IPAddress $newStaticIP `
+                -PrefixLength 24 `
+                -DefaultGateway $gateway -ErrorAction Stop | Out-Null
+            
+            # Set DNS to point to itself (this server will be the DNS server)
+            Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -ServerAddresses $newStaticIP
+            
+            Write-ColorOutput "  ✓ Static IP configured successfully" -Color Green
+            Write-ColorOutput "  ✓ DNS set to point to this server: $newStaticIP" -Color Green
+            
+            # Update ipConfig variable with new configuration
+            Start-Sleep -Seconds 2
+            $ipConfig = Get-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4
+            
+        } catch {
+            Write-ColorOutput "  ✗ Failed to set static IP" -Color Red
+            Write-ColorOutput "  Error: $($_.Exception.Message)" -Color Red
+            return
+        }
+    } else {
+        Write-ColorOutput "  ✓ Static IP already configured" -Color Green
     }
     
     # Confirm before proceeding
@@ -114,10 +229,14 @@ try {
     Write-ColorOutput "  4. Configure DNS Server" -Color White
     Write-ColorOutput "  5. Reboot the server" -Color White
     
-    $confirm = Read-Host "`nDo you want to continue? (yes/no)"
-    if ($confirm -ne "yes") {
-        Write-ColorOutput "Script cancelled by user." -Color Red
-        exit 0
+    if (-not $AutoAccept) {
+        $confirm = Read-Host "`nDo you want to continue? (yes/no)"
+        if ($confirm -ne "yes") {
+            Write-ColorOutput "Script cancelled by user." -Color Red
+            return
+        }
+    } else {
+        Write-ColorOutput "`nAuto-accept enabled. Continuing automatically..." -Color Green
     }
     
     # Get Safe Mode password
@@ -150,7 +269,7 @@ try {
         }
     } else {
         Write-ColorOutput "  ✗ Failed to install features" -Color Red
-        exit 1
+        return
     }
     
     # Step 2: Import AD DS Deployment module
@@ -213,7 +332,7 @@ try {
         $_ | Out-File -FilePath $errorLog -Append
         Write-ColorOutput "`nError details have been logged to: $errorLog" -Color Yellow
         
-        exit 1
+        return
     }
     
 } catch {
@@ -221,5 +340,10 @@ try {
     Write-ColorOutput $_.Exception.Message -Color Red
     Write-ColorOutput "`nStack Trace:" -Color Red
     Write-ColorOutput $_.ScriptStackTrace -Color Red
-    exit 1
+    return
 }
+} # End of Enable-DomainController function
+
+#Do the Stuff
+
+Enable-DomainController -AutoAccept -SkipReboot
