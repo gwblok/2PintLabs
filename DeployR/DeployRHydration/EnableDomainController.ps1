@@ -1,11 +1,43 @@
+function Enable-DomainController {
 <#
 .SYNOPSIS
     Promotes Windows Server 2025 to a Primary Domain Controller with DNS.
 
 .DESCRIPTION
-    This script installs the Active Directory Domain Services (AD DS) and DNS Server features,
+    This function installs the Active Directory Domain Services (AD DS) and DNS Server features,
     then promotes the server to be the first Domain Controller in a new forest for the domain
     2PintLabs.local. The DNS Server role is installed and configured as part of the promotion.
+
+.PARAMETER DomainName
+    The fully qualified domain name for the new forest. Default is "2PintLabs.local".
+
+.PARAMETER DomainNetbiosName
+    The NetBIOS name for the domain. Default is "2PINTLABS".
+
+.PARAMETER SafeModeAdministratorPassword
+    The Directory Services Restore Mode (DSRM) password as a SecureString. 
+    If not provided, defaults to "P@ssw0rd".
+
+.PARAMETER SkipReboot
+    If specified, the server will not reboot automatically after promotion.
+
+.PARAMETER AutoAccept
+    If specified, skips all confirmation prompts and proceeds automatically.
+
+.EXAMPLE
+    Enable-DomainController
+    Promotes the server to a DC with default settings, prompting for confirmation.
+
+.EXAMPLE
+    Enable-DomainController -AutoAccept
+    Promotes the server to a DC automatically without prompts.
+
+.EXAMPLE
+    $password = ConvertTo-SecureString "MyP@ssw0rd!" -AsPlainText -Force
+    Enable-DomainController -SafeModeAdministratorPassword $password -AutoAccept
+
+.EXAMPLE
+    Enable-DomainController -DomainName "MyDomain.local" -DomainNetbiosName "MYDOMAIN" -AutoAccept
 
 .NOTES
     Author: Gary Blok
@@ -14,14 +46,13 @@
     Requirements:
     - Windows Server 2025
     - Administrative privileges
-    - Server must have a static IP address configured
-    - Server name should be set before running this script
+    - Server name should be set before running this function
     
-    After running this script, the server will reboot automatically.
-
+    After running this function, the server will reboot automatically unless -SkipReboot is specified.
 
     Changes:
     - 25.11.5 - Set Static IP to .200 if DHCP is detected
+    - 25.11.5 - Converted to function
 #>
 
 [CmdletBinding()]
@@ -36,7 +67,10 @@ param(
     [SecureString]$SafeModeAdministratorPassword,
     
     [Parameter(Mandatory=$false)]
-    [switch]$SkipReboot
+    [switch]$SkipReboot,
+    
+    [Parameter(Mandatory=$false)]
+    [switch]$AutoAccept
 )
 
 # Set error action preference
@@ -81,8 +115,8 @@ try {
     
     # Check if running as administrator
     if (-not (Test-Administrator)) {
-        Write-ColorOutput "ERROR: This script must be run as Administrator!" -Color Red
-        exit 1
+        Write-ColorOutput "ERROR: This function must be run as Administrator!" -Color Red
+        return
     }
     
     # Display current configuration
@@ -144,7 +178,7 @@ try {
         } catch {
             Write-ColorOutput "  ✗ Failed to set static IP" -Color Red
             Write-ColorOutput "  Error: $($_.Exception.Message)" -Color Red
-            exit 1
+            return
         }
     } else {
         Write-ColorOutput "  ✓ Static IP already configured" -Color Green
@@ -158,10 +192,14 @@ try {
     Write-ColorOutput "  4. Configure DNS Server" -Color White
     Write-ColorOutput "  5. Reboot the server" -Color White
     
-    $confirm = Read-Host "`nDo you want to continue? (yes/no)"
-    if ($confirm -ne "yes") {
-        Write-ColorOutput "Script cancelled by user." -Color Red
-        exit 0
+    if (-not $AutoAccept) {
+        $confirm = Read-Host "`nDo you want to continue? (yes/no)"
+        if ($confirm -ne "yes") {
+            Write-ColorOutput "Script cancelled by user." -Color Red
+            return
+        }
+    } else {
+        Write-ColorOutput "`nAuto-accept enabled. Continuing automatically..." -Color Green
     }
     
     # Get Safe Mode password
@@ -194,7 +232,7 @@ try {
         }
     } else {
         Write-ColorOutput "  ✗ Failed to install features" -Color Red
-        exit 1
+        return
     }
     
     # Step 2: Import AD DS Deployment module
@@ -257,7 +295,7 @@ try {
         $_ | Out-File -FilePath $errorLog -Append
         Write-ColorOutput "`nError details have been logged to: $errorLog" -Color Yellow
         
-        exit 1
+        return
     }
     
 } catch {
@@ -265,5 +303,10 @@ try {
     Write-ColorOutput $_.Exception.Message -Color Red
     Write-ColorOutput "`nStack Trace:" -Color Red
     Write-ColorOutput $_.ScriptStackTrace -Color Red
-    exit 1
+    return
 }
+} # End of Enable-DomainController function
+
+#Do the Stuff
+
+Enable-DomainController -AutoAccept -SkipReboot
