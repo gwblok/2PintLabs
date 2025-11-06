@@ -37,6 +37,7 @@ param(
     [string]$DefaultPassword = "P@ssw0rd"
 )
 
+start-transcript -Path "$env:TEMP\CreateADUsersAndGroups.log" -Force
 # Set error action preference
 $ErrorActionPreference = "Stop"
 
@@ -287,6 +288,8 @@ try {
     Write-ColorOutput $_.ScriptStackTrace -Color Red
     exit 1
 }
+
+stop-transcript
 
 '@
 
