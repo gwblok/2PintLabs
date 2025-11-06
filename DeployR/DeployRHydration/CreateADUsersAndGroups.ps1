@@ -3,10 +3,10 @@
     Creates Active Directory groups and users for 2PintLabs.local domain.
 
 .DESCRIPTION
-    This script creates a custom container structure (CN=2PintLabs) with sub-containers
-    for Workstations, Users, and Groups. It then creates security groups and user accounts
-    in their respective containers and adds users to their corresponding groups.
-    This is typically run after promoting a server to a Domain Controller.
+    This script creates a custom Organizational Unit (OU) structure with OU=2PintLabs
+    at the root, containing sub-OUs for Workstations, Users, and Groups. It then creates
+    security groups and user accounts in their respective OUs and adds users to their
+    corresponding groups. This is typically run after promoting a server to a Domain Controller.
 
 .NOTES
     Author: Gary Blok
@@ -18,11 +18,11 @@
     - Administrative privileges required
     - ActiveDirectory PowerShell module
     
-    Container Structure Created:
-    - CN=2PintLabs,DC=2PintLabs,DC=local
-      - CN=Workstations (for future computer objects)
-      - CN=Users (user accounts placed here)
-      - CN=Groups (security groups placed here)
+    OU Structure Created:
+    - OU=2PintLabs,DC=2PintLabs,DC=local
+      - OU=Workstations (for future computer objects)
+      - OU=Users (user accounts placed here)
+      - OU=Groups (security groups placed here)
 #>
 
 [CmdletBinding()]
@@ -85,49 +85,49 @@ try {
     $domainDN = (Get-ADDomain).DistinguishedName
     Write-ColorOutput "  Domain DN: $domainDN" -Color Gray
     
-    # Create Container structure
-    Write-ColorOutput "`n[Step 3/5] Creating Container Structure..." -Color Cyan
+    # Create OU structure
+    Write-ColorOutput "`n[Step 3/5] Creating Organizational Unit Structure..." -Color Cyan
     
-    # Create main 2PintLabs container
-    $mainContainer = "CN=2PintLabs,$domainDN"
+    # Create main 2PintLabs OU
+    $mainOU = "OU=2PintLabs,$domainDN"
     try {
-        $existingContainer = Get-ADObject -Filter "DistinguishedName -eq '$mainContainer'" -ErrorAction SilentlyContinue
-        if (-not $existingContainer) {
-            New-ADObject -Name "2PintLabs" -Type Container -Path $domainDN
-            Write-ColorOutput "  ✓ Created container: 2PintLabs" -Color Green
+        $existingOU = Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$mainOU'" -ErrorAction SilentlyContinue
+        if (-not $existingOU) {
+            New-ADOrganizationalUnit -Name "2PintLabs" -Path $domainDN
+            Write-ColorOutput "  ✓ Created OU: 2PintLabs" -Color Green
         } else {
-            Write-ColorOutput "  ℹ Container already exists: 2PintLabs" -Color Yellow
+            Write-ColorOutput "  ℹ OU already exists: 2PintLabs" -Color Yellow
         }
     } catch {
-        Write-ColorOutput "  ✗ Failed to create main container: 2PintLabs" -Color Red
+        Write-ColorOutput "  ✗ Failed to create main OU: 2PintLabs" -Color Red
         Write-ColorOutput "    Error: $($_.Exception.Message)" -Color Red
     }
     
-    # Create sub-containers
-    $subContainers = @("Workstations", "Users", "Groups")
-    foreach ($containerName in $subContainers) {
-        $containerDN = "CN=$containerName,$mainContainer"
+    # Create sub-OUs
+    $subOUs = @("Workstations", "Users", "Groups")
+    foreach ($ouName in $subOUs) {
+        $ouDN = "OU=$ouName,$mainOU"
         try {
-            $existingContainer = Get-ADObject -Filter "DistinguishedName -eq '$containerDN'" -ErrorAction SilentlyContinue
-            if (-not $existingContainer) {
-                New-ADObject -Name $containerName -Type Container -Path $mainContainer
-                Write-ColorOutput "  ✓ Created sub-container: $containerName" -Color Green
+            $existingOU = Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$ouDN'" -ErrorAction SilentlyContinue
+            if (-not $existingOU) {
+                New-ADOrganizationalUnit -Name $ouName -Path $mainOU
+                Write-ColorOutput "  ✓ Created sub-OU: $ouName" -Color Green
             } else {
-                Write-ColorOutput "  ℹ Sub-container already exists: $containerName" -Color Yellow
+                Write-ColorOutput "  ℹ Sub-OU already exists: $ouName" -Color Yellow
             }
         } catch {
-            Write-ColorOutput "  ✗ Failed to create sub-container: $containerName" -Color Red
+            Write-ColorOutput "  ✗ Failed to create sub-OU: $ouName" -Color Red
             Write-ColorOutput "    Error: $($_.Exception.Message)" -Color Red
         }
     }
     
-    # Set container paths for users and groups
-    $usersContainer = "CN=Users,$mainContainer"
-    $groupsContainer = "CN=Groups,$mainContainer"
+    # Set OU paths for users and groups
+    $usersOU = "OU=Users,$mainOU"
+    $groupsOU = "OU=Groups,$mainOU"
     
-    Write-ColorOutput "  Container structure created:" -Color Gray
-    Write-ColorOutput "    Users will be created in: $usersContainer" -Color Gray
-    Write-ColorOutput "    Groups will be created in: $groupsContainer" -Color Gray
+    Write-ColorOutput "  OU structure created:" -Color Gray
+    Write-ColorOutput "    Users will be created in: $usersOU" -Color Gray
+    Write-ColorOutput "    Groups will be created in: $groupsOU" -Color Gray
     
     # Define groups to create
     Write-ColorOutput "`n[Step 4/5] Creating Security Groups..." -Color Cyan
@@ -155,7 +155,7 @@ try {
                     -GroupCategory Security `
                     -GroupScope Global `
                     -Description $group.Description `
-                    -Path $groupsContainer `
+                    -Path $groupsOU `
                     -PassThru
                 
                 Write-ColorOutput "  ✓ Created group: $($group.Name)" -Color Green
@@ -170,8 +170,12 @@ try {
     # Define users to create
     Write-ColorOutput "`n[Step 5/5] Creating User Accounts..." -Color Cyan
     $users = @(
-        @{FirstName = "Regular"; LastName = "User"; DisplayName = "Regular User"; SamAccountName = "RegularUser"; Groups = @()},
-        @{FirstName = "Unregular"; LastName = "User"; DisplayName = "Unregular User"; SamAccountName = "UnregularUser"; Groups = @()},
+        @{FirstName = "Regular"; LastName = "User"; DisplayName = "Regular User"; SamAccountName = "RegularUser"; Groups = @("StifleR Users", "StifleR Remote Tools Read Only")},
+        @{FirstName = "Unregular"; LastName = "User"; DisplayName = "Unregular User"; SamAccountName = "UnregularUser"; Groups = @("StifleR Users", "StifleR Remote Tools Read Only")},
+        @{FirstName = "Irregular"; LastName = "User"; DisplayName = "Irregular User"; SamAccountName = "IrregularUser"; Groups = @("StifleR Users", "StifleR Remote Tools Read Only")},
+        @{FirstName = "Nonregular"; LastName = "User"; DisplayName = "Nonregular User"; SamAccountName = "NonregularUser"; Groups = @("StifleR Users", "StifleR Remote Tools Read Only")},
+        @{FirstName = "DO"; LastName = "Doris"; DisplayName = "DO Doris"; SamAccountName = "DODoris"; Groups = @("StifleR Remote Tools Admins", "StifleR Users")},
+        @{FirstName = "PC"; LastName = "Pete"; DisplayName = "PC Pete"; SamAccountName = "PCPete"; Groups = @("StifleR Remote Tools Admins", "StifleR Users")},
         @{FirstName = "Server"; LastName = "Admin"; DisplayName = "Server Admin"; SamAccountName = "ServerAdmin"; Groups = @("Server Local Admins")},
         @{FirstName = "StifleR"; LastName = "Admin"; DisplayName = "StifleR Admin"; SamAccountName = "StifleRAdmin"; Groups = @("StifleR Admins")},
         @{FirstName = "StifleR"; LastName = "User"; DisplayName = "StifleR User"; SamAccountName = "StifleRUser"; Groups = @("StifleR Users")},
@@ -199,7 +203,7 @@ try {
                     -DisplayName $user.DisplayName `
                     -SamAccountName $user.SamAccountName `
                     -UserPrincipalName "$($user.SamAccountName)@$Domain" `
-                    -Path $usersContainer `
+                    -Path $usersOU `
                     -AccountPassword $securePassword `
                     -Enabled $true `
                     -ChangePasswordAtLogon $false `
@@ -247,11 +251,11 @@ try {
     Write-ColorOutput "AD Users and Groups Creation Complete!" -Color Green
     Write-ColorOutput "========================================" -Color Green
     
-    Write-ColorOutput "`nContainer Structure:" -Color Yellow
-    Write-ColorOutput "  CN=2PintLabs,$domainDN" -Color White
-    Write-ColorOutput "    ├─ CN=Workstations (for computer objects)" -Color White
-    Write-ColorOutput "    ├─ CN=Users (user accounts)" -Color White
-    Write-ColorOutput "    └─ CN=Groups (security groups)" -Color White
+    Write-ColorOutput "`nOU Structure:" -Color Yellow
+    Write-ColorOutput "  OU=2PintLabs,$domainDN" -Color White
+    Write-ColorOutput "    ├─ OU=Workstations (for computer objects)" -Color White
+    Write-ColorOutput "    ├─ OU=Users (user accounts)" -Color White
+    Write-ColorOutput "    └─ OU=Groups (security groups)" -Color White
     
     Write-ColorOutput "`nSummary:" -Color Yellow
     Write-ColorOutput "  Groups Created: $($groups.Count)" -Color White
