@@ -95,8 +95,19 @@ $DateStamp = (Get-Date).ToString("yyyyMMdd-HHmmss")
 Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
 #Set-DeployRHost "http://localhost:7282"
 
-
-Connect-DeployR -Passcode (Get-Content "D:\DeployRPasscode.txt" -Raw) -ErrorAction Stop
+if (Test-Path "HKLM:\software\2Pint Software\DeployR\GeneralSettings") {
+    $DeployRReg = Get-Item -Path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"
+    $ClientPasscode = $DeployRReg.GetValue("ClientPasscode")
+    Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+}
+elseif (Test-Path "D:\DeployRPasscode.txt") {
+    $ClientPasscode = (Get-Content "D:\DeployRPasscode.txt" -Raw)
+    Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+}
+else {
+    throw "Cannot find DeployR Client Passcode in registry or D:\DeployRPasscode.txt"
+    Connect-DeployR
+}
 
 # Create Variable that is the FQDN of the Machine:
 function Get-ConnectionSpecificDNSSuffix {
