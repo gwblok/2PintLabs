@@ -205,18 +205,43 @@ $SystemAlias = $LocalInfo['SystemAlias']
 
 # (Workplace join radio buttons are defined directly in XAML; the explicit options array was removed)
 
-# Software options - edit this array to add/remove software shown in the Software tab.
-# Each entry should have a DisplayName and an Id (Id can be used as a short identifier or package id).
-$SoftwareOptions = @(
-    [PSCustomObject]@{ DisplayName = 'GreenShot'; Id = 'greenshot' },
-    [PSCustomObject]@{ DisplayName = 'Office 365'; Id = 'office365' },
-    [PSCustomObject]@{ DisplayName = 'Adobe Reader'; Id = 'adobereader' },
-    [PSCustomObject]@{ DisplayName = 'Notepad++'; Id = 'notepadplusplus' },
-    [PSCustomObject]@{ DisplayName = 'WMIExplorer'; Id = 'wmiexplorer' },
-    [PSCustomObject]@{ DisplayName = 'Google Chrome'; Id = 'googlechrome' },
-    [PSCustomObject]@{ DisplayName = '7-Zip'; Id = '7zip' },
-    [PSCustomObject]@{ DisplayName = 'VLC Media Player'; Id = 'vlc' }
-)
+    # Software options - try to pull dynamically from DeployR, fall back to static list if unavailable
+    # Try to get apps dynamically from DeployR
+    $SoftwareOptions = $null
+    try {
+        # Call the function that's defined later in this script
+        $DeployRApps = Get-DeployRFrontEndApps -ErrorAction Stop
+        
+        if ($DeployRApps -and $DeployRApps.Count -gt 0) {
+            Write-Host "Successfully retrieved $($DeployRApps.Count) apps from DeployR" -ForegroundColor Green
+            # Build PSObject array with DisplayName and Id (Id = name without spaces)
+            $SoftwareOptions = @()
+            foreach ($app in $DeployRApps) {
+                $SoftwareOptions += [PSCustomObject]@{
+                    DisplayName = $app.Name
+                    Id = $app.Name -replace '\s+', ''  # Remove all spaces for Id
+                }
+            }
+        }
+    }
+    catch {
+        Write-Warning "Could not retrieve apps from DeployR: $($_.Exception.Message)"
+    }
+    
+    # Fall back to static list if dynamic retrieval failed
+    if (-not $SoftwareOptions -or $SoftwareOptions.Count -eq 0) {
+        Write-Host "Using static software list as fallback" -ForegroundColor Yellow
+        $SoftwareOptions = @(
+            [PSCustomObject]@{ DisplayName = 'GreenShot'; Id = 'greenshot' },
+            [PSCustomObject]@{ DisplayName = 'Office 365'; Id = 'office365' },
+            [PSCustomObject]@{ DisplayName = 'Adobe Reader'; Id = 'adobereader' },
+            [PSCustomObject]@{ DisplayName = 'Notepad++'; Id = 'notepadplusplus' },
+            [PSCustomObject]@{ DisplayName = 'WMIExplorer'; Id = 'wmiexplorer' },
+            [PSCustomObject]@{ DisplayName = 'Google Chrome'; Id = 'googlechrome' },
+            [PSCustomObject]@{ DisplayName = '7-Zip'; Id = '7zip' },
+            [PSCustomObject]@{ DisplayName = 'VLC Media Player'; Id = 'vlc' }
+        )
+    }
 
 
 
@@ -1475,6 +1500,35 @@ function Write-CMTraceLog {
     }
 } 
 
+function Get-DeployRFrontEndApps {
+    #This will connect with the DeployR Server and pull a list of Apps that are specified to show in the front end
+    
+    try {
+        if (Test-Path -path 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'){
+            Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility' -ErrorAction SilentlyContinue
+        }
+        if (!(Get-Module -Name DeployR.Utility)) {
+            Import-Module DeployR.Utility -ErrorAction SilentlyContinue
+        }
+    }
+    catch {}
+    if (Test-Path "HKLM:\software\2Pint Software\DeployR\GeneralSettings") {
+        $DeployRReg = Get-Item -Path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"
+        $ClientPasscode = $DeployRReg.GetValue("ClientPasscode")
+        Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+    }
+    elseif (Test-Path "D:\DeployRPasscode.txt") {
+        $ClientPasscode = (Get-Content "D:\DeployRPasscode.txt" -Raw)
+        Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+    }
+    else {
+        throw "Cannot find DeployR Client Passcode in registry or D:\DeployRPasscode.txt"
+        Connect-DeployR
+    }
+    $Apps = Get-DeployRApplication
+    $FrontEndApps = $apps | Where-Object {$_.description -match "Frontend = TRUE"}
+    return $FrontEndApps
+}
 #
 $FormResults = Get-InputFormData
 try {
@@ -1505,7 +1559,7 @@ Write-CMTraceLog -Message "Starting Script..." -Type "Info" -Component "Main"
 Write-CMTraceLog -Message "=====================================================" -Type "Info" -Component "Main"
 write-host "========================================" -ForegroundColor DarkGray
 # Set the provided variables
-if (Get-Module -name "DeployR.Utility"){
+if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"))) {
     ${TSEnv:GitHubJSONDB} = $script:GitHubJSONDB
     ${TSEnv:JSONDBMatch} = $FormResults.JSONDBMatch
     ${TSEnv:NamingStrategy} = $FormResults.NamingStrategy

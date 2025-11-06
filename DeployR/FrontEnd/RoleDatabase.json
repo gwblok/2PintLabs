@@ -7,7 +7,7 @@
     "Model": "Latitude 3520",
     "WiFiMAC": "8CF8C546A04B",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -19,19 +19,7 @@
     "Model": "Latitude 5430",
     "WiFiMAC": "286B35A42545",
     "EthernetMAC": "",
-    "Category": "Generic",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
-    "DeviceName": "DO-7050-7XXK0M2",
-    "AzureADRegistered": true,
-    "SerialNumber": "7XXK0M2",
-    "Manufacturer": "Dell Inc.",
-    "Model": "OptiPlex 7050",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -103,7 +91,7 @@
     "Model": "HP EliteBook 840 14 inch G10 Notebook PC",
     "WiFiMAC": "30F6EF248ACE",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -156,30 +144,6 @@
     "PrimaryUserDisplayName": "Gary Blok"
   },
   {
-    "DeviceName": "L-TPT14SG6-21QX",
-    "AzureADRegistered": true,
-    "SerialNumber": "PF5A3XJZ",
-    "Manufacturer": "LENOVO",
-    "Model": "21QXZCP5US",
-    "WiFiMAC": "88F4DAD7680C",
-    "EthernetMAC": "",
-    "Category": "Generic",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
-    "DeviceName": "LNV-M710Q-10MQ",
-    "AzureADRegistered": true,
-    "SerialNumber": "MJ06VGJM",
-    "Manufacturer": "LENOVO",
-    "Model": "10MQS0NE00",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Lab",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
     "DeviceName": "NUC8I3BEH-G6BE9",
     "AzureADRegistered": true,
     "SerialNumber": "G6BE9120016C",
@@ -187,31 +151,7 @@
     "Model": "NUC8i3BEH",
     "WiFiMAC": "5076AF002E2C",
     "EthernetMAC": "",
-    "Category": "Generic",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
-    "DeviceName": "PC-5026432807",
-    "AzureADRegistered": true,
-    "SerialNumber": "9561-9673-5677-3757-6053-2811-36",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Generic",
-    "PrimaryUserUPN": "",
-    "PrimaryUserDisplayName": ""
-  },
-  {
-    "DeviceName": "PC-8416420030",
-    "AzureADRegistered": false,
-    "SerialNumber": "5376-1281-8210-2586-7063-9188-50",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -228,18 +168,6 @@
     "PrimaryUserDisplayName": "Gary Blok"
   },
   {
-    "DeviceName": "SURFACE-PRO-X",
-    "AzureADRegistered": true,
-    "SerialNumber": "0F00ZRL220333W",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Surface Pro X",
-    "WiFiMAC": "A04A5ED57354",
-    "EthernetMAC": "",
-    "Category": "Lab",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
     "DeviceName": "SurfaceBook2",
     "AzureADRegistered": true,
     "SerialNumber": "020864183957",
@@ -248,114 +176,6 @@
     "WiFiMAC": "2816A8490E97",
     "EthernetMAC": "",
     "Category": "Lab",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
-    "DeviceName": "VM-2CM-ZBG10-01",
-    "AzureADRegistered": true,
-    "SerialNumber": "3160-0126-4465-4556-2773-9925-86",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Generic",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
-    "DeviceName": "VM-75210-GT-01",
-    "AzureADRegistered": true,
-    "SerialNumber": "2948-7703-9505-5701-0488-4755-74",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Generic",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
-    "DeviceName": "VM-75210-GT-02",
-    "AzureADRegistered": true,
-    "SerialNumber": "5626-5198-5072-4308-7666-3014-74",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Generic",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
-    "DeviceName": "VM-75210-GT-03",
-    "AzureADRegistered": true,
-    "SerialNumber": "7822-7712-9415-8100-9931-1916-58",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Generic",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
-    "DeviceName": "VM-75210-GT-04",
-    "AzureADRegistered": true,
-    "SerialNumber": "5103-8302-3936-1824-7169-4467-57",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Generic",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
-    "DeviceName": "VM-75210-GT-05",
-    "AzureADRegistered": true,
-    "SerialNumber": "4258-5111-1912-4125-8507-9753-50",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Generic",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
-    "DeviceName": "VM-75210-GT-06",
-    "AzureADRegistered": true,
-    "SerialNumber": "5441-6086-3890-8045-0785-1863-20",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Generic",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
-    "DeviceName": "VM-75210-GT-07",
-    "AzureADRegistered": true,
-    "SerialNumber": "9727-8692-9162-8122-6568-3238-90",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Lab",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
-    "DeviceName": "VM-75210-GT-08",
-    "AzureADRegistered": true,
-    "SerialNumber": "1236-0582-9998-9587-4899-8007-33",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Generic",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -463,7 +283,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -471,6 +291,18 @@
     "DeviceName": "VM-AURA-GT-02",
     "AzureADRegistered": true,
     "SerialNumber": "3932-2624-6805-2793-8873-0777-68",
+    "Manufacturer": "Microsoft Corporation",
+    "Model": "Virtual Machine",
+    "WiFiMAC": "",
+    "EthernetMAC": "",
+    "Category": "Lab",
+    "PrimaryUserUPN": "gary",
+    "PrimaryUserDisplayName": "Gary Blok"
+  },
+  {
+    "DeviceName": "VM-AURA-GT-03",
+    "AzureADRegistered": true,
+    "SerialNumber": "9561-9673-5677-3757-6053-2811-36",
     "Manufacturer": "Microsoft Corporation",
     "Model": "Virtual Machine",
     "WiFiMAC": "",
@@ -552,18 +384,6 @@
     "PrimaryUserDisplayName": "Gary Blok"
   },
   {
-    "DeviceName": "VM-BLink-GT-07",
-    "AzureADRegistered": true,
-    "SerialNumber": "4375-3505-9186-4137-5002-8205-36",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Lab",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
     "DeviceName": "VM-BLINK-GT-08",
     "AzureADRegistered": true,
     "SerialNumber": "1927-3018-6475-1151-8643-3528-39",
@@ -600,54 +420,6 @@
     "PrimaryUserDisplayName": "Gary Blok"
   },
   {
-    "DeviceName": "VM-GT-01",
-    "AzureADRegistered": true,
-    "SerialNumber": "9147-3878-8329-2252-2118-1561-09",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Generic",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
-    "DeviceName": "VM-GT-02",
-    "AzureADRegistered": true,
-    "SerialNumber": "6868-1339-6949-4523-9254-8251-81",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Generic",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
-    "DeviceName": "VM-MS01-GT-01",
-    "AzureADRegistered": true,
-    "SerialNumber": "8128-1953-3357-3700-5835-3785-24",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Generic",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
-    "DeviceName": "VM-MS01-GT-02",
-    "AzureADRegistered": true,
-    "SerialNumber": "2194-3822-9474-6640-5086-3431-37",
-    "Manufacturer": "Microsoft Corporation",
-    "Model": "Virtual Machine",
-    "WiFiMAC": "",
-    "EthernetMAC": "",
-    "Category": "Generic",
-    "PrimaryUserUPN": "gary",
-    "PrimaryUserDisplayName": "Gary Blok"
-  },
-  {
     "DeviceName": "VM-NUC8-GT-01",
     "AzureADRegistered": true,
     "SerialNumber": "9897-9218-9266-9245-0730-5565-52",
@@ -667,7 +439,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -679,7 +451,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -691,7 +463,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -703,7 +475,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -715,7 +487,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -727,7 +499,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -739,7 +511,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -751,7 +523,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -763,7 +535,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -775,7 +547,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -787,7 +559,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -799,7 +571,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -811,7 +583,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -823,7 +595,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -835,7 +607,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -847,7 +619,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -859,7 +631,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -871,7 +643,7 @@
     "Model": "Virtual Machine",
     "WiFiMAC": "",
     "EthernetMAC": "",
-    "Category": "Generic",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   },
@@ -1004,6 +776,18 @@
     "WiFiMAC": "",
     "EthernetMAC": "",
     "Category": "Generic",
+    "PrimaryUserUPN": "gary",
+    "PrimaryUserDisplayName": "Gary Blok"
+  },
+  {
+    "DeviceName": "VM-ZBG10-GT-02",
+    "AzureADRegistered": true,
+    "SerialNumber": "8215-1673-4181-8928-9841-7339-31",
+    "Manufacturer": "Microsoft Corporation",
+    "Model": "Virtual Machine",
+    "WiFiMAC": "",
+    "EthernetMAC": "",
+    "Category": "Lab",
     "PrimaryUserUPN": "gary",
     "PrimaryUserDisplayName": "Gary Blok"
   }
