@@ -25,6 +25,9 @@
       - OU=Groups (security groups placed here)
 #>
 
+
+$CreateADObjects = @'
+
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$false)]
@@ -284,3 +287,9 @@ try {
     Write-ColorOutput $_.ScriptStackTrace -Color Red
     exit 1
 }
+
+'@
+
+$CreateADObjects | Out-File $env:TEMP\CreateADObjects.ps1 -Encoding UTF8 -Force
+# Execute the generated form script
+Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$env:TEMP\CreateADObjects.ps1`"" -Wait -NoNewWindow -PassThru
