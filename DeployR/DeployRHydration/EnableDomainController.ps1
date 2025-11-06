@@ -107,6 +107,40 @@ function Get-SafeModePassword {
     return $defaultPassword
 }
 
+# Function to set local administrator password
+function Set-LocalAdministratorPassword {
+    param(
+        [string]$Password = "P@ssw0rd"
+    )
+    
+    try {
+        Write-ColorOutput "`nChecking local Administrator account..." -Color Cyan
+        
+        # Get the Administrator account (SID ends with -500)
+        $adminAccount = Get-LocalUser | Where-Object { $_.SID -like "*-500" }
+        
+        if ($adminAccount) {
+            Write-ColorOutput "  Administrator account found: $($adminAccount.Name)" -Color Gray
+            
+            # Check if account is enabled
+            if (-not $adminAccount.Enabled) {
+                Enable-LocalUser -Name $adminAccount.Name
+                Write-ColorOutput "  ✓ Administrator account enabled" -Color Green
+            }
+            
+            # Set the password
+            $securePassword = ConvertTo-SecureString $Password -AsPlainText -Force
+            Set-LocalUser -Name $adminAccount.Name -Password $securePassword
+            Write-ColorOutput "  ✓ Administrator password set to: $Password" -Color Green
+            
+        } else {
+            Write-ColorOutput "  ⚠ Could not find local Administrator account" -Color Yellow
+        }
+    } catch {
+        Write-ColorOutput "  ⚠ Failed to set Administrator password: $($_.Exception.Message)" -Color Yellow
+    }
+}
+
 # Main script execution
 try {
     Write-ColorOutput "`n========================================" -Color Cyan
@@ -118,6 +152,9 @@ try {
         Write-ColorOutput "ERROR: This function must be run as Administrator!" -Color Red
         return
     }
+    
+    # Set local Administrator password
+    Set-LocalAdministratorPassword
     
     # Display current configuration
     Write-ColorOutput "Server Information:" -Color Yellow
