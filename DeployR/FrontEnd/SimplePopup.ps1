@@ -1,37 +1,37 @@
 function Show-InputPopup {
     <#
     .SYNOPSIS
-        Displays a simple popup dialog with a question and text input field.
+    Displays a simple popup dialog with a question and text input field.
     
     .DESCRIPTION
-        Creates a Windows Forms popup that asks a question and returns the user's text input.
+    Creates a Windows Forms popup that asks a question and returns the user's text input.
     
     .PARAMETER Message
-        The question or message to display in the popup.
+    The question or message to display in the popup.
     
     .PARAMETER Title
-        The title of the popup window. Defaults to "Input Required".
+    The title of the popup window. Defaults to "Input Required".
     
     .PARAMETER DefaultValue
-        Optional default value to pre-populate in the text box.
+    Optional default value to pre-populate in the text box.
     
     .EXAMPLE
-        $userName = Show-InputPopup -Message "What is your name?"
-        Write-Host "Hello, $userName!"
+    $userName = Show-InputPopup -Message "What is your name?"
+    Write-Host "Hello, $userName!"
     
     .EXAMPLE
-        $version = Show-InputPopup -Message "Enter the version number:" -Title "Version Input" -DefaultValue "1.0.0"
+    $version = Show-InputPopup -Message "Enter the version number:" -Title "Version Input" -DefaultValue "1.0.0"
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)]
-        [string]$Message,
-        
-        [Parameter()]
-        [string]$Title = "Input Required",
-        
-        [Parameter()]
-        [string]$DefaultValue = ""
+    [Parameter(Mandatory)]
+    [string]$Message,
+    
+    [Parameter()]
+    [string]$Title = "Input Required",
+    
+    [Parameter()]
+    [string]$DefaultValue = ""
     )
     
     Add-Type -AssemblyName System.Windows.Forms
@@ -99,21 +99,21 @@ $question = "What is your favorite color?"
 $answer = Show-InputPopup -Message $question -Title "Survey Question"
 
 if ($answer) {
-    Write-Host "You answered: $answer" -ForegroundColor Green
+Write-Host "You answered: $answer" -ForegroundColor Green
 }
 else {
-    Write-Host "User cancelled." -ForegroundColor Yellow
+Write-Host "User cancelled." -ForegroundColor Yellow
 }
 
 # Another example with default value
 $version = Show-InputPopup -Message "Enter the application version:" -Title "Version Input" -DefaultValue "1.0.0"
 if ($version) {
-    Write-Host "Version entered: $version"
+Write-Host "Version entered: $version"
 }
 #>
 
 
- $UserInput = Show-InputPopup -Message "Please enter your input:" -Title "User Input"
+$UserInput = Show-InputPopup -Message "Please enter your input:" -Title "User Input"
 
 #Pull Vars from TS:
 try {
@@ -121,8 +121,8 @@ try {
 }
 catch {}
 if (Get-Module -name "DeployR.Utility"){
-   ${TSEnv:UserInput} = $UserInput
-   Write-Output "Set TSEnv UserInput to $UserInput"
+    ${TSEnv:UserInput} = $UserInput
+    Write-Output "Set TSEnv UserInput to $UserInput"
 }
 else{
     Write-Output "Running outside of DeployR, not setting TSEnv variables."
