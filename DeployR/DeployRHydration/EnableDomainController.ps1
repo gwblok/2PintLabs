@@ -92,18 +92,58 @@ try {
     $ipConfig = Get-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4
     
     Write-ColorOutput "`nNetwork Configuration:" -Color Yellow
-    Write-ColorOutput "  IP Address: $($ipConfig.IPAddress)" -Color White
+    Write-ColorOutput "  Current IP Address: $($ipConfig.IPAddress)" -Color White
     Write-ColorOutput "  Interface: $($adapter.Name)" -Color White
     
     # Check if IP is static
     $ipInterface = Get-NetIPInterface -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4
     if ($ipInterface.Dhcp -eq "Enabled") {
-        Write-ColorOutput "`nWARNING: Network adapter is using DHCP. It's recommended to use a static IP address for Domain Controllers." -Color Yellow
-        $continue = Read-Host "Do you want to continue anyway? (yes/no)"
-        if ($continue -ne "yes") {
-            Write-ColorOutput "Script cancelled by user." -Color Red
-            exit 0
+        Write-ColorOutput "`nDHCP detected. Converting to static IP..." -Color Yellow
+        
+        # Calculate new IP with .200 as last octet
+        $currentIP = $ipConfig.IPAddress
+        $ipParts = $currentIP.Split('.')
+        $ipParts[3] = "200"
+        $newStaticIP = $ipParts -join '.'
+        
+        # Get current gateway and DNS
+        $gateway = (Get-NetRoute -InterfaceIndex $adapter.InterfaceIndex -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue).NextHop
+        $dnsServers = (Get-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4).ServerAddresses
+        
+        Write-ColorOutput "  Setting static IP: $newStaticIP" -Color Cyan
+        Write-ColorOutput "  Subnet Mask: 255.255.255.0 (/24)" -Color Gray
+        if ($gateway) {
+            Write-ColorOutput "  Gateway: $gateway" -Color Gray
         }
+        
+        try {
+            # Remove existing IP configuration
+            Remove-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 -Confirm:$false -ErrorAction SilentlyContinue
+            Remove-NetRoute -InterfaceIndex $adapter.InterfaceIndex -DestinationPrefix "0.0.0.0/0" -Confirm:$false -ErrorAction SilentlyContinue
+            
+            # Set new static IP
+            New-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex `
+                -IPAddress $newStaticIP `
+                -PrefixLength 24 `
+                -DefaultGateway $gateway -ErrorAction Stop | Out-Null
+            
+            # Set DNS to point to itself (this server will be the DNS server)
+            Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -ServerAddresses $newStaticIP
+            
+            Write-ColorOutput "  ✓ Static IP configured successfully" -Color Green
+            Write-ColorOutput "  ✓ DNS set to point to this server: $newStaticIP" -Color Green
+            
+            # Update ipConfig variable with new configuration
+            Start-Sleep -Seconds 2
+            $ipConfig = Get-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4
+            
+        } catch {
+            Write-ColorOutput "  ✗ Failed to set static IP" -Color Red
+            Write-ColorOutput "  Error: $($_.Exception.Message)" -Color Red
+            exit 1
+        }
+    } else {
+        Write-ColorOutput "  ✓ Static IP already configured" -Color Green
     }
     
     # Confirm before proceeding
