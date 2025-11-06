@@ -353,6 +353,25 @@ try {
         -SwitchName $switchName `
         -VirtualHardDisks $deployRDisks
     
+    # Check for ISO in C:\HyperVLab and attach to DeployR VM
+    Write-Host "  Checking for ISO files in C:\HyperVLab..." -ForegroundColor Gray
+    $isoFiles = Get-ChildItem -Path "C:\HyperVLab" -Filter "*.iso" -ErrorAction SilentlyContinue
+    if ($isoFiles) {
+        $isoFile = $isoFiles | Select-Object -First 1
+        Write-Host "  Found ISO: $($isoFile.Name)" -ForegroundColor Yellow
+        Write-Host "  Attaching ISO to DeployR VM..." -ForegroundColor Gray
+        try {
+            Add-VMDvdDrive -VMName "DeployR" -Path $isoFile.FullName
+            Write-Host "✓ ISO attached successfully to DeployR VM" -ForegroundColor Green
+        }
+        catch {
+            Write-Host "⚠ Failed to attach ISO: $_" -ForegroundColor Yellow
+        }
+    }
+    else {
+        Write-Host "  No ISO files found in C:\HyperVLab" -ForegroundColor Gray
+    }
+    
     # Step 5: Create Client VM
     $clientVhdFolder = Join-Path -Path $vmPath -ChildPath "Client\Virtual Hard Disks"
     if (-not (Test-Path $clientVhdFolder)) {

@@ -263,6 +263,9 @@ $txtDomainSuffix.Add_TextChanged({ Update-Preview })
 
 # OK Button Click Event (validate manual name and return selections)
 $btnOK.Add_Click({
+    # Stop auto-close timer (if running), then set dialog result and close
+    try { if ($script:AutoCloseTimer) { $script:AutoCloseTimer.Stop() } } catch {}
+    
     $manualName = $txtManualName.Text.Trim()
     if ([string]::IsNullOrWhiteSpace($manualName)) {
         [System.Windows.MessageBox]::Show("Please enter a computer name.", "Validation Error", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning)
@@ -300,9 +303,38 @@ $btnOK.Add_Click({
 
 # Cancel Button Click Event
 $btnCancel.Add_Click({
+    try { if ($script:AutoCloseTimer) { $script:AutoCloseTimer.Stop() } } catch {}
     $Window.DialogResult = $false
     $Window.Close()
 })
+
+# Auto-close timer: close the window after 60 seconds
+# Uses a DispatcherTimer so UI thread updates are safe. Updates txtStatus with countdown.
+$timeoutSeconds = 60
+$script:AutoCloseTimer = New-Object System.Windows.Threading.DispatcherTimer
+$script:AutoCloseTimer.Interval = [TimeSpan]::FromSeconds(1)
+$script:AutoCloseRemaining = [int]$timeoutSeconds
+$script:AutoCloseTimer.Add_Tick({
+    $script:AutoCloseRemaining--
+    if ($script:AutoCloseRemaining -le 0) {
+        $script:AutoCloseTimer.Stop()
+        $Window.Dispatcher.Invoke([action]{
+            $Window.DialogResult = $false
+            $Window.Close()
+        }, [System.Windows.Threading.DispatcherPriority]::Normal)
+        return
+    }
+    # Update UI using Dispatcher to ensure it doesn't interfere with timer
+    $Window.Dispatcher.Invoke([action]{
+        $txtStatus.Text = "Auto-close in $($script:AutoCloseRemaining)s"
+    }, [System.Windows.Threading.DispatcherPriority]::Background)
+})
+
+# Set initial countdown text
+$txtStatus.Text = "Auto-close in ${timeoutSeconds}s"
+
+# Start the timer
+$script:AutoCloseTimer.Start()
 
 # Show the form
 $result = $Window.ShowDialog()
@@ -421,13 +453,38 @@ catch {
 }
 
 write-host "========================================" -ForegroundColor DarkGray
+
+$Install2PXE = $FormResults.Install2PXE
+$AddFQDNToHosts = $FormResults.AddFQDNToHosts
+$ComputerName = $FormResults.ComputerName
+if ($ComputerName -ne $null) {
+    write-host "Selected Computer Name: $ComputerName" -ForegroundColor Green
+} else {
+    write-host "No Computer Name selected, automatically setting to 'DeployR'" -ForegroundColor Yellow
+    $ComputerName = 'DeployR'
+    write-host "Since ComputerName was Null, assuming Form autotimed out, auto setting other vars to True"
+    $Install2PXE = $true
+    $AddFQDNToHosts = $true
+}
+$DomainSuffix = $FormResults.DomainSuffix
+if ($DomainSuffix -ne $null) {
+    write-host "Selected Domain Suffix: $DomainSuffix" -ForegroundColor Green
+} else {
+    write-host "No Domain Suffix selected, automatically setting to 2PintLabs.local" -ForegroundColor Yellow
+    $DomainSuffix = '2PintLabs.local'
+}
+$FQDN = $ComputerName + '.' + $DomainSuffix
+
+
+
+
 # Set the provided variables
 if (Get-Module -name "DeployR.Utility"){
-    ${TSEnv:ComputerName} = $FormResults.ComputerName
-    ${TSEnv:FormDomainSuffix} = $FormResults.DomainSuffix
-    ${TSEnv:FormFQDN} = $FormResults.FQDN
-    ${TSEnv:FormInstall2PXE} = $FormResults.Install2PXE
-    ${TSEnv:AddFQDNToHosts} = $FormResults.AddFQDNToHosts
+    ${TSEnv:ComputerName} = $ComputerName
+    ${TSEnv:FormDomainSuffix} = $DomainSuffix
+    ${TSEnv:FormFQDN} = $FQDN
+    ${TSEnv:FormInstall2PXE} = $Install2PXE
+    ${TSEnv:AddFQDNToHosts} = $AddFQDNToHosts
     write-Host "Set DeployR TS Environment Variables:" -ForegroundColor Cyan
     write-Host "ComputerName = $(${TSEnv:ComputerName})" -ForegroundColor Green
     write-Host "FormDomainSuffix = $(${TSEnv:FormDomainSuffix})" -ForegroundColor Green
@@ -437,11 +494,11 @@ if (Get-Module -name "DeployR.Utility"){
 
 }
 else{
-    $env:ComputerName = $FormResults.ComputerName
-    $env:FormDomainSuffix = $FormResults.DomainSuffix
-    $env:FormFQDN = $FormResults.FQDN
-    $env:FormInstall2PXE = $FormResults.Install2PXE
-    $env:AddFQDNToHosts = $FormResults.AddFQDNToHosts
+    $env:ComputerName = $ComputerName
+    $env:FormDomainSuffix = $DomainSuffix
+    $env:FormFQDN = $FQDN
+    $env:FormInstall2PXE = $Install2PXE
+    $env:AddFQDNToHosts = $AddFQDNToHosts
     write-Host "Set Environment Variables for Testing outside DeployR:" -ForegroundColor Cyan
     write-Host "ComputerName = $($env:ComputerName)" -ForegroundColor Green
     write-Host "FormDomainSuffix = $($env:FormDomainSuffix)" -ForegroundColor Green
