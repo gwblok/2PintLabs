@@ -76,7 +76,7 @@ try {
         Write-ColorOutput "  Make sure this script is run on a Domain Controller" -Color Yellow
         exit 1
     }
-    
+    Import-Module ActiveDirectory -ErrorAction Stop
     # Verify we're on a Domain Controller
     Write-ColorOutput "`n[Step 2/5] Verifying Domain Controller..." -Color Cyan
     if (-not (Test-DomainController)) {
@@ -86,6 +86,19 @@ try {
     Write-ColorOutput "  ✓ Running on Domain Controller" -Color Green
     
     # Get domain DN
+    Write-ColorOutput "Getting Domain Info (Get-ADDomain) Try 1" -Color Gray
+    try {
+        $domainDN = (Get-ADDomain -ErrorAction Stop).DistinguishedName
+    } catch {
+        Write-ColorOutput "  ✗ Failed to retrieve domain information" -Color Red
+    }
+    Write-ColorOutput "Getting Domain Info (Get-ADDomain) Try 2" -Color Gray
+    try {
+        $domainDN = (Get-ADDomain -ErrorAction Stop).DistinguishedName
+    } catch {
+        Write-ColorOutput "  ✗ Failed to retrieve domain information" -Color Red
+    }
+            
     $domainDN = (Get-ADDomain).DistinguishedName
     Write-ColorOutput "  Domain DN: $domainDN" -Color Gray
     
@@ -292,6 +305,9 @@ try {
 stop-transcript
 
 '@
+
+Write-Host "Waiting 3 minutes for services"
+start-sleep -seconds 180
 
 $CreateADObjects | Out-File $env:TEMP\CreateADObjects.ps1 -Encoding UTF8 -Force
 # Execute the generated form script
