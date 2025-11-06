@@ -295,4 +295,12 @@ stop-transcript
 
 $CreateADObjects | Out-File $env:TEMP\CreateADObjects.ps1 -Encoding UTF8 -Force
 # Execute the generated form script
-Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$env:TEMP\CreateADObjects.ps1`"" -Wait -NoNewWindow -PassThru
+write-host "`nExecuting AD Users and Groups Creation Script..." -ForegroundColor Cyan
+write-host "Command: powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$env:TEMP\CreateADObjects.ps1`"" -ForegroundColor Gray
+Start-Process "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$env:TEMP\CreateADObjects.ps1`"" -Wait -NoNewWindow -PassThru
+if (Test-Path -path "$env:TEMP\CreateADUsersAndGroups.log"){
+    write-host "Log file created at: $env:TEMP\CreateADUsersAndGroups.log" -ForegroundColor Gray
+} else {
+    write-host "Log file not found at: $env:TEMP\CreateADUsersAndGroups.log" -ForegroundColor Yellow
+}
+write-host "Completed calling script... check specific log for details"
