@@ -18,6 +18,10 @@
     - Server name should be set before running this script
     
     After running this script, the server will reboot automatically.
+
+
+    Changes:
+    - 25.11.5 - Set Static IP to .200 if DHCP is detected
 #>
 
 [CmdletBinding()]
