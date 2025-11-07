@@ -26,18 +26,15 @@
 #>
 
 
-$CreateADObjects = @'
-
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$false)]
     [string]$Domain = "2PintLabs.local",
-    
     [Parameter(Mandatory=$false)]
     [string]$DefaultPassword = "P@ssw0rd"
 )
 
-start-transcript -Path "$env:TEMP\CreateADUsersAndGroups.log" -Force
+
 # Set error action preference
 $ErrorActionPreference = "Stop"
 
@@ -76,6 +73,7 @@ try {
         Write-ColorOutput "  Make sure this script is run on a Domain Controller" -Color Yellow
         exit 1
     }
+    start-sleep -seconds 5
     Import-Module ActiveDirectory -ErrorAction Stop
     # Verify we're on a Domain Controller
     Write-ColorOutput "`n[Step 2/5] Verifying Domain Controller..." -Color Cyan
@@ -92,13 +90,14 @@ try {
     } catch {
         Write-ColorOutput "  ✗ Failed to retrieve domain information" -Color Red
     }
+    start-sleep -seconds 5
     Write-ColorOutput "Getting Domain Info (Get-ADDomain) Try 2" -Color Gray
     try {
         $domainDN = (Get-ADDomain -ErrorAction Stop).DistinguishedName
     } catch {
         Write-ColorOutput "  ✗ Failed to retrieve domain information" -Color Red
     }
-            
+
     $domainDN = (Get-ADDomain).DistinguishedName
     Write-ColorOutput "  Domain DN: $domainDN" -Color Gray
     
@@ -302,21 +301,3 @@ try {
     exit 1
 }
 
-stop-transcript
-
-'@
-
-Write-Host "Waiting 3 minutes for services"
-start-sleep -seconds 180
-
-$CreateADObjects | Out-File $env:TEMP\CreateADObjects.ps1 -Encoding UTF8 -Force
-# Execute the generated form script
-write-host "`nExecuting AD Users and Groups Creation Script..." -ForegroundColor Cyan
-write-host "Command: pwsh.exe -NoProfile -ExecutionPolicy Bypass -File `"$env:TEMP\CreateADObjects.ps1`"" -ForegroundColor Gray
-Start-Process pwsh.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$env:TEMP\CreateADObjects.ps1`"" -Wait -NoNewWindow -PassThru
-if (Test-Path -path "$env:TEMP\CreateADUsersAndGroups.log"){
-    write-host "Log file created at: $env:TEMP\CreateADUsersAndGroups.log" -ForegroundColor Gray
-} else {
-    write-host "Log file not found at: $env:TEMP\CreateADUsersAndGroups.log" -ForegroundColor Yellow
-}
-write-host "Completed calling script... check specific log for details"
