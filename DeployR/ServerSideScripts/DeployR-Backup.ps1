@@ -143,6 +143,7 @@ if ($ComputerFQDN -eq "214-DEPLOYR.2p.garytown.com") {
 if ($ComputerFQDN -eq "dr.2PintLabs.com") {
     $EnableBackup2GitHub = $true
     $EnableBackup2GitHubTS = $true
+    $EnableBackup2GitHubStepDefs = $true
     
 }
 
