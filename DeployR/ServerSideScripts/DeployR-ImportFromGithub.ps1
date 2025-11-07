@@ -12,8 +12,19 @@ if ((Get-Service -Name DeployRService).status -ne 'Running') {
     Start-Sleep -Seconds 10
 }
 Import-Module $ModulePath
-Connect-DeployR -Passcode (Get-Content "D:\DeployRPasscode.txt" -Raw) -ErrorAction Stop -Verbose
-#Set-DeployRHost "http://localhost:7282"
+if (Test-Path "HKLM:\software\2Pint Software\DeployR\GeneralSettings") {
+    $DeployRReg = Get-Item -Path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"
+    $ClientPasscode = $DeployRReg.GetValue("ClientPasscode")
+    Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+}
+elseif (Test-Path "D:\DeployRPasscode.txt") {
+    $ClientPasscode = (Get-Content "D:\DeployRPasscode.txt" -Raw)
+    Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+}
+else {
+    throw "Cannot find DeployR Client Passcode in registry or D:\DeployRPasscode.txt"
+    Connect-DeployR
+}
 
 #Import Content for Steps
 $DownloadPath = "D:\DeployRGitHubImports" #Update this path to your desired download location for the source before it's imported.
