@@ -230,10 +230,168 @@ Set-ItemProperty -Path $regPath -Name "BypassAuthentication" -Value "True" -Type
 Set-ItemProperty -Path $regPath -Name "BypassLocalAuthentication" -Value "True" -Type String
 Set-ItemProperty -Path $regPath -Name "ClientPasscode" -Value "P@ssw0rd" -Type String
 
+#Test for D Volume and ensure it's a local disk, NTFS formatted, and create DeployRContentLib folder
+# If D: is not suitable, fall back to C:
+$DeployRContentLibPath = $null
+$useDDrive = $false
+
+try {
+    $vol = Get-Volume -DriveLetter D -ErrorAction SilentlyContinue
+    if ($vol) {
+        # Check drive type - ensure it's a local fixed disk (DriveType 3)
+        # DriveType: 2 = Removable, 3 = Local Disk, 5 = CD-ROM
+        $disk = Get-CimInstance -ClassName Win32_LogicalDisk -Filter "DeviceID='D:'" -ErrorAction SilentlyContinue
+        
+        # Only use D: if it's a local fixed disk with NTFS
+        if ($disk -and $disk.DriveType -eq 3 -and $vol.FileSystem -eq 'NTFS') {
+            $useDDrive = $true
+        }
+    }
+}
+catch {
+    # Silently fall back to C: if any error occurs
+    $useDDrive = $false
+}
+
+# Determine target location
+if ($useDDrive) {
+    $targetContentLib = 'D:\DeployRContentLib'
+    $targetSources = 'D:\DeployRSources'
+    $driveLetter = 'D:'
+}
+else {
+    $targetContentLib = 'C:\DeployRContentLib'
+    $targetSources = 'C:\DeployRSources'
+    $driveLetter = 'C:'
+}
+
+# Create the directories
+try {
+    # Create DeployRContentLib
+    if (-not (Test-Path -Path $targetContentLib)) {
+        New-Item -Path $targetContentLib -ItemType Directory -Force | Out-Null
+        Write-Host "Created folder: $targetContentLib" -ForegroundColor Green
+    }
+    else {
+        Write-Host "Folder already exists: $targetContentLib" -ForegroundColor Cyan
+    }
+    $DeployRContentLibPath = $targetContentLib
+    
+    # Create DeployRSources
+    if (-not (Test-Path -Path $targetSources)) {
+        New-Item -Path $targetSources -ItemType Directory -Force | Out-Null
+        Write-Host "Created folder: $targetSources" -ForegroundColor Green
+    }
+    else {
+        Write-Host "Folder already exists: $targetSources" -ForegroundColor Cyan
+    }
+    $DeployRSourcesPath = $targetSources
+}
+catch {
+    Write-Error "Failed to create directories: $_"
+}
+
+#Create Several Source Directories for populating content later
+<#
+SourceRoot
+- WinPEContent
+  - Certificates
+  - Drivers
+  - ExtraFiles
+  - WinRE
+- Applications
+  - 2PintSoftware
+    - StifleRClient
+  - 7zip
+  - NotepadPP
+  - VSCode
+- OSPackages
+  - ClientOS
+    - Win1123H2
+    - Win1124H2
+    - Win1125H2
+  - ServerOS
+    -Server2019
+    -Server2022
+    -Server2025
+- DriverPacks
+  - Dell
+  - HP
+  - Lenovo
+  - Panasonic
+#>
+
+Write-Host "Creating source directory structure in $DeployRSourcesPath..." -ForegroundColor Cyan
+
+# Define the folder structure
+$folderStructure = @(
+    # WinPEContent folders
+    "WinPEContent\Certificates",
+    "WinPEContent\Drivers",
+    "WinPEContent\ExtraFiles",
+    "WinPEContent\WinRE",
+    
+    # Applications folders
+    "Applications\2PintSoftware\StifleRClient",
+    "Applications\7zip",
+    "Applications\NotepadPP",
+    "Applications\VSCode",
+    
+    # OSPackages folders
+    "OSPackages\ClientOS\Win1123H2",
+    "OSPackages\ClientOS\Win1124H2",
+    "OSPackages\ClientOS\Win1125H2",
+    "OSPackages\ServerOS\Server2019",
+    "OSPackages\ServerOS\Server2022",
+    "OSPackages\ServerOS\Server2025",
+    
+    # DriverPacks folders
+    "DriverPacks\Dell",
+    "DriverPacks\HP",
+    "DriverPacks\Lenovo",
+    "DriverPacks\Panasonic"
+)
+
+# Create each folder in the structure
+foreach ($folder in $folderStructure) {
+    $fullPath = Join-Path -Path $DeployRSourcesPath -ChildPath $folder
+    try {
+        if (-not (Test-Path -Path $fullPath)) {
+            New-Item -Path $fullPath -ItemType Directory -Force | Out-Null
+            Write-Host "  Created: $folder" -ForegroundColor Green
+        }
+        else {
+            Write-Host "  Exists: $folder" -ForegroundColor DarkGray
+        }
+    }
+    catch {
+        Write-Warning "  Failed to create: $folder - $_"
+    }
+}
+
+Write-Host "Source directory structure creation completed." -ForegroundColor Cyan
+
+# Copy 2PXE certificate to WinPEContent\Certificates if it exists
+$sourceCertPath = "C:\Program Files\2Pint Software\2PXE\x64\ca.crt"
+$destCertFolder = Join-Path -Path $DeployRSourcesPath -ChildPath "WinPEContent\Certificates"
+
+if (Test-Path -Path $sourceCertPath) {
+    try {
+        $destCertPath = Join-Path -Path $destCertFolder -ChildPath "ca.crt"
+        Copy-Item -Path $sourceCertPath -Destination $destCertPath -Force -ErrorAction Stop
+        Write-Host "Copied 2PXE certificate to $destCertPath" -ForegroundColor Green
+    }
+    catch {
+        Write-Warning "Failed to copy 2PXE certificate: $_"
+    }
+}
+else {
+    Write-Host "2PXE certificate not found at $sourceCertPath - skipping copy" -ForegroundColor Yellow
+}
 
 # Set optional registry values
-if ($ContentLocation) {
-    Set-ItemProperty -Path $regPath -Name "ContentLocation" -Value "$ContentLocation" -Type String
+if ($DeployRContentLibPath) {
+    Set-ItemProperty -Path $regPath -Name "ContentLocation" -Value "$DeployRContentLibPath" -Type String
 }
 
 Write-Host "Registry entries created successfully."
@@ -302,6 +460,31 @@ Write-Host "Invoke-RestMethod `"https://$($FQDN):9000/api/infrastructureService/
 try {
     $deployR = Invoke-RestMethod "https://$($FQDN):9000/api/infrastructureService/type/11" -UseDefaultCredentials
     Invoke-RestMethod "https://$($FQDN):9000/api/infrastructureService/$($deployR.id)/approve" -Method PUT -UseDefaultCredentials
+}
+catch {
+    <#Do this if a terminating exception happens#>
+}
+try {
+    $ModulePath = 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
+    if ((Get-Service -Name DeployRService).status -ne 'Running') {
+        Write-Host "DeployR Service is not running. Starting Service." -ForegroundColor Yellow
+        start-service -Name DeployRService
+        Start-Sleep -Seconds 10
+    }
+    Import-Module $ModulePath
+    if (Test-Path "HKLM:\software\2Pint Software\DeployR\GeneralSettings") {
+        $DeployRReg = Get-Item -Path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"
+        $ClientPasscode = $DeployRReg.GetValue("ClientPasscode")
+        Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+    }
+    elseif (Test-Path "D:\DeployRPasscode.txt") {
+        $ClientPasscode = (Get-Content "D:\DeployRPasscode.txt" -Raw)
+        Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+    }
+    else {
+        throw "Cannot find DeployR Client Passcode in registry or D:\DeployRPasscode.txt"
+        Connect-DeployR
+    }
 }
 catch {
     <#Do this if a terminating exception happens#>
