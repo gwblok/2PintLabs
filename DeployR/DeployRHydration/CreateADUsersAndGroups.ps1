@@ -89,13 +89,24 @@ try {
         $domainDN = (Get-ADDomain -ErrorAction Stop).DistinguishedName
     } catch {
         Write-ColorOutput "  ✗ Failed to retrieve domain information" -Color Red
+        Write-ColorOutput "    Retrying in 120 seconds..." -Color Yellow
+        start-sleep -seconds 120
     }
-    start-sleep -seconds 5
     Write-ColorOutput "Getting Domain Info (Get-ADDomain) Try 2" -Color Gray
     try {
         $domainDN = (Get-ADDomain -ErrorAction Stop).DistinguishedName
     } catch {
         Write-ColorOutput "  ✗ Failed to retrieve domain information" -Color Red
+        Write-ColorOutput "    Retrying in 120 seconds..." -Color Yellow
+        start-sleep -seconds 120
+    }
+        Write-ColorOutput "Getting Domain Info (Get-ADDomain) Try 3" -Color Gray
+    try {
+        $domainDN = (Get-ADDomain -ErrorAction Stop).DistinguishedName
+    } catch {
+        Write-ColorOutput "  ✗ Failed to retrieve domain information" -Color Red
+        Write-ColorOutput "    Unable to continue without domain information. Exiting." -Color Red
+        exit 1
     }
 
     $domainDN = (Get-ADDomain).DistinguishedName
