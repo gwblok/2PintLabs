@@ -7,7 +7,7 @@
     1. Confirms Hyper-V is enabled
     2. Creates an External Network switch called "External" using the host's NIC
     3. Creates folder C:\HyperVLab
-    4. Creates DeployR VM (4GB RAM, 120GB C:, 80GB D:, 4 vCPUs)
+    4. Creates DeployR VM (4GB RAM, 120GB C:, 140GB D:, 4 vCPUs)
     5. Creates Client VM (4GB RAM, 120GB C:, 4 vCPUs)
     Both VMs use External network and boot from Network first.
 
@@ -342,7 +342,7 @@ try {
         },
         @{
             Path = Join-Path -Path $deployRVhdFolder -ChildPath "D.vhdx"
-            SizeBytes = 80GB
+            SizeBytes = 140GB
         }
     )
     
@@ -404,7 +404,7 @@ try {
     Write-Host "VMs Created:" -ForegroundColor Cyan
     Write-Host "  1. DeployR" -ForegroundColor Gray
     Write-Host "     - 4GB RAM, 4 vCPUs" -ForegroundColor Gray
-    Write-Host "     - 120GB C: drive, 80GB D: drive" -ForegroundColor Gray
+    Write-Host "     - 120GB C: drive, 140GB D: drive" -ForegroundColor Gray
     Write-Host "     - Network boot enabled" -ForegroundColor Gray
     Write-Host ""
     Write-Host "  2. Client" -ForegroundColor Gray

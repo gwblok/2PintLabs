@@ -47,8 +47,12 @@ function Download-FileWithBITS {
         [string]$Url,
         
         [Parameter(Mandatory=$true)]
-        [string]$Destination
+        [string]$Destination,
+
+        [Parameter(Mandatory=$false)]
+        [string]$ID = "DeployR_Iso"
     )
+    
     
     try {
         Write-Host "Downloading from: $Url" -ForegroundColor Cyan
@@ -75,6 +79,28 @@ function Download-FileWithBITS {
             Remove-Item $Destination -Force
         }
         
+        #Try Using DeployR built in download first
+        try { 
+            $Name = $Url.Split('/')[-1]
+            $ID = $Name
+            $destFile = Request-DeployRCustomContent -ContentName $ID -ContentFriendlyName $Name -URL $URL
+            $GetItemOutFile = Get-Item $destFile
+            $DownloadedFile = $GetItemOutFile.FullName
+            if (Test-Path -path $DownloadedFile){
+                Copy-Item -Path $DownloadedFile -Destination $Destination -Force
+                Write-Host "Download completed successfully using DeployR custom content!" -ForegroundColor Green
+                return [PSCustomObject]@{
+                    Success = $true
+                    FilePath = $Destination
+                    Message = "Downloaded successfully using DeployR custom content"
+                }
+            }
+            Write-Verbose -Message "DriverPack: $DownloadedFile"
+        } catch {
+            Write-Error "Failed to request DeployR custom content: $($_.Exception.Message)"
+        }
+
+
         # Try using BITS first
         try {
             Write-Host "Starting BITS transfer..." -ForegroundColor Green
