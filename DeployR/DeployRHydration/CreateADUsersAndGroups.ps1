@@ -48,12 +48,23 @@ function Write-ColorOutput {
 
 # Function to check if running on a Domain Controller
 function Test-DomainController {
-    try {
-        $dc = Get-ADDomainController -Discover -ErrorAction SilentlyContinue
-        return $true
-    } catch {
-        return $false
+    $maxRetries = 10
+    $retryCount = 0
+    $retryDelay = 5
+    
+    while ($retryCount -lt $maxRetries) {
+        try {
+            $domain = Get-ADDomain -ErrorAction Stop
+            return $true
+        } catch {
+            $retryCount++
+            if ($retryCount -lt $maxRetries) {
+                Write-ColorOutput "  ⏳ Waiting for Active Directory Web Services to be available... (Attempt $retryCount/$maxRetries)" -Color Yellow
+                Start-Sleep -Seconds $retryDelay
+            }
+        }
     }
+    return $false
 }
 
 # Main script execution
@@ -70,14 +81,25 @@ try {
     } catch {
         Write-ColorOutput "  ✗ Failed to import ActiveDirectory module" -Color Red
         Write-ColorOutput "  Make sure this script is run on a Domain Controller" -Color Yellow
-        exit 1
+        return
     }
     
     # Verify we're on a Domain Controller
-    Write-ColorOutput "`n[Step 2/5] Verifying Domain Controller..." -Color Cyan
+    Write-ColorOutput "`n[Step 2/5] Verifying Domain Controller and AD Services..." -Color Cyan
+    Write-ColorOutput "  Checking if Active Directory Web Services are available..." -Color Gray
     if (-not (Test-DomainController)) {
-        Write-ColorOutput "  ✗ This script must be run on a Domain Controller" -Color Red
-        exit 1
+        Write-ColorOutput "  ✗ Unable to connect to Active Directory Web Services" -Color Red
+        Write-ColorOutput "" -Color White
+        Write-ColorOutput "  This can happen if:" -Color Yellow
+        Write-ColorOutput "    1. The server hasn't been rebooted after DC promotion" -Color Yellow
+        Write-ColorOutput "    2. AD Web Services are still starting up" -Color Yellow
+        Write-ColorOutput "    3. This script is not running on a Domain Controller" -Color Yellow
+        Write-ColorOutput "" -Color White
+        Write-ColorOutput "  Please ensure:" -Color Cyan
+        Write-ColorOutput "    • The server has been rebooted after DC promotion" -Color Cyan
+        Write-ColorOutput "    • The ADWS (Active Directory Web Services) service is running" -Color Cyan
+        Write-ColorOutput "    • Run: Get-Service ADWS | Start-Service" -Color Cyan
+        return
     }
     Write-ColorOutput "  ✓ Running on Domain Controller" -Color Green
     
@@ -282,5 +304,17 @@ try {
     Write-ColorOutput $_.Exception.Message -Color Red
     Write-ColorOutput "`nStack Trace:" -Color Red
     Write-ColorOutput $_.ScriptStackTrace -Color Red
-    exit 1
+    
+    if ($_.Exception.Message -like "*Unable to find a default server*") {
+        Write-ColorOutput "`n=== TROUBLESHOOTING ===" -Color Yellow
+        Write-ColorOutput "This error typically means AD Web Services aren't ready yet." -Color Yellow
+        Write-ColorOutput "" -Color White
+        Write-ColorOutput "Try these steps:" -Color Cyan
+        Write-ColorOutput "  1. Restart the ADWS service: Restart-Service ADWS" -Color Cyan
+        Write-ColorOutput "  2. Check service status: Get-Service ADWS" -Color Cyan
+        Write-ColorOutput "  3. If just promoted to DC, reboot the server first" -Color Cyan
+        Write-ColorOutput "  4. Wait a few minutes and try again" -Color Cyan
+    }
+    
+    return
 }
