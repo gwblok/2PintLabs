@@ -25,14 +25,15 @@
       - OU=Groups (security groups placed here)
 #>
 
+
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$false)]
     [string]$Domain = "2PintLabs.local",
-    
     [Parameter(Mandatory=$false)]
     [string]$DefaultPassword = "P@ssw0rd"
 )
+
 
 # Set error action preference
 $ErrorActionPreference = "Stop"
@@ -83,7 +84,8 @@ try {
         Write-ColorOutput "  Make sure this script is run on a Domain Controller" -Color Yellow
         return
     }
-    
+    start-sleep -seconds 5
+    Import-Module ActiveDirectory -ErrorAction Stop
     # Verify we're on a Domain Controller
     Write-ColorOutput "`n[Step 2/5] Verifying Domain Controller and AD Services..." -Color Cyan
     Write-ColorOutput "  Checking if Active Directory Web Services are available..." -Color Gray
@@ -104,6 +106,31 @@ try {
     Write-ColorOutput "  ✓ Running on Domain Controller" -Color Green
     
     # Get domain DN
+    Write-ColorOutput "Getting Domain Info (Get-ADDomain) Try 1" -Color Gray
+    try {
+        $domainDN = (Get-ADDomain -ErrorAction Stop).DistinguishedName
+    } catch {
+        Write-ColorOutput "  ✗ Failed to retrieve domain information" -Color Red
+        Write-ColorOutput "    Retrying in 120 seconds..." -Color Yellow
+        start-sleep -seconds 120
+    }
+    Write-ColorOutput "Getting Domain Info (Get-ADDomain) Try 2" -Color Gray
+    try {
+        $domainDN = (Get-ADDomain -ErrorAction Stop).DistinguishedName
+    } catch {
+        Write-ColorOutput "  ✗ Failed to retrieve domain information" -Color Red
+        Write-ColorOutput "    Retrying in 120 seconds..." -Color Yellow
+        start-sleep -seconds 120
+    }
+        Write-ColorOutput "Getting Domain Info (Get-ADDomain) Try 3" -Color Gray
+    try {
+        $domainDN = (Get-ADDomain -ErrorAction Stop).DistinguishedName
+    } catch {
+        Write-ColorOutput "  ✗ Failed to retrieve domain information" -Color Red
+        Write-ColorOutput "    Unable to continue without domain information. Exiting." -Color Red
+        exit 1
+    }
+
     $domainDN = (Get-ADDomain).DistinguishedName
     Write-ColorOutput "  Domain DN: $domainDN" -Color Gray
     
@@ -318,3 +345,4 @@ try {
     
     return
 }
+

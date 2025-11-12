@@ -7,7 +7,7 @@
     1. Confirms Hyper-V is enabled
     2. Creates an External Network switch called "External" using the host's NIC
     3. Creates folder C:\HyperVLab
-    4. Creates DeployR VM (4GB RAM, 120GB C:, 80GB D:, 4 vCPUs)
+    4. Creates DeployR VM (4GB RAM, 120GB C:, 140GB D:, 4 vCPUs)
     5. Creates Client VM (4GB RAM, 120GB C:, 4 vCPUs)
     Both VMs use External network and boot from Network first.
 
@@ -342,7 +342,7 @@ try {
         },
         @{
             Path = Join-Path -Path $deployRVhdFolder -ChildPath "D.vhdx"
-            SizeBytes = 80GB
+            SizeBytes = 140GB
         }
     )
     
@@ -352,6 +352,25 @@ try {
         -ProcessorCount 4 `
         -SwitchName $switchName `
         -VirtualHardDisks $deployRDisks
+    
+    # Check for ISO in C:\HyperVLab and attach to DeployR VM
+    Write-Host "  Checking for ISO files in C:\HyperVLab..." -ForegroundColor Gray
+    $isoFiles = Get-ChildItem -Path "C:\HyperVLab" -Filter "*.iso" -ErrorAction SilentlyContinue
+    if ($isoFiles) {
+        $isoFile = $isoFiles | Select-Object -First 1
+        Write-Host "  Found ISO: $($isoFile.Name)" -ForegroundColor Yellow
+        Write-Host "  Attaching ISO to DeployR VM..." -ForegroundColor Gray
+        try {
+            Add-VMDvdDrive -VMName "DeployR" -Path $isoFile.FullName
+            Write-Host "✓ ISO attached successfully to DeployR VM" -ForegroundColor Green
+        }
+        catch {
+            Write-Host "⚠ Failed to attach ISO: $_" -ForegroundColor Yellow
+        }
+    }
+    else {
+        Write-Host "  No ISO files found in C:\HyperVLab" -ForegroundColor Gray
+    }
     
     # Step 5: Create Client VM
     $clientVhdFolder = Join-Path -Path $vmPath -ChildPath "Client\Virtual Hard Disks"
@@ -385,7 +404,7 @@ try {
     Write-Host "VMs Created:" -ForegroundColor Cyan
     Write-Host "  1. DeployR" -ForegroundColor Gray
     Write-Host "     - 4GB RAM, 4 vCPUs" -ForegroundColor Gray
-    Write-Host "     - 120GB C: drive, 80GB D: drive" -ForegroundColor Gray
+    Write-Host "     - 120GB C: drive, 140GB D: drive" -ForegroundColor Gray
     Write-Host "     - Network boot enabled" -ForegroundColor Gray
     Write-Host ""
     Write-Host "  2. Client" -ForegroundColor Gray
