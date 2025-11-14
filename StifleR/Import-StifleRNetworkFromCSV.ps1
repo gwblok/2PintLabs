@@ -29,7 +29,7 @@
 #region --------------------------------------------------[Script Parameters]------------------------------------------------------
 Param (
     [parameter(Mandatory = $false)]
-    [string]$CSVPath = "C:\Users\gary.blok\Downloads\StifleRNetworks.csv.csv",
+    [string]$CSVPath = "C:\Users\me\Downloads\StifleRNetworks.csv",
     [parameter(Mandatory = $false)]
     [string]$CSVDelimiter = ",",
     [switch]$Force
