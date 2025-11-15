@@ -32,7 +32,7 @@ NOTES
       $BIOSSettings Object
 
 #>
-$BIOSPassword = 'P@ssw0rd'
+$BIOSPassword = 'P@ssw0rd'  #Feel free to make this more secure, however you want to do that.  This is NOT best practice to have passwords in scripts.  Just here for demo purposes.
 
 # Define BIOS settings as an array of objects (SettingName, SettingValue)
 $BIOSSettings = @(
