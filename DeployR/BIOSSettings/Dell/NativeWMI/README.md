@@ -38,6 +38,39 @@ if (Test-DellBIOSWMISupport) {
 
 ---
 
+### Test-DellBIOSPassword
+
+Checks if a BIOS Admin or System password is currently set on the device. Useful for conditional logic before attempting BIOS changes or password operations.
+
+**Parameters:**
+
+- `PasswordType` (optional) - Type of password to check: "Admin" (default), "System", or "Both"
+
+**Returns:** `$true` if password is set, `$false` if not set
+
+**Examples:**
+
+```powershell
+# Check if Admin password is set
+if (Test-DellBIOSPassword) {
+    Write-Host "BIOS Admin password is set"
+} else {
+    Write-Host "No BIOS Admin password"
+}
+
+# Check if System password is set
+if (Test-DellBIOSPassword -PasswordType "System") {
+    Write-Host "System password is set"
+}
+
+# Check if either password type is set
+if (Test-DellBIOSPassword -PasswordType "Both") {
+    Write-Host "At least one password is set"
+}
+```
+
+---
+
 ### Get-DellBIOSSetting
 
 Retrieves BIOS settings from Dell devices. Can retrieve all settings or filter by a specific setting name. Returns PSCustomObjects with detailed information including current values, possible values, read-only status, and more.
@@ -110,6 +143,44 @@ Set-DellBIOSSetting -SettingName "Admin" -SettingValue "NewPassword456" -BIOSPW 
 
 # Clear BIOS Admin Password
 Set-DellBIOSSetting -SettingName "Admin" -SettingValue "ClearPWD" -BIOSPW "NewPassword456"
+```
+
+---
+
+### Set-DellBIOSAdminPassword
+
+Simplified function to manage the Dell BIOS Admin password. Automatically detects if a password is currently set and performs the appropriate operation (set, change, or remove). This is an easier alternative to using `Set-DellBIOSSetting` for password management.
+
+**Parameters:**
+
+- `CurrentPassword` (optional) - Current BIOS Admin password (required when changing or removing)
+- `NewPassword` (required for set/change) - New BIOS Admin password to set
+- `RemovePassword` (switch) - Remove the current BIOS Admin password
+
+**Returns:** `$true` if successful, `$false` if failed
+
+**Note:** Uses parameter sets to ensure correct parameter combinations are used.
+
+**Examples:**
+
+```powershell
+# Set BIOS Admin password for the first time (no current password)
+Set-DellBIOSAdminPassword -NewPassword "MySecurePassword123"
+
+# Change existing BIOS Admin password
+Set-DellBIOSAdminPassword -CurrentPassword "OldPassword123" -NewPassword "NewPassword456"
+
+# Remove/clear BIOS Admin password
+Set-DellBIOSAdminPassword -CurrentPassword "CurrentPassword123" -RemovePassword
+
+# Conditional password management with detection
+if (Test-DellBIOSPassword) {
+    # Password is set, change it
+    Set-DellBIOSAdminPassword -CurrentPassword "Current123" -NewPassword "New456"
+} else {
+    # No password set, set new one
+    Set-DellBIOSAdminPassword -NewPassword "New456"
+}
 ```
 
 ---
