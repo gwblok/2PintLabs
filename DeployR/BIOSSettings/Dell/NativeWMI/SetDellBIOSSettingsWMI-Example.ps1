@@ -1,9 +1,78 @@
-#Example Script on Setting Several Dell BIOS Settings via WMI/CIM
+<#
+.SYNOPSIS
+    Example script for configuring multiple Dell BIOS settings via native WMI/CIM
 
-#BIOS Password (if you got one)
-$BIOSPassword = ""  #Set your BIOS Admin Password here, if applicable
+.DESCRIPTION
+    This script demonstrates how to configure multiple Dell BIOS settings in a single execution.
+    It uses native Dell WMI classes to query and modify BIOS settings without requiring external tools.
+    
+    The script performs the following operations:
+    1. Tests if the device supports Dell BIOS WMI management (devices from 2018+)
+    2. Loops through a defined list of desired BIOS settings
+    3. For each setting:
+       - Retrieves the current value from the device
+       - Validates the setting exists and is not read-only
+       - Skips if already set to the desired value (idempotent behavior)
+       - Validates enumeration values against possible options
+       - Applies the change if needed
+    4. Provides detailed reporting with color-coded console output
+    5. Exports results to a timestamped log file in %TEMP%
+    6. Returns appropriate exit codes for automation/task sequences
+    
+    Key Features:
+    - Idempotent: Only changes settings that need to be changed
+    - Validation: Checks for valid values before attempting changes
+    - Error handling: Gracefully handles missing settings or read-only values
+    - Detailed logging: Tracks success, failures, and skipped items
+    - BIOS password support: Handles both password-protected and non-protected scenarios
 
-#Set your desired Settings and Values here:
+.NOTES
+    Author: Gary Blok (@gwblok) - 2PintLabs
+    Version: 1.0
+    Created: November 2025
+    
+    Credits:
+    - Sven Riebe (@SvenRiebe) for the original Dell BIOS management implementation
+    - Reference: https://github.com/svenriebedell/Intune/blob/main/Remediation/Intune_11_Detection_BIOS_setting_compliant.ps1
+    
+    Requirements:
+    - Dell device with WMI BIOS support (manufactured after 2018)
+    - Administrative privileges
+    - PowerShell 5.1 or higher
+    
+    Exit Codes:
+    - 0: Success (all settings applied or no changes needed)
+    - 1: Failure (device incompatible or one or more settings failed)
+
+.EXAMPLE
+    Run the script with no BIOS password:
+    .\SetDellBIOSSettingsWMI-Example.ps1
+    
+.EXAMPLE
+    Modify the script to include BIOS password:
+    Edit line 4: $BIOSPassword = "YourBIOSPassword"
+    
+.EXAMPLE
+    Customize the settings list (lines 7-16):
+    Add or modify settings in the $BIOSSettings array with BIOSSettingName and BIOSSettingValue
+
+.LINK
+    https://github.com/gwblok/2PintLabs
+
+.LINK
+    https://github.com/svenriebedell/Intune/blob/main/Remediation/Intune_11_Detection_BIOS_setting_compliant.ps1
+
+#>
+
+#########################################################################################################
+####                                    Configuration Section                                        ####
+#########################################################################################################
+
+#BIOS Password (if you have one configured)
+$BIOSPassword = ""  #Set your BIOS Admin Password here, if applicable. Leave empty if no password is set.
+
+#Define your desired BIOS settings and values here:
+#To find available settings and values, run: Get-DellBIOSSetting | Select-Object AttributeName, CurrentValue, PossibleValues
 $BIOSSettings = @(
     [PSCustomObject]@{BIOSSettingName = "AutoOSRecoveryThreshold"; BIOSSettingValue = "OFF"}
     [PSCustomObject]@{BIOSSettingName = "SupportAssistOSRecovery"; BIOSSettingValue = "Disabled"}
