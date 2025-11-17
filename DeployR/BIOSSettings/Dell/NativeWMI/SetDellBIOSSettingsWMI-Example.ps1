@@ -77,10 +77,10 @@ $BIOSSettings = @(
     [PSCustomObject]@{BIOSSettingName = "AutoOSRecoveryThreshold"; BIOSSettingValue = "OFF"}
     [PSCustomObject]@{BIOSSettingName = "SupportAssistOSRecovery"; BIOSSettingValue = "Disabled"}
     [PSCustomObject]@{BIOSSettingName = "BIOSConnect"; BIOSSettingValue = "Enabled"}
-    [PSCustomObject]@{BIOSSettingName = "FastBoot"; BIOSSettingValue = "Disabled"}
+    [PSCustomObject]@{BIOSSettingName = "FastBoot"; BIOSSettingValue = "Auto"}
     [PSCustomObject]@{BIOSSettingName = "WakeOnAc"; BIOSSettingValue = "Enabled"}
     [PSCustomObject]@{BIOSSettingName = "USBPowerShare"; BIOSSettingValue = "Enabled"}
-    [PSCustomObject]@{BIOSSettingName = "WakeOnLan"; BIOSSettingValue = "Enabled"}
+    [PSCustomObject]@{BIOSSettingName = "WakeOnLan"; BIOSSettingValue = "LanOnly"}
     [PSCustomObject]@{BIOSSettingName = "CapsuleFirmwareUpdate"; BIOSSettingValue = "Enabled"}
 )
 
