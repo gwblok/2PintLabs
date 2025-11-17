@@ -6,10 +6,12 @@
     This script provides functions to get and set Dell BIOS settings using the native Dell WMI classes.
     It supports both EnumerationAttribute (settings with predefined values) and StringAttribute (text-based settings like Asset Tag).
     
-    The script includes three main functions:
+    The script includes five main functions:
     - Test-DellBIOSWMISupport: Verifies if the device supports Dell BIOS WMI management
+    - Test-DellBIOSPassword: Checks if a BIOS Admin or System password is currently set
     - Get-DellBIOSSetting: Retrieves BIOS settings from the device
     - Set-DellBIOSSetting: Modifies BIOS settings on the device
+    - Set-DellBIOSAdminPassword: Simplified function to set, change, or remove BIOS Admin password
 
 .NOTES
     Version: 1.0
@@ -70,6 +72,26 @@
 .EXAMPLE
     # Clear BIOS Admin Password
     Set-DellBIOSSetting -SettingName "Admin" -SettingValue "ClearPWD" -BIOSPW "NewPassword456"
+
+.EXAMPLE
+    # Check if BIOS Admin password is set
+    if (Test-DellBIOSPassword) {
+        Write-Host "BIOS Admin password is set"
+    } else {
+        Write-Host "No BIOS Admin password"
+    }
+
+.EXAMPLE
+    # Set BIOS Admin password for the first time (simplified method)
+    Set-DellBIOSAdminPassword -NewPassword "MySecurePassword123"
+
+.EXAMPLE
+    # Change existing BIOS Admin password (simplified method)
+    Set-DellBIOSAdminPassword -CurrentPassword "OldPassword123" -NewPassword "NewPassword456"
+
+.EXAMPLE
+    # Remove BIOS Admin password (simplified method)
+    Set-DellBIOSAdminPassword -CurrentPassword "CurrentPassword123" -RemovePassword
     
 .EXAMPLE
     # Export all BIOS settings to CSV for documentation
@@ -158,6 +180,153 @@ function Test-DellBIOSWMISupport
             {
                 $errMsg = $_.Exception.Message
                 Write-Verbose "Dell BIOS WMI support is not available: $errMsg"
+                return $false
+            }
+    }
+
+
+function Test-DellBIOSPassword
+    {
+
+        <#
+        .Synopsis
+        Tests if a BIOS password is currently set on the Dell device
+
+        .Description
+        This function checks if a BIOS Admin or System password is set on the device by querying
+        the PasswordObject WMI class. It can check for Admin password, System password, or both.
+        
+        Returns $true if the specified password type is set, $false if not set.
+        Useful for conditional logic before attempting BIOS changes.
+        
+        .Parameter PasswordType
+        Specifies which password type to check. Valid values are:
+        - "Admin" (default) - Checks BIOS Admin password
+        - "System" - Checks System password
+        - "Both" - Checks if either Admin or System password is set
+        
+        .Outputs
+        System.Boolean
+        Returns $true if the password is set, $false if not set
+
+        Changelog:
+            1.0.0 Initial Version
+
+        .Example
+        Check if Admin password is set
+
+        if (Test-DellBIOSPassword) {
+            Write-Host "BIOS Admin password is set"
+        } else {
+            Write-Host "No BIOS Admin password"
+        }
+
+        .Example
+        Check if System password is set
+
+        if (Test-DellBIOSPassword -PasswordType "System") {
+            Write-Host "System password is set"
+        }
+        
+        .Example
+        Check if either password type is set
+        
+        if (Test-DellBIOSPassword -PasswordType "Both") {
+            Write-Host "At least one password is set"
+        }
+
+        #>
+        [CmdletBinding()]
+        param(
+            [Parameter(mandatory=$false)]
+            [ValidateSet("Admin", "System", "Both")]
+            [String]$PasswordType = "Admin"
+        )
+
+        #########################################################################################################
+        ####                                    Program Section                                              ####
+        #########################################################################################################
+
+        # Check if Dell BIOS WMI is supported on this device
+        if (-not (Test-DellBIOSWMISupport))
+            {
+                Write-Error "Error: This device does not support Dell BIOS WMI management. This feature is typically available on Dell devices manufactured after 2018."
+                return $false
+            }
+
+        try
+            {
+                switch ($PasswordType)
+                    {
+                        "Admin" {
+                            Write-Verbose "Checking if Admin password is set..."
+                            $PasswordObject = Get-CimInstance -Namespace root/dcim/sysman/wmisecurity -ClassName PasswordObject -Filter "NameId='Admin'" -ErrorAction Stop
+                            
+                            if ($null -eq $PasswordObject)
+                                {
+                                    Write-Verbose "Unable to retrieve Admin password status"
+                                    return $false
+                                }
+                            
+                            if ($PasswordObject.IsPasswordSet -eq 1)
+                                {
+                                    Write-Verbose "Admin password is set"
+                                    return $true
+                                }
+                            else
+                                {
+                                    Write-Verbose "Admin password is not set"
+                                    return $false
+                                }
+                        }
+                        
+                        "System" {
+                            Write-Verbose "Checking if System password is set..."
+                            $PasswordObject = Get-CimInstance -Namespace root/dcim/sysman/wmisecurity -ClassName PasswordObject -Filter "NameId='System'" -ErrorAction Stop
+                            
+                            if ($null -eq $PasswordObject)
+                                {
+                                    Write-Verbose "Unable to retrieve System password status"
+                                    return $false
+                                }
+                            
+                            if ($PasswordObject.IsPasswordSet -eq 1)
+                                {
+                                    Write-Verbose "System password is set"
+                                    return $true
+                                }
+                            else
+                                {
+                                    Write-Verbose "System password is not set"
+                                    return $false
+                                }
+                        }
+                        
+                        "Both" {
+                            Write-Verbose "Checking if Admin or System password is set..."
+                            $AdminPassword = Get-CimInstance -Namespace root/dcim/sysman/wmisecurity -ClassName PasswordObject -Filter "NameId='Admin'" -ErrorAction Stop
+                            $SystemPassword = Get-CimInstance -Namespace root/dcim/sysman/wmisecurity -ClassName PasswordObject -Filter "NameId='System'" -ErrorAction Stop
+                            
+                            $AdminSet = ($null -ne $AdminPassword) -and ($AdminPassword.IsPasswordSet -eq 1)
+                            $SystemSet = ($null -ne $SystemPassword) -and ($SystemPassword.IsPasswordSet -eq 1)
+                            
+                            if ($AdminSet -or $SystemSet)
+                                {
+                                    Write-Verbose "At least one password is set (Admin: $AdminSet, System: $SystemSet)"
+                                    return $true
+                                }
+                            else
+                                {
+                                    Write-Verbose "No passwords are set"
+                                    return $false
+                                }
+                        }
+                    }
+            }
+        catch
+            {
+                $errMsg = $_.Exception.Message
+                Write-Error "Error: Failed to check BIOS password status - $errMsg"
                 return $false
             }
     }
@@ -391,6 +560,7 @@ function Set-DellBIOSSetting
             1.0.2 Switched from Write-Host to Write-Information, Write-Verbose and Write-Error
             1.0.3 Added pipeline support to accept input from Get-DellBIOSSetting
             1.0.4 Added device compatibility check via Test-DellBIOSWMISupport
+            1.0.5 Enhanced to use Test-DellBIOSPassword and validate password before operations
 
 
         .Example
@@ -464,22 +634,25 @@ function Set-DellBIOSSetting
             }
 
 
-        # Check if BIOS Setting need BIOS Admin PWD
+        # Check if BIOS Admin password is set and validate provided password
         try
             {
-                # Check BIOS AttributName AdminPW is set
-                $BIOSAdminPW = Get-CimInstance -Namespace root/dcim/sysman/wmisecurity -ClassName PasswordObject -Filter "NameId='Admin'" | Select-Object -ExpandProperty IsPasswordSet
+                # Use Test-DellBIOSPassword to check if password is set
+                $PasswordIsSet = Test-DellBIOSPassword -PasswordType "Admin"
 
-                if ($BIOSAdminPW -match "1")
+                if ($PasswordIsSet)
                     {
-                        Write-Information "BIOS Admin PW is set on this Device" -InformationAction Continue
+                        Write-Information "BIOS Admin password is set on this device" -InformationAction Continue
 
-                        If ($null -eq $BIOSPW)
+                        # Verify password was provided
+                        If ([string]::IsNullOrEmpty($BIOSPW))
                             {
-                                Write-Information "Message : required parameter BIOSPW is empty" -InformationAction Continue
-                                Return $false, "3"
+                                Write-Error "Error: BIOS Admin password is set but BIOSPW parameter was not provided"
+                                Write-Information "Message: Required parameter BIOSPW is empty" -InformationAction Continue
                                 Return $false
                             }
+                        
+                        Write-Verbose "BIOS password provided, will use for authentication"
 
                         #Get encoder for encoding password
                         $encoder = New-Object System.Text.UTF8Encoding
@@ -649,7 +822,13 @@ function Set-DellBIOSSetting
                     }
                 Else
                     {
-                        Write-Information "No BIOS Admin PW is set on this Device" -InformationAction Continue
+                        Write-Information "No BIOS Admin password is set on this device" -InformationAction Continue
+                        
+                        # Warn if password was provided but not needed
+                        if (-not [string]::IsNullOrEmpty($BIOSPW))
+                            {
+                                Write-Warning "BIOS password parameter was provided but no password is set on the device. The password will be ignored."
+                            }
 
                         If (($SettingName -ne "Admin") -and ($SettingName -ne "System"))
                             {
@@ -787,5 +966,299 @@ function Set-DellBIOSSetting
                     }
                 Write-Information "Status : False" -InformationAction Continue
                 Return $false
+            }
+    }
+
+
+function Set-DellBIOSAdminPassword
+    {
+
+        <#
+        .Synopsis
+        Sets, changes, or removes the Dell BIOS Admin password
+
+        .Description
+        This function manages the Dell BIOS Admin password by automatically detecting if a password
+        is currently set and performing the appropriate operation:
+        - If no password is set: Sets the new password
+        - If a password is set: Changes from current to new password
+        - If RemovePassword switch is used: Removes the current password
+        
+        The function uses the Test-DellBIOSPassword function to determine the current state
+        and handles the password encoding and WMI operations accordingly.
+        
+        Note: This function does not write any information to the registry.
+        
+        .Parameter CurrentPassword
+        The current BIOS Admin password. Required when changing or removing an existing password.
+        If no password is currently set, this parameter will be ignored.
+
+        .Parameter NewPassword
+        The new BIOS Admin password to set or change to.
+        This parameter is required unless RemovePassword switch is used.
+        Must meet Dell BIOS password requirements.
+        
+        .Parameter RemovePassword
+        Switch parameter to remove the current BIOS Admin password.
+        When used, CurrentPassword is required but NewPassword should not be provided.
+        
+        .Outputs
+        System.Boolean
+        Returns $true if the password was successfully set, changed, or removed, $false if the operation failed
+
+        Changelog:
+            1.0.0 Initial Version
+            1.0.1 Added RemovePassword parameter to support clearing BIOS Admin password
+
+        .Example
+        Set a BIOS Admin password for the first time (no current password)
+
+        Set-DellBIOSAdminPassword -NewPassword "MySecurePassword123"
+
+        .Example
+        Change the BIOS Admin password from current to new
+
+        Set-DellBIOSAdminPassword -CurrentPassword "OldPassword123" -NewPassword "NewPassword456"
+
+        .Example
+        Remove the BIOS Admin password
+
+        Set-DellBIOSAdminPassword -CurrentPassword "CurrentPassword123" -RemovePassword
+
+        .Example
+        Conditional password setting with detection
+
+        if (Test-DellBIOSPassword) {
+            # Password is set, change it
+            Set-DellBIOSAdminPassword -CurrentPassword "Current123" -NewPassword "New456"
+        } else {
+            # No password set, set new one
+            Set-DellBIOSAdminPassword -NewPassword "New456"
+        }
+
+        #>
+        [CmdletBinding(DefaultParameterSetName='SetOrChange')]
+        param(
+            [Parameter(mandatory=$false, ParameterSetName='SetOrChange')]
+            [Parameter(mandatory=$true, ParameterSetName='Remove')]
+            [String]$CurrentPassword,
+            
+            [Parameter(mandatory=$true, ParameterSetName='SetOrChange')]
+            [String]$NewPassword,
+            
+            [Parameter(mandatory=$true, ParameterSetName='Remove')]
+            [Switch]$RemovePassword
+        )
+
+        #########################################################################################################
+        ####                                    Program Section                                              ####
+        #########################################################################################################
+
+        # Check if Dell BIOS WMI is supported on this device
+        if (-not (Test-DellBIOSWMISupport))
+            {
+                Write-Error "Error: This device does not support Dell BIOS WMI management. This feature is typically available on Dell devices manufactured after 2018."
+                return $false
+            }
+
+        # Validate parameters based on operation
+        if (-not $RemovePassword)
+            {
+                # For Set/Change operations, NewPassword is required
+                if ([string]::IsNullOrEmpty($NewPassword))
+                    {
+                        Write-Error "Error: NewPassword parameter cannot be empty"
+                        return $false
+                    }
+            }
+        else
+            {
+                # For Remove operation, ensure NewPassword wasn't provided
+                if (-not [string]::IsNullOrEmpty($NewPassword))
+                    {
+                        Write-Warning "NewPassword parameter was provided with RemovePassword switch. NewPassword will be ignored."
+                    }
+            }
+
+        # Connect to SecurityInterface WMI class
+        try
+            {
+                Write-Verbose "Connecting to Dell Security WMI Interface..."
+                $SecurityInterface = Get-CimInstance -Namespace root\dcim\sysman\wmisecurity -Class SecurityInterface -ErrorAction Stop
+                Write-Information "Security Interface connected" -InformationAction Continue
+            }
+        catch
+            {
+                $errMsg = $_.Exception.Message
+                Write-Error "Error: Security interface access denied or unreachable - $errMsg"
+                return $false
+            }
+
+        # Check if BIOS Admin password is currently set
+        try
+            {
+                # Use Test-DellBIOSPassword to check current state
+                $PasswordIsSet = Test-DellBIOSPassword -PasswordType "Admin"
+
+                if (-not $PasswordIsSet)
+                    {
+                        # Check if user is trying to remove password when none is set
+                        if ($RemovePassword)
+                            {
+                                Write-Warning "No BIOS Admin password is currently set. Nothing to remove."
+                                return $true
+                            }
+                        
+                        #################################################
+                        #### Set BIOS Admin Password for First Time ####
+                        #################################################
+                        
+                        Write-Information "No BIOS Admin password is currently set. Setting new password..." -InformationAction Continue
+                        
+                        # Argument for setting password (no current password)
+                        $arguments = @{
+                            NameId      = "Admin"
+                            NewPassword = $NewPassword
+                            OldPassword = ""
+                            SecType     = 0
+                            SecHndCount = 0
+                            SecHandle   = @()
+                        }
+
+                        # Set the new BIOS Admin password
+                        $SetResult = Invoke-CimMethod -InputObject $SecurityInterface -MethodName SetNewPassword -Arguments $arguments -ErrorAction Stop
+
+                        if ($SetResult.Status -eq 0)
+                            {
+                                Write-Information "Message: BIOS Admin password set successfully" -InformationAction Continue
+                                return $true
+                            }
+                        else
+                            {
+                                $result = switch ($SetResult.Status)
+                                    {
+                                        0 { 'Success' }
+                                        1 { 'Failed' }
+                                        2 { 'Invalid Parameter' }
+                                        3 { 'Access Denied' }
+                                        4 { 'Not Supported' }
+                                        5 { 'Memory Error' }
+                                        6 { 'Protocol Error' }
+                                        default { 'Unknown' }
+                                    }
+                                Write-Error "Error: Failed to set BIOS Admin password - Status: $result (Code: $($SetResult.Status))"
+                                return $false
+                            }
+                    }
+                else
+                    {
+                        # Verify CurrentPassword was provided for change or remove operations
+                        if ([string]::IsNullOrEmpty($CurrentPassword))
+                            {
+                                $operation = if ($RemovePassword) { "remove" } else { "change" }
+                                Write-Error "Error: BIOS Admin password is set but CurrentPassword parameter was not provided"
+                                Write-Information "Message: CurrentPassword is required to $operation an existing BIOS password" -InformationAction Continue
+                                return $false
+                            }
+
+                        Write-Verbose "Encoding current password for authentication..."
+                        
+                        # Encode the current password
+                        $Encoder = New-Object System.Text.UTF8Encoding
+                        $Bytes = $Encoder.GetBytes($CurrentPassword)
+
+                        if ($RemovePassword)
+                            {
+                                ##########################################
+                                #### Remove BIOS Admin Password      ####
+                                ##########################################
+                                
+                                Write-Information "BIOS Admin password is set. Removing password..." -InformationAction Continue
+
+                                # Argument for removing password (set new password to empty string)
+                                $arguments = @{
+                                    NameId      = "Admin"
+                                    NewPassword = ""
+                                    OldPassword = $CurrentPassword
+                                    SecType     = 1
+                                    SecHndCount = $Bytes.Length
+                                    SecHandle   = $Bytes
+                                }
+
+                                # Remove the BIOS Admin password
+                                $SetResult = Invoke-CimMethod -InputObject $SecurityInterface -MethodName SetNewPassword -Arguments $arguments -ErrorAction Stop
+
+                                if ($SetResult.Status -eq 0)
+                                    {
+                                        Write-Information "Message: BIOS Admin password removed successfully" -InformationAction Continue
+                                        return $true
+                                    }
+                                else
+                                    {
+                                        $result = switch ($SetResult.Status)
+                                            {
+                                                0 { 'Success' }
+                                                1 { 'Failed' }
+                                                2 { 'Invalid Parameter' }
+                                                3 { 'Access Denied - Current password may be incorrect' }
+                                                4 { 'Not Supported' }
+                                                5 { 'Memory Error' }
+                                                6 { 'Protocol Error' }
+                                                default { 'Unknown' }
+                                            }
+                                        Write-Error "Error: Failed to remove BIOS Admin password - Status: $result (Code: $($SetResult.Status))"
+                                        return $false
+                                    }
+                            }
+                        else
+                            {
+                                ##############################################
+                                #### Change Existing BIOS Admin Password ####
+                                ##############################################
+                                
+                                Write-Information "BIOS Admin password is already set. Changing password..." -InformationAction Continue
+
+                                # Argument for changing password (with current password authentication)
+                                $arguments = @{
+                                    NameId      = "Admin"
+                                    NewPassword = $NewPassword
+                                    OldPassword = $CurrentPassword
+                                    SecType     = 1
+                                    SecHndCount = $Bytes.Length
+                                    SecHandle   = $Bytes
+                                }
+
+                                # Change the BIOS Admin password
+                                $SetResult = Invoke-CimMethod -InputObject $SecurityInterface -MethodName SetNewPassword -Arguments $arguments -ErrorAction Stop
+
+                                if ($SetResult.Status -eq 0)
+                                    {
+                                        Write-Information "Message: BIOS Admin password changed successfully" -InformationAction Continue
+                                        return $true
+                                    }
+                                else
+                                    {
+                                        $result = switch ($SetResult.Status)
+                                            {
+                                                0 { 'Success' }
+                                                1 { 'Failed' }
+                                                2 { 'Invalid Parameter' }
+                                                3 { 'Access Denied - Current password may be incorrect' }
+                                                4 { 'Not Supported' }
+                                                5 { 'Memory Error' }
+                                                6 { 'Protocol Error' }
+                                                default { 'Unknown' }
+                                            }
+                                        Write-Error "Error: Failed to change BIOS Admin password - Status: $result (Code: $($SetResult.Status))"
+                                        return $false
+                                    }
+                            }
+                    }
+            }
+        catch
+            {
+                $errMsg = $_.Exception.Message
+                Write-Error "Error: Failed to manage BIOS Admin password - $errMsg"
+                return $false
             }
     }

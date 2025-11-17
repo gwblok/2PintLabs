@@ -158,6 +158,153 @@ function Test-DellBIOSWMISupport
     }
 
 
+function Test-DellBIOSPassword
+    {
+
+        <#
+        .Synopsis
+        Tests if a BIOS password is currently set on the Dell device
+
+        .Description
+        This function checks if a BIOS Admin or System password is set on the device by querying
+        the PasswordObject WMI class. It can check for Admin password, System password, or both.
+        
+        Returns $true if the specified password type is set, $false if not set.
+        Useful for conditional logic before attempting BIOS changes.
+        
+        .Parameter PasswordType
+        Specifies which password type to check. Valid values are:
+        - "Admin" (default) - Checks BIOS Admin password
+        - "System" - Checks System password
+        - "Both" - Checks if either Admin or System password is set
+        
+        .Outputs
+        System.Boolean
+        Returns $true if the password is set, $false if not set
+
+        Changelog:
+            1.0.0 Initial Version
+
+        .Example
+        Check if Admin password is set
+
+        if (Test-DellBIOSPassword) {
+            Write-Host "BIOS Admin password is set"
+        } else {
+            Write-Host "No BIOS Admin password"
+        }
+
+        .Example
+        Check if System password is set
+
+        if (Test-DellBIOSPassword -PasswordType "System") {
+            Write-Host "System password is set"
+        }
+        
+        .Example
+        Check if either password type is set
+        
+        if (Test-DellBIOSPassword -PasswordType "Both") {
+            Write-Host "At least one password is set"
+        }
+
+        #>
+        [CmdletBinding()]
+        param(
+            [Parameter(mandatory=$false)]
+            [ValidateSet("Admin", "System", "Both")]
+            [String]$PasswordType = "Admin"
+        )
+
+        #########################################################################################################
+        ####                                    Program Section                                              ####
+        #########################################################################################################
+
+        # Check if Dell BIOS WMI is supported on this device
+        if (-not (Test-DellBIOSWMISupport))
+            {
+                Write-Error "Error: This device does not support Dell BIOS WMI management. This feature is typically available on Dell devices manufactured after 2018."
+                return $false
+            }
+
+        try
+            {
+                switch ($PasswordType)
+                    {
+                        "Admin" {
+                            Write-Verbose "Checking if Admin password is set..."
+                            $PasswordObject = Get-CimInstance -Namespace root/dcim/sysman/wmisecurity -ClassName PasswordObject -Filter "NameId='Admin'" -ErrorAction Stop
+                            
+                            if ($null -eq $PasswordObject)
+                                {
+                                    Write-Verbose "Unable to retrieve Admin password status"
+                                    return $false
+                                }
+                            
+                            if ($PasswordObject.IsPasswordSet -eq 1)
+                                {
+                                    Write-Verbose "Admin password is set"
+                                    return $true
+                                }
+                            else
+                                {
+                                    Write-Verbose "Admin password is not set"
+                                    return $false
+                                }
+                        }
+                        
+                        "System" {
+                            Write-Verbose "Checking if System password is set..."
+                            $PasswordObject = Get-CimInstance -Namespace root/dcim/sysman/wmisecurity -ClassName PasswordObject -Filter "NameId='System'" -ErrorAction Stop
+                            
+                            if ($null -eq $PasswordObject)
+                                {
+                                    Write-Verbose "Unable to retrieve System password status"
+                                    return $false
+                                }
+                            
+                            if ($PasswordObject.IsPasswordSet -eq 1)
+                                {
+                                    Write-Verbose "System password is set"
+                                    return $true
+                                }
+                            else
+                                {
+                                    Write-Verbose "System password is not set"
+                                    return $false
+                                }
+                        }
+                        
+                        "Both" {
+                            Write-Verbose "Checking if Admin or System password is set..."
+                            $AdminPassword = Get-CimInstance -Namespace root/dcim/sysman/wmisecurity -ClassName PasswordObject -Filter "NameId='Admin'" -ErrorAction Stop
+                            $SystemPassword = Get-CimInstance -Namespace root/dcim/sysman/wmisecurity -ClassName PasswordObject -Filter "NameId='System'" -ErrorAction Stop
+                            
+                            $AdminSet = ($null -ne $AdminPassword) -and ($AdminPassword.IsPasswordSet -eq 1)
+                            $SystemSet = ($null -ne $SystemPassword) -and ($SystemPassword.IsPasswordSet -eq 1)
+                            
+                            if ($AdminSet -or $SystemSet)
+                                {
+                                    Write-Verbose "At least one password is set (Admin: $AdminSet, System: $SystemSet)"
+                                    return $true
+                                }
+                            else
+                                {
+                                    Write-Verbose "No passwords are set"
+                                    return $false
+                                }
+                        }
+                    }
+            }
+        catch
+            {
+                $errMsg = $_.Exception.Message
+                Write-Error "Error: Failed to check BIOS password status - $errMsg"
+                return $false
+            }
+    }
+
+
 function Get-DellBIOSSetting
     {
 
@@ -386,6 +533,7 @@ function Set-DellBIOSSetting
             1.0.2 Switched from Write-Host to Write-Information, Write-Verbose and Write-Error
             1.0.3 Added pipeline support to accept input from Get-DellBIOSSetting
             1.0.4 Added device compatibility check via Test-DellBIOSWMISupport
+            1.0.5 Enhanced to use Test-DellBIOSPassword and validate password before operations
 
 
         .Example
@@ -459,22 +607,25 @@ function Set-DellBIOSSetting
             }
 
 
-        # Check if BIOS Setting need BIOS Admin PWD
+        # Check if BIOS Admin password is set and validate provided password
         try
             {
-                # Check BIOS AttributName AdminPW is set
-                $BIOSAdminPW = Get-CimInstance -Namespace root/dcim/sysman/wmisecurity -ClassName PasswordObject -Filter "NameId='Admin'" | Select-Object -ExpandProperty IsPasswordSet
+                # Use Test-DellBIOSPassword to check if password is set
+                $PasswordIsSet = Test-DellBIOSPassword -PasswordType "Admin"
 
-                if ($BIOSAdminPW -match "1")
+                if ($PasswordIsSet)
                     {
-                        Write-Information "BIOS Admin PW is set on this Device" -InformationAction Continue
+                        Write-Information "BIOS Admin password is set on this device" -InformationAction Continue
 
-                        If ($null -eq $BIOSPW)
+                        # Verify password was provided
+                        If ([string]::IsNullOrEmpty($BIOSPW))
                             {
-                                Write-Information "Message : required parameter BIOSPW is empty" -InformationAction Continue
-                                Return $false, "3"
+                                Write-Error "Error: BIOS Admin password is set but BIOSPW parameter was not provided"
+                                Write-Information "Message: Required parameter BIOSPW is empty" -InformationAction Continue
                                 Return $false
                             }
+                        
+                        Write-Verbose "BIOS password provided, will use for authentication"
 
                         #Get encoder for encoding password
                         $encoder = New-Object System.Text.UTF8Encoding
@@ -644,7 +795,13 @@ function Set-DellBIOSSetting
                     }
                 Else
                     {
-                        Write-Information "No BIOS Admin PW is set on this Device" -InformationAction Continue
+                        Write-Information "No BIOS Admin password is set on this device" -InformationAction Continue
+                        
+                        # Warn if password was provided but not needed
+                        if (-not [string]::IsNullOrEmpty($BIOSPW))
+                            {
+                                Write-Warning "BIOS password parameter was provided but no password is set on the device. The password will be ignored."
+                            }
 
                         If (($SettingName -ne "Admin") -and ($SettingName -ne "System"))
                             {
@@ -882,11 +1039,40 @@ foreach ($Setting in $BIOSSettings) {
     Write-Host "  Setting to: $($Setting.BIOSSettingValue)" -ForegroundColor White
     
     try {
-        if ([string]::IsNullOrEmpty($BIOSPassword)) {
-            $SetResult = Set-DellBIOSSetting -SettingName $Setting.BIOSSettingName -SettingValue $Setting.BIOSSettingValue
+        # Check if BIOS password is actually set on the device
+        $DeviceHasPassword = Test-DellBIOSPassword -PasswordType "Admin"
+        
+        if ($DeviceHasPassword) {
+            Write-Host "  BIOS password is set on device" -ForegroundColor Gray
+            
+            # Verify we have a password to use
+            if ([string]::IsNullOrEmpty($BIOSPassword)) {
+                Write-Host "  [FAILED] BIOS password is required but not provided in script" -ForegroundColor Red
+                $Results += [PSCustomObject]@{
+                    SettingName = $Setting.BIOSSettingName
+                    DesiredValue = $Setting.BIOSSettingValue
+                    CurrentValue = $CurrentSetting.CurrentValue
+                    Status = "Failed - Password Required"
+                    Message = "BIOS password is set on device but not provided in script configuration"
+                }
+                $FailureCount++
+                Write-Host ""
+                continue
+            }
+            
+            # Apply setting with password
+            $SetResult = Set-DellBIOSSetting -SettingName $Setting.BIOSSettingName -SettingValue $Setting.BIOSSettingValue -BIOSPW $BIOSPassword
         }
         else {
-            $SetResult = Set-DellBIOSSetting -SettingName $Setting.BIOSSettingName -SettingValue $Setting.BIOSSettingValue -BIOSPW $BIOSPassword
+            Write-Host "  No BIOS password set on device" -ForegroundColor Gray
+            
+            # Warn if password was provided but not needed
+            if (-not [string]::IsNullOrEmpty($BIOSPassword)) {
+                Write-Host "  [WARNING] Password provided but not required" -ForegroundColor Yellow
+            }
+            
+            # Apply setting without password
+            $SetResult = Set-DellBIOSSetting -SettingName $Setting.BIOSSettingName -SettingValue $Setting.BIOSSettingValue
         }
         
         if ($SetResult -eq $true) {
