@@ -2,8 +2,8 @@
 
 I'll provide some notes on how to set BIOS settings during a Task Sequence using DeployR.  These scripts and processes are not official and are used at your own risk.
 
-[!IMPORTANT]
-These examples are using clear text passwords as examples of how the processes work.  If you want to secure it, that's outside the scope of these examples.
+> [!IMPORTANT]
+> These examples are using clear text passwords as examples of how the processes work.  If you want to secure it, that's outside the scope of these examples.
 
 ## CCTK
 
