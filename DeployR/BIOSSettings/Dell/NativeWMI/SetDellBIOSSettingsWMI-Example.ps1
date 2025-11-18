@@ -86,7 +86,6 @@ $BIOSSettings = @(
 
 
 #Region Functions
-
 function Test-DellBIOSWMISupport
     {
 
@@ -941,7 +940,7 @@ function Set-DellBIOSSetting
                 Return $false
             }
     }
-
+    
 #EndRegion Functions
 
 
