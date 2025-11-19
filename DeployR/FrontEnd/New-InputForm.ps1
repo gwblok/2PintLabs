@@ -72,7 +72,7 @@ Function Get-InputFormData {
     )
     
     #Region Collection Hardware Information:
-    #Collectio
+
     $LocalInfo = @{}		
     $LocalInfo['IsDesktop'] = "False"
     $LocalInfo['IsLaptop'] = "False"

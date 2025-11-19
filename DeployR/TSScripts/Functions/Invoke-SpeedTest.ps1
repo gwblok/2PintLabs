@@ -48,6 +48,45 @@
     - SPEEDTEST-Timestamp
 #>
 
+function Get-DeployRTestPayload {
+    #This will connect with the DeployR Server and pull a list of Apps that are specified to show in the front end
+    
+    try {
+        if (Test-Path -path 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'){
+            Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility' -ErrorAction SilentlyContinue
+        }
+        if (!(Get-Module -Name DeployR.Utility)) {
+            Import-Module DeployR.Utility -ErrorAction SilentlyContinue
+        }
+    }
+    catch {}
+    if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"))) {
+        IF ( ${TSEnv:DEPLOYRCLIENTPASSCODE} -ne $null){
+            Write-Host "Using DeployR Client Passcode from TS Environment Variable"
+            $ClientPasscode = ${TSEnv:DEPLOYRCLIENTPASSCODE}
+            Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+        }
+        
+    }
+    else{
+        if (Test-Path "HKLM:\software\2Pint Software\DeployR\GeneralSettings") {
+            $DeployRReg = Get-Item -Path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"
+            $ClientPasscode = $DeployRReg.GetValue("ClientPasscode")
+            Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+        }
+        elseif (Test-Path "D:\DeployRPasscode.txt") {
+            $ClientPasscode = (Get-Content "D:\DeployRPasscode.txt" -Raw)
+            Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+        }
+        else {
+            throw "Cannot find DeployR Client Passcode in registry or D:\DeployRPasscode.txt"
+        }
+    }
+    $Apps = Get-DeployRContentItem -Purpose Other
+    $Payload = $apps | Where-Object {$_.name -match "Speed Test Payload"}
+    return $Payload
+}
+
 function Invoke-SpeedTest {
     [CmdletBinding()]
     param(
@@ -340,121 +379,27 @@ function Test-InternetSpeedFallback {
 }
 
 function Test-DeployRSpeed {
-    <#
-    .SYNOPSIS
-        Test download speed from DeployR server
-    #>
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [string]$ServerPath,
-        
-        [Parameter()]
-        [ValidateSet('Small', 'Medium', 'Large')]
-        [string]$TestFileSize = 'Medium'
-    )
     
-    # Verify server is accessible
-    if (-not (Test-Path $ServerPath)) {
-        throw "DeployR server path not accessible: $ServerPath"
-    }
-    
-    # Determine test file size
-    $fileSizeMB = switch ($TestFileSize) {
-        'Small'  { 10 }
-        'Medium' { 100 }
-        'Large'  { 500 }
-    }
-    
-    # Create or locate test file on server
-    $testFileName = "SpeedTest_$($fileSizeMB)MB.dat"
-    $serverTestFile = Join-Path $ServerPath $testFileName
-    $localTestFile = "$env:TEMP\deployr_speedtest.tmp"
-    
-    # Check if test file exists, create if not
-    if (-not (Test-Path $serverTestFile)) {
-        Write-Host "  Creating test file on server ($fileSizeMB MB)..." -ForegroundColor Gray
-        try {
-            # Create a file filled with random data
-            $bytes = New-Object byte[] (1MB)
-            $random = New-Object System.Random
-            
-            $stream = [System.IO.File]::OpenWrite($serverTestFile)
-            for ($i = 0; $i -lt $fileSizeMB; $i++) {
-                $random.NextBytes($bytes)
-                $stream.Write($bytes, 0, $bytes.Length)
-            }
-            $stream.Close()
-            
-            Write-Host "  Test file created successfully" -ForegroundColor Gray
-        }
-        catch {
-            throw "Failed to create test file on server: $_"
-        }
-    }
-    
-    # Test ping/latency to server
-    $serverName = ($ServerPath -split '\\')[2]
-    $pingMs = 0
-    try {
-        $pingResult = Test-Connection -ComputerName $serverName -Count 3 -ErrorAction Stop
-        $pingMs = [math]::Round(($pingResult | Measure-Object -Property ResponseTime -Average).Average, 2)
-        Write-Host "  Server ping: $pingMs ms" -ForegroundColor Gray
-    }
-    catch {
-        Write-Verbose "Ping test failed: $_"
-    }
-    
-    # Perform download speed test
-    Write-Host "  Downloading test file from DeployR server..." -ForegroundColor Gray
-    
-    $start = Get-Date
-    Copy-Item -Path $serverTestFile -Destination $localTestFile -Force
-    $end = Get-Date
-    
-    $duration = ($end - $start).TotalSeconds
-    $fileSize = (Get-Item $localTestFile).Length
-    $speedMbps = [math]::Round(($fileSize * 8 / $duration / 1MB), 2)
-    
-    # Clean up local test file
-    Remove-Item $localTestFile -Force -ErrorAction SilentlyContinue
-    
-    return [PSCustomObject]@{
-        ServerPath = $ServerPath
-        ServerName = $serverName
-        FileSizeMB = [math]::Round($fileSize / 1MB, 2)
-        DurationSeconds = [math]::Round($duration, 2)
-        DownloadMbps = $speedMbps
-        PingMs = $pingMs
-        TestFileUsed = $testFileName
-    }
+
+    $TestPayload = Get-DeployRTestPayload
+    $ContentItemVersion = Get-DeployRContentItemVersion -ContentItemId $TestPayload.id | Select-Object -Last 1
+    $destfile = Request-DeployRContent -ContentItemId $ContentItemVersion.id -ContentName $ContentItemVersion.name -ContentItemVersion $ContentItemVersion.versionNo
+    Get-DeployRHost
+
 }
 
 # Helper functions for TS variable management when not in TS
 function Set-TSVariable {
     param($Name, $Value)
-    
-    if (Get-Command -Name "Set-TSVariable" -ErrorAction SilentlyContinue) {
-        # Use actual TS command
-        Microsoft.BDD.TaskSequenceModule\Set-TSVariable -Name $Name -Value $Value
-    }
-    else {
-        # Store in environment variable for standalone testing
-        [Environment]::SetEnvironmentVariable("TS_$Name", $Value, "Process")
-        Write-Verbose "Set environment variable: TS_$Name = $Value"
-    }
+    Set-Item -Path "TSENV:$Name" -Value $Value  
 }
 
 function Get-TSVariable {
     param($Name)
-    
-    if (Get-Command -Name "Get-TSVariable" -ErrorAction SilentlyContinue) {
-        return Microsoft.BDD.TaskSequenceModule\Get-TSVariable -Name $Name
+    $return = Get-Item -Path "TSENV:$Name"
+    if ($return){
+        return $return.Value
     }
-    else {
-        return [Environment]::GetEnvironmentVariable("TS_$Name", "Process")
-    }
+    return "$Name does not exist"
 }
 
-# Export the main function
-Export-ModuleMember -Function Invoke-SpeedTest
