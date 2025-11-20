@@ -73,7 +73,7 @@ Function Get-InputFormData {
     )
     
     #Region Collection Hardware Information:
-    #Collectio
+
     $LocalInfo = @{}		
     $LocalInfo['IsDesktop'] = "False"
     $LocalInfo['IsLaptop'] = "False"
@@ -1579,6 +1579,7 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     ${TSEnv:WorkplaceJoin} = $FormResults.WorkplaceJoin
     if ($FormResults.EntraIDUserUPN) {
         ${TSEnv:EntraIDUserUPN} = $FormResults.EntraIDUserUPN
+        ${TSEnv:ENTRAUPN} = $FormResults.EntraIDUserUPN
     }
     if ($FormResults.OnlineDomainJoinOU) {
         ${TSEnv:OnlineDomainJoinOU} = $FormResults.OnlineDomainJoinOU
