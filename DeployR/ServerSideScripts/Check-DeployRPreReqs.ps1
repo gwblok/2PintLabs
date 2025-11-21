@@ -70,18 +70,18 @@ $FirewallRules = @(
 function Get-SqlInstances {
     <#
     .SYNOPSIS
-        Finds SQL Server instances installed on the local server.
+    Finds SQL Server instances installed on the local server.
     
     .DESCRIPTION
-        Queries the registry and services to discover SQL Server instances on the local machine.
-        Returns information about each instance including name, version, edition, and running status.
+    Queries the registry and services to discover SQL Server instances on the local machine.
+    Returns information about each instance including name, version, edition, and running status.
     
     .EXAMPLE
-        $instances = Get-SqlInstances
-        $instances | Format-Table -AutoSize
+    $instances = Get-SqlInstances
+    $instances | Format-Table -AutoSize
     
     .OUTPUTS
-        PSCustomObject with properties: InstanceName, ServiceName, IsRunning, Version, Edition, InstancePath
+    PSCustomObject with properties: InstanceName, ServiceName, IsRunning, Version, Edition, InstancePath
     #>
     [CmdletBinding()]
     param()
@@ -203,36 +203,36 @@ function Get-InstalledApps
 function Set-SqlServerPermissions {
     <#
     .SYNOPSIS
-        Configures the permissions and firewall rules for Microsoft SQL Server.
+    Configures the permissions and firewall rules for Microsoft SQL Server.
     
     .DESCRIPTION
-        This function grants permissions to NT AUTHORITY\SYSTEM (sysadmin and dbcreator roles) 
-        and configures the firewall rules for SQL Server default instance and Browser service.
+    This function grants permissions to NT AUTHORITY\SYSTEM (sysadmin and dbcreator roles) 
+    and configures the firewall rules for SQL Server default instance and Browser service.
     
     .PARAMETER InstanceName
-        The name of the SQL Server instance. Use 'MSSQLSERVER' for the default instance.
-        Default is 'SQLEXPRESS'.
+    The name of the SQL Server instance. Use 'MSSQLSERVER' for the default instance.
+    Default is 'SQLEXPRESS'.
     
     .PARAMETER SkipFirewall
-        If specified, skips creating firewall rules.
+    If specified, skips creating firewall rules.
     
     .EXAMPLE
-        Set-SqlServerPermissionsAndFirewall -InstanceName 'SQLEXPRESS'
+    Set-SqlServerPermissionsAndFirewall -InstanceName 'SQLEXPRESS'
     
     .EXAMPLE
-        Set-SqlServerPermissionsAndFirewall -InstanceName 'MSSQLSERVER' -SkipFirewall
+    Set-SqlServerPermissionsAndFirewall -InstanceName 'MSSQLSERVER' -SkipFirewall
     
     .NOTES
-        Author: Mike Terrill/2Pint Software
-        Date: August 4, 2025
-        Version: 25.08.04
-        Requires: Administrative privileges, 64-bit Windows, sqlcmd installed
+    Author: Mike Terrill/2Pint Software
+    Date: August 4, 2025
+    Version: 25.08.04
+    Requires: Administrative privileges, 64-bit Windows, sqlcmd installed
     #>
     [CmdletBinding()]
     param(
-        [Parameter()]
-        [string]$InstanceName = 'SQLEXPRESS'
-        
+    [Parameter()]
+    [string]$InstanceName = 'SQLEXPRESS'
+    
     )
     
     # Ensure the script runs with elevated privileges
@@ -252,12 +252,12 @@ function Set-SqlServerPermissions {
     # Find sqlcmd.exe
     $SqlCmdPath = $null
     $possiblePaths = @(
-        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe",
-        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
-        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\190\Tools\Binn\sqlcmd.exe",
-        "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\sqlcmd.exe",
-        "C:\Program Files\Microsoft SQL Server\150\Tools\Binn\sqlcmd.exe",
-        "C:\Program Files\Microsoft SQL Server\140\Tools\Binn\sqlcmd.exe"
+    "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe",
+    "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
+    "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\190\Tools\Binn\sqlcmd.exe",
+    "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\sqlcmd.exe",
+    "C:\Program Files\Microsoft SQL Server\150\Tools\Binn\sqlcmd.exe",
+    "C:\Program Files\Microsoft SQL Server\140\Tools\Binn\sqlcmd.exe"
     )
     
     foreach ($path in $possiblePaths) {
@@ -709,6 +709,19 @@ if ([version]$PowerShellVersionInstalled -ge [version]'7.5') {
     Write-Host "   Required  Version: $PowerShellMinVersion" -ForegroundColor DarkGray
     Write-Host "=========================================================================" -ForegroundColor Red
 }
+#Double Check PowerShell is NOT 7.5 or above    
+$PowerShellVersionInstalled = $installedApps | Where-Object { $_.DisplayName -match "PowerShell 7" } | Select-Object -First 1 | ForEach-Object {
+    if ($_.DisplayVersion -match "\d+\.\d+\.\d+") {
+        if ($matches[0] -ge [version]'7.5') {
+            Write-Host "=========================================================================" -ForegroundColor Red
+            Write-Host "✗ PowerShell 7.5.X is NOT supported." -ForegroundColor Red
+            Write-Host "   Installed Version: $PowerShellVersionInstalled" -ForegroundColor DarkGray
+            Write-Host "   Required  Version: $PowerShellMinVersion" -ForegroundColor DarkGray
+            Write-Host "=========================================================================" -ForegroundColor Red
+        }
+    }
+}
+
 
 
 $MissingApps = $PreReqAppsStatus | Where-Object { $_.Installed -eq $false }
@@ -1028,61 +1041,61 @@ if ($Installed_2Pint_Software_DeployR){
         Test-SQLConnection -ConnectionString $DeployRRegData.ConnectionString
     }
     #Check SQL Principal Rights for NT AUTHORITY\SYSTEM
-Write-Host "=========================================================================" -ForegroundColor DarkGray
-Write-Host "Testing NT AUTHORITY\SYSTEM permissions on local SQL Express..." -ForegroundColor Cyan
-$out = Test-SystemSqlPermissions -Instance $SQLInstances.ConnectionString
-if ($out.Error) {
-    Write-Host "Error: $($out.Error)" -ForegroundColor Red
-    Write-Host "Please Manually Check Permissions on Database Instances" -ForegroundColor Cyan
-    Write-Host "Would you like to try to automatically add SYSTEM to the Instance $($SQLInstances.InstanceName)  (Y/N): " -ForegroundColor Yellow -NoNewline
-    $response = Read-Host
-    if ($response -eq 'Y' -or $response -eq 'y') {
-        try {
-            $SetSQLPerm = Set-SqlServerPermissions -InstanceName $($SQLInstances.InstanceName)
+    Write-Host "=========================================================================" -ForegroundColor DarkGray
+    Write-Host "Testing NT AUTHORITY\SYSTEM permissions on local SQL Express..." -ForegroundColor Cyan
+    $out = Test-SystemSqlPermissions -Instance $SQLInstances.ConnectionString
+    if ($out.Error) {
+        Write-Host "Error: $($out.Error)" -ForegroundColor Red
+        Write-Host "Please Manually Check Permissions on Database Instances" -ForegroundColor Cyan
+        Write-Host "Would you like to try to automatically add SYSTEM to the Instance $($SQLInstances.InstanceName)  (Y/N): " -ForegroundColor Yellow -NoNewline
+        $response = Read-Host
+        if ($response -eq 'Y' -or $response -eq 'y') {
+            try {
+                $SetSQLPerm = Set-SqlServerPermissions -InstanceName $($SQLInstances.InstanceName)
+            }
+            catch {
+                Write-Host "Failed to set permissions: $_" -ForegroundColor Red
+            }
         }
-        catch {
-            Write-Host "Failed to set permissions: $_" -ForegroundColor Red
-        }
-    }
-}
-else {
-    Write-Host "Instance: $($out.Instance)" -ForegroundColor Green
-    Write-Host "  LoginExists: $($out.LoginExists)" -ForegroundColor ($(if ($out.LoginExists) {'Green'} else {'Red'}))
-    Write-Host "  IsSysadmin : $($out.IsSysadmin)" -ForegroundColor ($(if ($out.IsSysadmin) {'Green'} else {'Yellow'}))
-    Write-Host "  IsDbCreator: $($out.IsDbCreator)" -ForegroundColor ($(if ($out.IsDbCreator) {'Green'} else {'Yellow'}))
-}
-Write-Host "=========================================================================" -ForegroundColor DarkGray
-Write-Host "Checking NT AUTHORITY\SYSTEM db_owner permissions for all databases..." -ForegroundColor Cyan
-$dbOut = Test-SqlDatabases -Instance $SQLInstances.ConnectionString
-if ($dbOut.Error) {
-    Write-Host "Error: Cannot check permissions - failed to get database list" -ForegroundColor Red
-}
-elseif ($dbOut.Databases.Count -eq 0) {
-    Write-Host "No user databases found to check" -ForegroundColor Yellow
-}
-else {
-    # Extract database names and check permissions
-    $dbNames = $dbOut.Databases | ForEach-Object { $_.Name }
-    $dbOwnerOut = Test-SystemDatabaseOwnership -Instance $SQLInstances.ConnectionString -DatabaseNames $dbNames
-    
-    if ($dbOwnerOut.Error) {
-        Write-Host "Error: $($dbOwnerOut.Error)" -ForegroundColor Red
     }
     else {
-        Write-Host "Instance: $($dbOwnerOut.Instance)" -ForegroundColor Green
-        foreach ($dbPerm in $dbOwnerOut.DatabasePermissions) {
-            if (-not $dbPerm.DbExists) {
-                Write-Host "  Database '$($dbPerm.SearchName)': DATABASE NOT FOUND" -ForegroundColor Red
-            }
-            else {
-                $color = if ($dbPerm.HasDbOwner) {'Green'} else {'Red'}
-                $status = if ($dbPerm.HasDbOwner) {'HAS db_owner'} else {'MISSING db_owner'}
-                Write-Host "  Database '$($dbPerm.ActualDbName)': $status" -ForegroundColor $color
+        Write-Host "Instance: $($out.Instance)" -ForegroundColor Green
+        Write-Host "  LoginExists: $($out.LoginExists)" -ForegroundColor ($(if ($out.LoginExists) {'Green'} else {'Red'}))
+        Write-Host "  IsSysadmin : $($out.IsSysadmin)" -ForegroundColor ($(if ($out.IsSysadmin) {'Green'} else {'Yellow'}))
+        Write-Host "  IsDbCreator: $($out.IsDbCreator)" -ForegroundColor ($(if ($out.IsDbCreator) {'Green'} else {'Yellow'}))
+    }
+    Write-Host "=========================================================================" -ForegroundColor DarkGray
+    Write-Host "Checking NT AUTHORITY\SYSTEM db_owner permissions for all databases..." -ForegroundColor Cyan
+    $dbOut = Test-SqlDatabases -Instance $SQLInstances.ConnectionString
+    if ($dbOut.Error) {
+        Write-Host "Error: Cannot check permissions - failed to get database list" -ForegroundColor Red
+    }
+    elseif ($dbOut.Databases.Count -eq 0) {
+        Write-Host "No user databases found to check" -ForegroundColor Yellow
+    }
+    else {
+        # Extract database names and check permissions
+        $dbNames = $dbOut.Databases | ForEach-Object { $_.Name }
+        $dbOwnerOut = Test-SystemDatabaseOwnership -Instance $SQLInstances.ConnectionString -DatabaseNames $dbNames
+        
+        if ($dbOwnerOut.Error) {
+            Write-Host "Error: $($dbOwnerOut.Error)" -ForegroundColor Red
+        }
+        else {
+            Write-Host "Instance: $($dbOwnerOut.Instance)" -ForegroundColor Green
+            foreach ($dbPerm in $dbOwnerOut.DatabasePermissions) {
+                if (-not $dbPerm.DbExists) {
+                    Write-Host "  Database '$($dbPerm.SearchName)': DATABASE NOT FOUND" -ForegroundColor Red
+                }
+                else {
+                    $color = if ($dbPerm.HasDbOwner) {'Green'} else {'Red'}
+                    $status = if ($dbPerm.HasDbOwner) {'HAS db_owner'} else {'MISSING db_owner'}
+                    Write-Host "  Database '$($dbPerm.ActualDbName)': $status" -ForegroundColor $color
+                }
             }
         }
     }
-}
-
+    
     Write-Host "=========================================================================" -ForegroundColor DarkGray
     Write-Host "Testing DeployR Certificate..." -ForegroundColor Cyan
     #Test Certificate
