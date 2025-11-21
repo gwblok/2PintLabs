@@ -67,6 +67,125 @@ $FirewallRules = @(
 )
 
 #region Functions
+function Get-SqlInstances {
+    <#
+    .SYNOPSIS
+        Finds SQL Server instances installed on the local server.
+    
+    .DESCRIPTION
+        Queries the registry and services to discover SQL Server instances on the local machine.
+        Returns information about each instance including name, version, edition, and running status.
+    
+    .EXAMPLE
+        $instances = Get-SqlInstances
+        $instances | Format-Table -AutoSize
+    
+    .OUTPUTS
+        PSCustomObject with properties: InstanceName, ServiceName, IsRunning, Version, Edition, InstancePath
+    #>
+    [CmdletBinding()]
+    param()
+    
+    $instances = @()
+    
+    try {
+        # Check for SQL Server instances in registry
+        $regPath = 'HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server'
+        
+        if (Test-Path $regPath) {
+            # Get installed instances
+            $installedInstances = Get-ItemProperty -Path "$regPath" -Name InstalledInstances -ErrorAction SilentlyContinue
+            
+            if ($installedInstances.InstalledInstances) {
+                foreach ($instanceName in $installedInstances.InstalledInstances) {
+                    # Determine service name
+                    if ($instanceName -eq 'MSSQLSERVER') {
+                        $serviceName = 'MSSQLSERVER'
+                        $displayName = '(Default Instance)'
+                        $connectionName = '.'
+                    }
+                    else {
+                        $serviceName = "MSSQL`$$instanceName"
+                        $displayName = $instanceName
+                        $connectionName = ".\$instanceName"
+                    }
+                    
+                    # Get service status
+                    $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+                    $isRunning = $service.Status -eq 'Running'
+                    
+                    # Try to get instance details from registry
+                    $instanceRegPath = "$regPath\Instance Names\SQL"
+                    $instanceKey = Get-ItemProperty -Path $instanceRegPath -Name $instanceName -ErrorAction SilentlyContinue
+                    
+                    $version = 'Unknown'
+                    $edition = 'Unknown'
+                    $instancePath = 'Unknown'
+                    
+                    if ($instanceKey) {
+                        $instanceId = $instanceKey.$instanceName
+                        $setupPath = "$regPath\$instanceId\Setup"
+                        
+                        if (Test-Path $setupPath) {
+                            $setupInfo = Get-ItemProperty -Path $setupPath -ErrorAction SilentlyContinue
+                            $version = $setupInfo.Version
+                            $edition = $setupInfo.Edition
+                            $instancePath = $setupInfo.SQLPath
+                        }
+                    }
+                    
+                    $instances += [PSCustomObject]@{
+                        InstanceName = $displayName
+                        ConnectionString = $connectionName
+                        ServiceName = $serviceName
+                        IsRunning = $isRunning
+                        Status = if ($service) { $service.Status } else { 'Not Found' }
+                        Version = $version
+                        Edition = $edition
+                        InstancePath = $instancePath
+                    }
+                }
+            }
+        }
+        
+        # If no instances found in registry, check for running SQL services
+        if ($instances.Count -eq 0) {
+            $sqlServices = Get-Service -Name "MSSQL*" -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^MSSQL\$' -or $_.Name -eq 'MSSQLSERVER' }
+            
+            foreach ($service in $sqlServices) {
+                if ($service.Name -eq 'MSSQLSERVER') {
+                    $instanceName = '(Default Instance)'
+                    $connectionName = '.'
+                }
+                else {
+                    $instanceName = $service.Name -replace '^MSSQL\$', ''
+                    $connectionName = ".\$instanceName"
+                }
+                
+                $instances += [PSCustomObject]@{
+                    InstanceName = $instanceName
+                    ConnectionString = $connectionName
+                    ServiceName = $service.Name
+                    IsRunning = $service.Status -eq 'Running'
+                    Status = $service.Status
+                    Version = 'Unknown'
+                    Edition = 'Unknown'
+                    InstancePath = 'Unknown'
+                }
+            }
+        }
+    }
+    catch {
+        Write-Error "Failed to enumerate SQL instances: $_"
+    }
+    
+    if ($instances.Count -eq 0) {
+        Write-Warning "No SQL Server instances found on this server."
+    }
+    
+    return $instances
+}
+
 function Get-InstalledApps
 {
     if (![Environment]::Is64BitProcess) {
@@ -376,6 +495,7 @@ SELECT @dbName AS ActualDbName, CASE WHEN @dbName IS NULL THEN 0 ELSE 1 END AS D
     return $result
 }
 
+
 #endregion
 
 $TranscriptFilePath = "$($env:windir)temp\Check-DeployRPreReqs.log"
@@ -584,27 +704,32 @@ if (Get-Module -name WebAdministration) {
         write-Host -ForegroundColor DarkGray "https://github.com/materrill/miketerrill.net/blob/master/Software%20Install%20Scripts/Configure-IISMIMETypes.ps1"
     }
 }
+#Region Services
 Write-Host "=========================================================================" -ForegroundColor DarkGray
 Write-Host "Checking for Services..." -ForegroundColor Cyan
 #Test Services if App Installed
 #Test SQL Express
-if ($Installed_Microsoft_SQL_Server){
-    $SQLService = Get-Service -Name 'MSSQL$SQLEXPRESS'
+$SQLInstances = Get-SqlInstances
+if ($SQLInstances.Count -eq 0) {
+    Write-Host "No SQL Server instances found on this server." -ForegroundColor Red
+    $Global:Installed_Microsoft_SQL_Server = $false
+} else {
+    $SQLServiceName = $SQLInstances.ServiceName
+}
+
+if (($Installed_Microsoft_SQL_Server) -and ($SQLServiceName)){
+    $SQLService = Get-Service -Name $SQLServiceName
     if ($SQLService.Status -eq 'Running') {
         Write-Host "Microsoft SQL Server service is running." -ForegroundColor Green
         Write-Host "  Display Name: $($SQLService.DisplayName)" -ForegroundColor DarkGray
         Write-Host "  Service Name: $($SQLService.Name)" -ForegroundColor DarkGray
         Write-Host "  Start Type:   $($SQLService.StartType)" -ForegroundColor DarkGray
         $Global:SQLServiceRunning = $true
-
-
-
-
     }
     else {
         Write-Host "Microsoft SQL Server service is NOT running." -ForegroundColor Red
         Write-Host " Attempting to start service..." -ForegroundColor Yellow
-        Start-Service -Name 'MSSQL$SQLEXPRESS' -ErrorAction SilentlyContinue
+        Start-Service -Name $SQLServiceName -ErrorAction SilentlyContinue
         if ($?) {
             Write-Host "Service started successfully." -ForegroundColor Green
         }
@@ -662,6 +787,7 @@ if ($Installed_2Pint_Software_DeployR){
         $Global:DeployRServiceRunning = $false
     }
 }
+#endRegion Services
 
 #Confirm StifleR Registry Settings
 if ($Installed_2Pint_Software_StifleR_Server){
@@ -788,6 +914,17 @@ if ($Installed_2Pint_Software_DeployR){
     $DeployRRegData = Get-ItemProperty -Path $RegPath -ErrorAction SilentlyContinue
     
     if ($DeployRRegData -and $DeployRRegData.ConnectionString) {
+        $DeployRegDataSQLServerInstanceString = (($DeployRRegData.ConnectionString).Split(';') | Where-Object { $_ -match '^Server=' }).Split('\')[1]
+        if ($DeployRegDataSQLServerInstanceString -eq $SQLInstances.InstanceName) {
+            Write-Host "DeployR SQL Server Instance in Registry matches detected SQL Instance: $($SQLInstances.InstanceName)" -ForegroundColor Green
+        }
+        else {
+            Write-Host "!!!!!=============================================================================!!!!!" -ForegroundColor Red
+            Write-Host "     DeployR SQL Server Instance in Registry does NOT match detected SQL Instance." -ForegroundColor Red
+            Write-Host "      Registry Instance: $($DeployRegDataSQLServerInstanceString)" -ForegroundColor DarkGray
+            Write-Host "      Detected Instance: $($SQLInstances.InstanceName)" -ForegroundColor DarkGray
+            Write-Host "!!!!!=============================================================================!!!!!" -ForegroundColor Red
+        }
         Write-Host "Testing DeployR SQL Connection string from Registry... " -ForegroundColor Cyan
         write-host " $($DeployRRegData.ConnectionString)"
         Test-SQLConnection -ConnectionString $DeployRRegData.ConnectionString
@@ -795,7 +932,7 @@ if ($Installed_2Pint_Software_DeployR){
     #Check SQL Principal Rights for NT AUTHORITY\SYSTEM
 Write-Host "=========================================================================" -ForegroundColor DarkGray
 Write-Host "Testing NT AUTHORITY\SYSTEM permissions on local SQL Express..." -ForegroundColor Cyan
-$out = Test-SystemSqlPermissions -Instance 'localhost\SQLEXPRESS'
+$out = Test-SystemSqlPermissions -Instance $SQLInstances.ConnectionString
 if ($out.Error) {
     Write-Host "Error: $($out.Error)" -ForegroundColor Red
 }
@@ -807,7 +944,7 @@ else {
 }
 Write-Host "=========================================================================" -ForegroundColor DarkGray
 Write-Host "Checking NT AUTHORITY\SYSTEM db_owner permissions for all databases..." -ForegroundColor Cyan
-$dbOut = Test-SqlDatabases -Instance 'localhost\SQLEXPRESS'
+$dbOut = Test-SqlDatabases -Instance $SQLInstances.ConnectionString
 if ($dbOut.Error) {
     Write-Host "Error: Cannot check permissions - failed to get database list" -ForegroundColor Red
 }
@@ -817,7 +954,7 @@ elseif ($dbOut.Databases.Count -eq 0) {
 else {
     # Extract database names and check permissions
     $dbNames = $dbOut.Databases | ForEach-Object { $_.Name }
-    $dbOwnerOut = Test-SystemDatabaseOwnership -Instance 'localhost\SQLEXPRESS' -DatabaseNames $dbNames
+    $dbOwnerOut = Test-SystemDatabaseOwnership -Instance $SQLInstances.ConnectionString -DatabaseNames $dbNames
     
     if ($dbOwnerOut.Error) {
         Write-Host "Error: $($dbOwnerOut.Error)" -ForegroundColor Red
