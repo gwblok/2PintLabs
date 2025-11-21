@@ -199,6 +199,104 @@ function Get-InstalledApps
     }
     Get-ItemProperty $regpath | .{process{if($_.DisplayName -and $_.UninstallString) { $_ } }} | Select DisplayName, Publisher, InstallDate, DisplayVersion, UninstallString |Sort DisplayName
 }
+
+function Set-SqlServerPermissions {
+    <#
+    .SYNOPSIS
+        Configures the permissions and firewall rules for Microsoft SQL Server.
+    
+    .DESCRIPTION
+        This function grants permissions to NT AUTHORITY\SYSTEM (sysadmin and dbcreator roles) 
+        and configures the firewall rules for SQL Server default instance and Browser service.
+    
+    .PARAMETER InstanceName
+        The name of the SQL Server instance. Use 'MSSQLSERVER' for the default instance.
+        Default is 'SQLEXPRESS'.
+    
+    .PARAMETER SkipFirewall
+        If specified, skips creating firewall rules.
+    
+    .EXAMPLE
+        Set-SqlServerPermissionsAndFirewall -InstanceName 'SQLEXPRESS'
+    
+    .EXAMPLE
+        Set-SqlServerPermissionsAndFirewall -InstanceName 'MSSQLSERVER' -SkipFirewall
+    
+    .NOTES
+        Author: Mike Terrill/2Pint Software
+        Date: August 4, 2025
+        Version: 25.08.04
+        Requires: Administrative privileges, 64-bit Windows, sqlcmd installed
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter()]
+        [string]$InstanceName = 'SQLEXPRESS'
+        
+    )
+    
+    # Ensure the script runs with elevated privileges
+    if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        Write-Error "This function requires administrative privileges. Please run PowerShell as Administrator."
+        return $false
+    }
+    
+    # Determine server instance connection string
+    if ($InstanceName -eq 'MSSQLSERVER') {
+        $ServerInstance = '.'
+    }
+    else {
+        $ServerInstance = ".\$InstanceName"
+    }
+    
+    # Find sqlcmd.exe
+    $SqlCmdPath = $null
+    $possiblePaths = @(
+        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\180\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\190\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\160\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\150\Tools\Binn\sqlcmd.exe",
+        "C:\Program Files\Microsoft SQL Server\140\Tools\Binn\sqlcmd.exe"
+    )
+    
+    foreach ($path in $possiblePaths) {
+        if (Test-Path $path) {
+            $SqlCmdPath = $path
+            break
+        }
+    }
+    
+    if (-not $SqlCmdPath) {
+        Write-Error "sqlcmd.exe not found. Please ensure SQL Server client tools are installed."
+        return $false
+    }
+    
+    Write-Host "Using sqlcmd at: $SqlCmdPath" -ForegroundColor Cyan
+    
+    # Grant NT AUTHORITY\SYSTEM sysadmin and dbcreator rights
+    Write-Host "Granting permissions to NT AUTHORITY\SYSTEM on $ServerInstance..." -ForegroundColor Cyan
+    
+    $TsqlQuery = "IF NOT EXISTS (SELECT * FROM sys.server_principals WHERE name = 'NT AUTHORITY\SYSTEM') CREATE LOGIN [NT AUTHORITY\SYSTEM] FROM WINDOWS; EXEC sp_addsrvrolemember @loginame = 'NT AUTHORITY\SYSTEM', @rolename = 'sysadmin'; EXEC sp_addsrvrolemember @loginame = 'NT AUTHORITY\SYSTEM', @rolename = 'dbcreator';"
+    
+    try {
+        $Process = Start-Process -FilePath $SqlCmdPath -ArgumentList "-S `"$ServerInstance`" -Q `"$TsqlQuery`"" -NoNewWindow -PassThru -Wait -ErrorAction Stop
+        if ($Process.ExitCode -eq 0) {
+            Write-Host "Successfully granted sysadmin and dbcreator roles to NT AUTHORITY\SYSTEM on $ServerInstance." -ForegroundColor Green
+        }
+        else {
+            Write-Error "sqlcmd failed with exit code $($Process.ExitCode)."
+            return $false
+        }
+    }
+    catch {
+        Write-Error "Failed to execute sqlcmd. Error: $($_.Exception.Message)"
+        Write-Host "Ensure sqlcmd is installed and the SQL Server instance ($ServerInstance) is running." -ForegroundColor Yellow
+        return $false
+    }
+    
+    return $true
+}
 function Test-Url {
     param (
     [string]$Url
@@ -935,6 +1033,17 @@ Write-Host "Testing NT AUTHORITY\SYSTEM permissions on local SQL Express..." -Fo
 $out = Test-SystemSqlPermissions -Instance $SQLInstances.ConnectionString
 if ($out.Error) {
     Write-Host "Error: $($out.Error)" -ForegroundColor Red
+    Write-Host "Please Manually Check Permissions on Database Instances" -ForegroundColor Cyan
+    Write-Host "Would you like to try to automatically add SYSTEM to the Instance $($SQLInstances.InstanceName)  (Y/N): " -ForegroundColor Yellow -NoNewline
+    $response = Read-Host
+    if ($response -eq 'Y' -or $response -eq 'y') {
+        try {
+            $SetSQLPerm = Set-SqlServerPermissions -InstanceName $($SQLInstances.InstanceName)
+        }
+        catch {
+            Write-Host "Failed to set permissions: $_" -ForegroundColor Red
+        }
+    }
 }
 else {
     Write-Host "Instance: $($out.Instance)" -ForegroundColor Green
