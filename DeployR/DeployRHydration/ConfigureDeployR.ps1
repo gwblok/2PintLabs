@@ -329,6 +329,8 @@ $folderStructure = @(
     "WinPEContent\Certificates",
     "WinPEContent\Drivers",
     "WinPEContent\ExtraFiles",
+    "WinPEContent\ExtraFiles\Windows",
+    "WinPEContent\ExtraFiles\Windows\System32",
     "WinPEContent\WinRE",
     
     # Applications folders
