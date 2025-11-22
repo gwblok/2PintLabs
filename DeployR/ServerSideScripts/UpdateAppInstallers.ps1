@@ -23,7 +23,7 @@ VLC is saying it's a 16bit app, so check the download
 #>
 
 # Configure root download path
-$RootPath = "D:\DeployRSource\Apps"
+$RootPath = "D:\DeployRSources\Applications"
 
 
 if (Test-Path 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility') {
