@@ -135,7 +135,7 @@ function Get-DellWinPE11DriverPack {
         
         # Download if requested
         if ($Download) {
-            Write-Host "`nDownloading CAB file using BITS..." -ForegroundColor Cyan
+            Write-Host "`nDownloading CAB file..." -ForegroundColor Cyan
             
             # Ensure download directory exists
             $downloadDir = Split-Path $DownloadPath -Parent
@@ -143,27 +143,54 @@ function Get-DellWinPE11DriverPack {
                 New-Item -ItemType Directory -Path $downloadDir -Force | Out-Null
             }
             
+            $downloadSuccess = $false
+            
+            # Try Request-DeployRCustomContent first (if available)
             try {
-                # Start BITS transfer
-                $bitsJob = Start-BitsTransfer -Source $cabUrl -Destination $DownloadPath -DisplayName "Dell WinPE 11 Driver Pack" -Description "Downloading $cabFileName" -ErrorAction Stop
+                Write-Host "  Attempting download using DeployR..." -ForegroundColor Gray
+                Request-DeployRCustomContent -ContentName $cabFileName -ContentFriendlyName "Dell WinPE 11 Driver Pack CAB" -URL $cabUrl -DestinationPath $DownloadPath -ErrorAction Stop
                 
                 if (Test-Path $DownloadPath) {
-                    $fileInfo = Get-Item $DownloadPath
-                    $fileSizeMB = [math]::Round($fileInfo.Length / 1MB, 2)
-                    
-                    Write-Host "  Download complete!" -ForegroundColor Green
-                    Write-Host "  Location: $DownloadPath" -ForegroundColor White
-                    Write-Host "  Size: $fileSizeMB MB" -ForegroundColor Gray
-                    
-                    $result.Downloaded = $true
-                    $result.DownloadPath = $DownloadPath
-                } else {
-                    throw "Download completed but file not found at expected location"
+                    $downloadSuccess = $true
+                    Write-Host "  Downloaded via DeployR" -ForegroundColor Green
                 }
             }
             catch {
-                Write-Error "BITS download failed: $_"
-                throw
+                Write-Warning "DeployR download failed: $($_.Exception.Message)"
+                Write-Host "  Falling back to BITS transfer..." -ForegroundColor Yellow
+            }
+            
+            # Fall back to BITS if DeployR method failed
+            if (-not $downloadSuccess) {
+                try {
+                    Write-Host "  Attempting download using BITS..." -ForegroundColor Gray
+                    $bitsJob = Start-BitsTransfer -Source $cabUrl -Destination $DownloadPath -DisplayName "Dell WinPE 11 Driver Pack" -Description "Downloading $cabFileName" -ErrorAction Stop -RetryInterval 60  -CustomHeaders "User-Agent:Bob"
+                    
+                    if (Test-Path $DownloadPath) {
+                        $downloadSuccess = $true
+                        Write-Host "  Downloaded via BITS" -ForegroundColor Green
+                    }
+                }
+                catch {
+                    Write-Error "BITS download also failed: $_"
+                    throw "Both DeployR and BITS download methods failed"
+                }
+            }
+            
+            # Verify download and report results
+            if ($downloadSuccess -and (Test-Path $DownloadPath)) {
+                $fileInfo = Get-Item $DownloadPath
+                $fileSizeMB = [math]::Round($fileInfo.Length / 1MB, 2)
+                
+                Write-Host "  Download complete!" -ForegroundColor Green
+                Write-Host "  Location: $DownloadPath" -ForegroundColor White
+                Write-Host "  Size: $fileSizeMB MB" -ForegroundColor Gray
+                
+                $result.Downloaded = $true
+                $result.DownloadPath = $DownloadPath
+            }
+            else {
+                throw "Download completed but file not found at expected location"
             }
         }
         
@@ -192,7 +219,7 @@ function Get-DellWinPE11DriverPack {
                     $ExtractPath
                 )
                 
-                $expandResult = Start-Process -FilePath "expand.exe" -ArgumentList $expandArgs -Wait -NoNewWindow -PassThru
+                $expandResult = Start-Process -FilePath "expand.exe" -ArgumentList $expandArgs -Wait -NoNewWindow -PassThru -RedirectStandardOutput "$env:TEMP\expand_output.txt" -RedirectStandardError "$env:TEMP\expand_error.txt"
                 
                 if ($expandResult.ExitCode -eq 0) {
                     $extractedFiles = Get-ChildItem -Path $ExtractPath -Recurse -File

@@ -11,7 +11,8 @@ function Import-DriverPack {
     [string]$InputSourceFolder, #Downloaded Extracted Driver Pack Source Folder
     [string]$DriverPackFileName = "", # If not provided, will be derived from URL
     [string]$ArchiveSourceFolder = "D:\DeployRContentItems\Source\DriverPacks",
-    [string]$DeployRModulePath ='C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
+    [string]$DeployRModulePath ='C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility',
+    [bool]$SkipArchive
     )
     
     
@@ -76,7 +77,7 @@ function Import-DriverPack {
         }
         else {
             write-Host "  Downloading Driver Pack to $DriverPackSourcePath\$DriverPackFileFullName"
-            Start-BitsTransfer -Source $URL -Destination "$DriverPackSourcePath\$DriverPackFileFullName" -RetryInterval 60 -RetryTimeout 3600
+            Start-BitsTransfer -Source $URL -Destination "$DriverPackSourcePath\$DriverPackFileFullName" -RetryInterval 60 -RetryTimeout 3600   -CustomHeaders "User-Agent:Bob" -ErrorAction Stop
         }
         if (Test-Path "$DriverPackSourcePath\$DriverPackFileFullName") {
             
@@ -101,6 +102,10 @@ function Import-DriverPack {
                 }
                 }
             }
+        }
+        else {
+            Write-Error "Failed to Download"
+            exit 1
         }
         #Extract the Driver Pack
         
