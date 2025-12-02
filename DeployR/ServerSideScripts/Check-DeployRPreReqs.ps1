@@ -595,8 +595,9 @@ SELECT @dbName AS ActualDbName, CASE WHEN @dbName IS NULL THEN 0 ELSE 1 END AS D
 
 
 #endregion
-
-$TranscriptFilePath = "$($env:windir)temp\Check-DeployRPreReqs.log"
+$TempFolder = "$env:USERPROFILE\Downloads\DeployR_TroubleShootingLogs"
+if (!(Test-Path -Path $TempFolder)){New-Item -Path $TempFolder -ItemType Directory -Force | Out-Null}
+$TranscriptFilePath = "$TempFolder\Check-DeployR_TroubleShooting_PreReqs.log"
 if (Test-Path -Path $TranscriptFilePath) {
     Remove-Item -Path $TranscriptFilePath -Force
 }   
