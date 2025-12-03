@@ -286,8 +286,10 @@ Function Get-InputFormData {
     }
     
     # Fall back to static list if dynamic retrieval failed
+    $UseStaticSoftware = $false
     if (-not $SoftwareOptions -or $SoftwareOptions.Count -eq 0) {
         Write-Host "Using static software list as fallback" -ForegroundColor Yellow
+        $UseStaticSoftware = $true
         $SoftwareOptions = @(
         [PSCustomObject]@{ DisplayName = 'GreenShot'; Id = 'greenshot' },
         [PSCustomObject]@{ DisplayName = 'Office 365'; Id = 'office365' },
@@ -568,7 +570,9 @@ Function Get-InputFormData {
                     <StackPanel Margin="0,6,0,0">
                         <TextBlock Text="Select software to install:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
                         <!-- Dynamic software list populated from SoftwareList.json -->
-                        <StackPanel Name="spSoftwareList" Margin="6,4,0,0" />
+                                <StackPanel Name="spSoftwareList" Margin="6,4,0,0" />
+                                <!-- Warning displayed when dynamic retrieval fails and static list is used -->
+                                <TextBlock Name="txtSoftwareFallback" Text="" FontSize="11" Foreground="OrangeRed" Visibility="Collapsed" Margin="6,8,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -702,6 +706,7 @@ Function Get-InputFormData {
     $btnOK = $Window.FindName("btnOK")
     $btnCancel = $Window.FindName("btnCancel")
     $spSoftwareList = $Window.FindName("spSoftwareList")
+    $txtSoftwareFallback = $Window.FindName("txtSoftwareFallback")
     
     # Hardware tab controls
     $txtHwMake = $Window.FindName("txtHwMake")
@@ -977,16 +982,26 @@ Function Get-InputFormData {
         }
     }
     else {
-        # Fallback: populate with a few defaults if no software options defined
+        # No software entries - populate with a few defaults and show fallback warning
         $defaults = @('GreenShot','Office 365','Adobe Reader')
         foreach ($d in $defaults) {
-            $cb = New-Object System.Windows.Controls.CheckBox
-            $cb.Content = $d
-            $cb.Margin = '6,4,0,4'
-            $cb.FontSize = 12
-            $spSoftwareList.Children.Add($cb) | Out-Null
+            try {
+                $cb = New-Object System.Windows.Controls.CheckBox
+                $cb.Content = $d
+                $cb.Margin = '6,4,0,4'
+                $cb.FontSize = 12
+                $spSoftwareList.Children.Add($cb) | Out-Null
+            } catch {
+                Write-Warning "Failed to add default software entry '$d': $_"
+            }
         }
+        try { $txtSoftwareFallback.Text = "Warning: Could not retrieve software list from DeployR — using built-in static list."; $txtSoftwareFallback.Visibility = 'Visible' } catch {}
     }
+
+    # If we explicitly set the fallback flag earlier, ensure the warning is visible
+    try {
+        if ($UseStaticSoftware) { $txtSoftwareFallback.Text = "Warning: Could not retrieve software list from DeployR — using built-in static list."; $txtSoftwareFallback.Visibility = 'Visible' }
+    } catch {}
     
     # Get DNS suffix from the machine
     $dnsSuffix = $null
