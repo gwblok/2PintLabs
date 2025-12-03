@@ -87,7 +87,7 @@ Function Get-InputFormData {
         if ($_.ChassisTypes[0] -in "34", "35", "36") { $LocalInfo['IsSFF'] = "True"; $LocalInfo['Chassis'] = "Small Form Factor"}
         if ($_.ChassisTypes[0] -in "13", "31", "32", "30") {$LocalInfo['IsTablet'] = "True"; $LocalInfo['Chassis'] = "Tablet"}
     }
-    $Chassis = $LocalInfo['Chassis']
+    # Chassis info collected into LocalInfo if needed
     
     $macList = @()
     Get-CimInstance -ClassName Win32_NetworkAdapterConfiguration -Filter "IPEnabled = 1" | ForEach-Object {
@@ -1588,7 +1588,7 @@ function Get-DeployRFrontEndApps {
     }
     catch {}
     if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"))) {
-        IF ( ${TSEnv:DEPLOYRCLIENTPASSCODE} -ne $null){
+    IF ($null -ne ${TSEnv:DEPLOYRCLIENTPASSCODE}){
             Write-Host "Using DeployR Client Passcode from TS Environment Variable"
             $ClientPasscode = ${TSEnv:DEPLOYRCLIENTPASSCODE}
             Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
