@@ -469,8 +469,8 @@ Function Get-InputFormData {
                                   Height="28"
                                   FontSize="12"/>
     
-                        <!-- Online Domain Join OU Dropdown (shown when Online Domain Join selected) -->
-                        <TextBlock Name="txtOnlineOULabel" Text="Online Domain Join OU:" 
+                        <!-- Domain Join OU Dropdown (shown when Online or Offline Domain Join selected) -->
+                        <TextBlock Name="txtOnlineOULabel" Text="Domain Join OU:" 
                                    FontSize="13" 
                                    FontWeight="Bold"
                                    Margin="0,10,0,5"
@@ -1082,7 +1082,8 @@ Function Get-InputFormData {
     $rbEntraID.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
     $rbAutopilot.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
     $rbOnlineDomainJoin.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$true })
-    $rbDomainJoin.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
+    # Show the Domain Join OU controls for both Online and Offline Domain Join selections
+    $rbDomainJoin.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$true })
     
     # Wire EntraID options visibility
     $rbWorkgroup.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
