@@ -2,6 +2,7 @@ $FORM = @'
 
 
 
+
 <#
 EDITOR NOTES - How to customize this form
 
@@ -266,8 +267,6 @@ Function Get-InputFormData {
     # Software options - try to pull dynamically from DeployR, fall back to static list if unavailable
     # Try to get apps dynamically from DeployR
     $SoftwareOptions = $null
-    # Flag to indicate we fell back to the built-in static list
-    $UseStaticSoftware = $false
     try {
         # Call the function that's defined later in this script
         $DeployRApps = Get-DeployRFrontEndApps -ErrorAction Stop
@@ -286,14 +285,12 @@ Function Get-InputFormData {
     }
     catch {
         Write-Warning "Could not retrieve apps from DeployR: $($_.Exception.Message)"
-        # Mark that we're using the static fallback so the UI can show a persistent warning
-        $UseStaticSoftware = $true
     }
     
     # Fall back to static list if dynamic retrieval failed
+    $UseStaticSoftware = $false
     if (-not $SoftwareOptions -or $SoftwareOptions.Count -eq 0) {
         Write-Host "Using static software list as fallback" -ForegroundColor Yellow
-        # Indicate fallback occurred so the UI can surface this to the user
         $UseStaticSoftware = $true
         $SoftwareOptions = @(
         [PSCustomObject]@{ DisplayName = 'GreenShot'; Id = 'greenshot' },
@@ -575,9 +572,9 @@ Function Get-InputFormData {
                     <StackPanel Margin="0,6,0,0">
                         <TextBlock Text="Select software to install:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
                         <!-- Dynamic software list populated from SoftwareList.json -->
-                        <StackPanel Name="spSoftwareList" Margin="6,4,0,0" />
-                        <!-- Warning shown when dynamic retrieval fails and static list is used -->
-                        <TextBlock Name="txtSoftwareFallback" Text="" FontSize="11" Foreground="OrangeRed" Visibility="Collapsed" Margin="6,6,0,0" TextWrapping="Wrap" />
+                                <StackPanel Name="spSoftwareList" Margin="6,4,0,0" />
+                                <!-- Warning displayed when dynamic retrieval fails and static list is used -->
+                                <TextBlock Name="txtSoftwareFallback" Text="" FontSize="11" Foreground="OrangeRed" Visibility="Collapsed" Margin="6,8,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -985,29 +982,28 @@ Function Get-InputFormData {
                 Write-Warning "Failed to add software entry '$($item.DisplayName)': $_"
             }
         }
-        # If we used the static fallback, show the persistent warning on the Software tab
-        try {
-            if ($UseStaticSoftware -or ($spSoftwareList.Children.Count -eq 0)) {
-                $txtSoftwareFallback.Text = "Warning: Could not retrieve software list from DeployR — using built-in static list."
-                $txtSoftwareFallback.Visibility = 'Visible'
-            }
-            else {
-                $txtSoftwareFallback.Text = ""
-                $txtSoftwareFallback.Visibility = 'Collapsed'
-            }
-        } catch {}
     }
     else {
-        # Fallback: populate with a few defaults if no software options defined
+        # No software entries - populate with a few defaults and show fallback warning
         $defaults = @('GreenShot','Office 365','Adobe Reader')
         foreach ($d in $defaults) {
-            $cb = New-Object System.Windows.Controls.CheckBox
-            $cb.Content = $d
-            $cb.Margin = '6,4,0,4'
-            $cb.FontSize = 12
-            $spSoftwareList.Children.Add($cb) | Out-Null
+            try {
+                $cb = New-Object System.Windows.Controls.CheckBox
+                $cb.Content = $d
+                $cb.Margin = '6,4,0,4'
+                $cb.FontSize = 12
+                $spSoftwareList.Children.Add($cb) | Out-Null
+            } catch {
+                Write-Warning "Failed to add default software entry '$d': $_"
+            }
         }
+        try { $txtSoftwareFallback.Text = "Warning: Could not retrieve software list from DeployR — using built-in static list."; $txtSoftwareFallback.Visibility = 'Visible' } catch {}
     }
+
+    # If we explicitly set the fallback flag earlier, ensure the warning is visible
+    try {
+        if ($UseStaticSoftware) { $txtSoftwareFallback.Text = "Warning: Could not retrieve software list from DeployR — using built-in static list."; $txtSoftwareFallback.Visibility = 'Visible' }
+    } catch {}
     
     # Get DNS suffix from the machine
     $dnsSuffix = $null
@@ -1742,6 +1738,7 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     }
     if ($FormResults.DomainJoinOU) {
         ${TSEnv:DomainJoinOU} = $FormResults.DomainJoinOU
+        ${TSEnv:OU} = $FormResults.DomainJoinOU
     }
     # Export AssetTag as TS variable
     if ($FormResults.AssetTag) {

@@ -1736,6 +1736,7 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     }
     if ($FormResults.DomainJoinOU) {
         ${TSEnv:DomainJoinOU} = $FormResults.DomainJoinOU
+        ${TSEnv:OU} = $FormResults.DomainJoinOU
     }
     # Export AssetTag as TS variable
     if ($FormResults.AssetTag) {
