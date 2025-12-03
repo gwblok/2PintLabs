@@ -68,7 +68,8 @@ Function Get-InputFormData {
     # Define hardware ID type options
     $HardwareIdOptions = @(
     "Serial Number",
-    "MAC Address"
+    "MAC Address",
+    "Asset Tag"
     )
     
     #Region Collection Hardware Information:
@@ -198,7 +199,8 @@ Function Get-InputFormData {
     $MakeAlias = $LocalInfo['MakeAlias']
     $ModelAlias = $LocalInfo['ModelAlias']
     $SystemAlias = $LocalInfo['SystemAlias']
-    
+    $AssetTag = (Get-CimInstance -ClassName Win32_SystemEnclosure).SMBIOSAssetTag.Trim()
+
     #endregion
     
     
@@ -252,16 +254,27 @@ Function Get-InputFormData {
         
         try {
             if ($Type -eq "Serial Number") {
-                $serial = (Get-CimInstance -ClassName Win32_BIOS).SerialNumber
+                $serial = (Get-CimInstance -ClassName Win32_BIOS -ErrorAction SilentlyContinue).SerialNumber
                 return $serial
             }
             elseif ($Type -eq "MAC Address") {
-                $mac = (Get-CimInstance -ClassName Win32_NetworkAdapter | 
+                $mac = (Get-CimInstance -ClassName Win32_NetworkAdapter -ErrorAction SilentlyContinue | 
                 Where-Object { $_.PhysicalAdapter -and $_.MACAddress } | 
                 Select-Object -First 1).MACAddress
                 # Remove colons and dashes from MAC address
                 if ($mac) {
                     return $mac -replace '[:-]', ''
+                }
+            }
+            elseif ($Type -eq "Asset Tag") {
+                try {
+                    $assetObj = Get-CimInstance -ClassName Win32_SystemEnclosure -ErrorAction SilentlyContinue | Select-Object -First 1
+                    if ($assetObj -and $assetObj.SMBIOSAssetTag -and -not [string]::IsNullOrWhiteSpace($assetObj.SMBIOSAssetTag)) {
+                        return $assetObj.SMBIOSAssetTag.Trim()
+                    }
+                }
+                catch {
+                    # ignore and fall through to UNKNOWN
                 }
             }
         }
@@ -355,7 +368,7 @@ Function Get-InputFormData {
                              GroupName="NamingStrategy"
                              Margin="0,0,0,5"/>
                 <StackPanel Margin="25,0,0,5">
-                    <TextBlock Text="Prefix (optional, max 10 chars):" 
+                    <TextBlock Name="lblPrefix" Text="Prefix (optional, max 10 chars):" 
                                FontSize="11" 
                                Margin="0,0,0,3"/>
                     <TextBox Name="txtPrefix" 
@@ -365,7 +378,7 @@ Function Get-InputFormData {
                              IsEnabled="False"/>
                 </StackPanel>
                 <StackPanel Margin="25,5,0,5">
-                    <TextBlock Text="Hardware ID Type:" 
+                    <TextBlock Name="lblHardwareIdType" Text="Hardware ID Type:" 
                                FontSize="11" 
                                Margin="0,0,0,3"/>
                     <ComboBox Name="cmbHardwareId" 
@@ -523,6 +536,7 @@ Function Get-InputFormData {
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             
                             <!-- Make -->
@@ -556,6 +570,10 @@ Function Get-InputFormData {
                             <!-- Gateway List -->
                             <TextBlock Grid.Row="7" Grid.Column="0" Text="Gateway(s):" FontWeight="Bold" Margin="0,0,0,8"/>
                             <TextBlock Grid.Row="7" Grid.Column="1" Name="txtHwGwList" Text="" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                            
+                                <!-- Asset Tag -->
+                                <TextBlock Grid.Row="8" Grid.Column="0" Text="Asset Tag:" FontWeight="Bold" Margin="0,0,0,8"/>
+                                <TextBlock Grid.Row="8" Grid.Column="1" Name="txtHwAssetTag" Text="" Margin="0,0,0,8" TextWrapping="Wrap"/>
                         </Grid>
                     </StackPanel>
                 </ScrollViewer>
@@ -570,14 +588,10 @@ Function Get-InputFormData {
         <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
     
-        <TextBlock Name="txtStatus"
-               Grid.Column="0"
-               Text=""
-               FontSize="11"
-               Foreground="OrangeRed"
-               VerticalAlignment="Center"
-               TextWrapping="Wrap"
-               Margin="0,0,12,0"/>
+        <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Center" Margin="0,0,12,0">
+            <TextBlock Name="txtWarning" Text="" FontSize="12" Foreground="OrangeRed" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,0,0,2"/>
+            <TextBlock Name="txtStatus" Text="" FontSize="11" Foreground="OrangeRed" TextWrapping="Wrap"/>
+        </StackPanel>
     
         <StackPanel Grid.Column="1"
             Orientation="Horizontal"
@@ -628,6 +642,7 @@ Function Get-InputFormData {
     $cmbOnlineOU = $Window.FindName("cmbOnlineOU")
     $txtOnlineJoinInfo = $Window.FindName("txtOnlineJoinInfo")
     $txtStatus = $Window.FindName("txtStatus")
+    $txtWarning = $Window.FindName("txtWarning")
     $btnOK = $Window.FindName("btnOK")
     $btnCancel = $Window.FindName("btnCancel")
     $spSoftwareList = $Window.FindName("spSoftwareList")
@@ -641,6 +656,7 @@ Function Get-InputFormData {
     $txtHwMacList = $Window.FindName("txtHwMacList")
     $txtHwIpList = $Window.FindName("txtHwIpList")
     $txtHwGwList = $Window.FindName("txtHwGwList")
+    $txtHwAssetTag = $Window.FindName("txtHwAssetTag")
     
     # Populate hardware information
     $txtHwMake.Text = if ($MakeAlias) { $MakeAlias } else { "N/A" }
@@ -651,6 +667,8 @@ Function Get-InputFormData {
     $txtHwMacList.Text = if ($macList -and $macList.Count -gt 0) { $macList -join "`n" } else { "N/A" }
     $txtHwIpList.Text = if ($ipList -and $ipList.Count -gt 0) { $ipList -join "`n" } else { "N/A" }
     $txtHwGwList.Text = if ($gwList -and $gwList.Count -gt 0) { $gwList -join "`n" } else { "N/A" }
+    # Asset Tag (from SMBIOS) - show NA when not present or empty
+    $txtHwAssetTag.Text = if ($AssetTag) { $AssetTag } else { "N/A" }
     
     # Initialize online OU script variable
     $script:OnlineOU = $null
@@ -989,6 +1007,17 @@ Function Get-InputFormData {
             $prefix = $txtPrefix.Text.Trim().ToUpper()
             $hwType = $cmbHardwareId.SelectedItem
             $hwId = Get-HardwareId -Type $hwType
+
+            # If Asset Tag selected but not available, show a warning in the status area
+            if ($hwType -eq "Asset Tag" -and ([string]::IsNullOrWhiteSpace($hwId) -or $hwId -eq "UNKNOWN")) {
+                $txtWarning.Text = "Warning: Asset Tag not available — generated name may be invalid"
+                $txtWarning.Visibility = 'Visible'
+                $txtPreview.Foreground = "Red"
+            }
+            else {
+                # Clear any previous warning
+                try { $txtWarning.Text = ""; $txtWarning.Visibility = 'Collapsed' } catch {}
+            }
             
             if ([string]::IsNullOrWhiteSpace($prefix)) {
                 # If no prefix, ensure hardware id is truncated to max 15 chars (keep tail)
@@ -1045,25 +1074,53 @@ Function Get-InputFormData {
     }
     
     # Radio Button Events
+    function Set-PanelVisualState {
+        param(
+            [bool]$noNameSelected,
+            [bool]$manualSelected,
+            [bool]$hardwareSelected
+        )
+        try {
+            # Use opacity for reliable visual de-emphasis across themes/control templates
+            $rbNoName.Opacity = (if ($noNameSelected) { 1.0 } else { 0.5 })
+            $rbManualName.Opacity = (if ($manualSelected) { 1.0 } else { 0.5 })
+            $rbHardwareName.Opacity = (if ($hardwareSelected) { 1.0 } else { 0.5 })
+        } catch {}
+        try { $lblPrefix.Opacity = (if ($hardwareSelected) { 1.0 } else { 0.5 }) } catch {}
+        try { $lblHardwareIdType.Opacity = (if ($hardwareSelected) { 1.0 } else { 0.5 }) } catch {}
+    }
+
     $rbNoName.Add_Checked({
+        # No-name: disable manual and hardware panels
         $txtManualName.IsEnabled = $false
         $txtPrefix.IsEnabled = $false
         $cmbHardwareId.IsEnabled = $false
+        # Clear any asset-tag warnings
+        try { $txtWarning.Text = ""; $txtWarning.Visibility = 'Collapsed' } catch {}
+        Set-PanelVisualState -noNameSelected $true -manualSelected $false -hardwareSelected $false
         Update-Preview
     })
     
     $rbManualName.Add_Checked({
+        # Manual name selected: enable manual controls, disable hardware controls
         $txtManualName.IsEnabled = $true
         $txtPrefix.IsEnabled = $false
         $cmbHardwareId.IsEnabled = $false
+        # Clear any asset-tag warnings
+        try { $txtWarning.Text = ""; $txtWarning.Visibility = 'Collapsed' } catch {}
         $txtManualName.Focus()
+        Set-PanelVisualState -noNameSelected $false -manualSelected $true -hardwareSelected $false
         Update-Preview
     })
     
     $rbHardwareName.Add_Checked({
+        # Hardware name selected: enable hardware controls, disable manual controls
         $txtManualName.IsEnabled = $false
         $txtPrefix.IsEnabled = $true
         $cmbHardwareId.IsEnabled = $true
+        # Clear any previous warning; Update-Preview will re-evaluate and show if still missing
+        try { $txtWarning.Text = ""; $txtWarning.Visibility = 'Collapsed' } catch {}
+        Set-PanelVisualState -noNameSelected $false -manualSelected $false -hardwareSelected $true
         Update-Preview
     })
     
@@ -1203,7 +1260,10 @@ Function Get-InputFormData {
             $script:NamingStrategy = "HardwareBased"
             $script:GeneratedComputerName = $generatedName
             # Store simplified hardware type value
-            $script:HardwareIdType = if ($hwType -eq "Serial Number") { "Serial" } else { "MAC" }
+            if ($hwType -eq "Serial Number") { $script:HardwareIdType = "Serial" }
+            elseif ($hwType -eq "MAC Address") { $script:HardwareIdType = "MAC" }
+            elseif ($hwType -eq "Asset Tag") { $script:HardwareIdType = "AssetTag" }
+            else { $script:HardwareIdType = $null }
         }
         
         # Determine workplace join method
@@ -1272,6 +1332,23 @@ Function Get-InputFormData {
         # CSV representation: id=true,id=false,... for all defined options
         $script:SelectedSoftwareCsv = ($script:SelectedSoftwareMap.GetEnumerator() | ForEach-Object { "{0}={1}" -f $_.Key, $_.Value } ) -join ','
         
+        # Validation: if hardware naming is selected and Asset Tag chosen but not available, block OK
+        if ($rbHardwareName.IsChecked) {
+            $selectedHwType = $cmbHardwareId.SelectedItem
+            if ($selectedHwType -eq "Asset Tag") {
+                $selectedHwId = Get-HardwareId -Type $selectedHwType
+                if ([string]::IsNullOrWhiteSpace($selectedHwId) -or $selectedHwId -eq "UNKNOWN") {
+                    [System.Windows.MessageBox]::Show(
+                        "Asset Tag was selected as the Hardware ID Type but no Asset Tag was found. Please choose a different Hardware ID Type or ensure the device has an Asset Tag.",
+                        "Validation Error",
+                        [System.Windows.MessageBoxButton]::OK,
+                        [System.Windows.MessageBoxImage]::Warning
+                    )
+                    return
+                }
+            }
+        }
+
         # Stop auto-close timer (if running), then set dialog result and close
         try { if ($script:AutoCloseTimer) { $script:AutoCloseTimer.Stop() } } catch {}
         # Set dialog result and close
@@ -1343,6 +1420,9 @@ Function Get-InputFormData {
         $rbWorkgroup.IsChecked = $true
     }
     
+    # Apply initial visual state for radios and labels
+    try { Set-PanelVisualState -noNameSelected ([bool]$rbNoName.IsChecked) -manualSelected ([bool]$rbManualName.IsChecked) -hardwareSelected ([bool]$rbHardwareName.IsChecked) } catch {}
+
     # Show the form
     $result = $Window.ShowDialog()
     
@@ -1359,6 +1439,7 @@ Function Get-InputFormData {
             SelectedUserRole = $script:SelectedUserRole
             AutopilotGroupTag = $script:AutopilotGroupTag
             DomainJoinOU = $script:OnlineOU
+            AssetTag = if ($LocalInfo.ContainsKey('AssetTag') -and -not [string]::IsNullOrWhiteSpace($LocalInfo['AssetTag'])) { $LocalInfo['AssetTag'] } else { 'NA' }
             DomainJoinSelected = ($script:WorkplaceJoin -eq 'ODJ')
             EntraIDUserUPN = $script:EntraIDUserUPN
             SelectedSoftware = $script:SelectedSoftware
@@ -1427,6 +1508,7 @@ Function Get-InputFormData {
             SelectedUserRole = $null
             AutopilotGroupTag = $null
             DomainJoinOU = $null
+            AssetTag = $null
             SelectedSoftware = @()
             SelectedSoftwareCsv = ""
             FormSubmitted = $false
@@ -1549,7 +1631,10 @@ if (!($Global:LogFolderPath)) {
         $Global:LogFolderPath = "$env:SystemDrive\_2P\Logs"
     }
     else {
-        $Global:LogFolderPath = "C:\Windows\Temp\DeployRLogs"
+        # Prefer user-writable temp folder to avoid permission issues when not elevated
+        if ($env:TEMP) { $Global:LogFolderPath = Join-Path -Path $env:TEMP -ChildPath 'DeployRLogs' }
+        elseif (Test-Path -Path 'C:\Windows\Temp') { $Global:LogFolderPath = 'C:\Windows\Temp\DeployRLogs' }
+        else { $Global:LogFolderPath = Join-Path -Path $env:USERPROFILE -ChildPath 'DeployRLogs' }
     }
 }
 $Global:LogFilePath = "$($Global:LogFolderPath)\FrontEnd.log"
@@ -1577,6 +1662,10 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     if ($FormResults.DomainJoinOU) {
         ${TSEnv:DomainJoinOU} = $FormResults.DomainJoinOU
     }
+    # Export AssetTag as TS variable
+    if ($FormResults.AssetTag) {
+        ${TSEnv:AssetTag} = $FormResults.AssetTag
+    }
     if (($FormResults.WorkplaceJoin) -eq "Autopilot"){
         if ($FormResults.AutopilotGroupTag) {
             ${TSEnv:AutopilotGroupTag} = $FormResults.AutopilotGroupTag
@@ -1602,6 +1691,9 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     }
     if ($FormResults.DomainJoinOU){
         Write-CMTraceLog -Message "DomainJoinOU = $(${TSEnv:DomainJoinOU})" -Type "Info" -Component "Main"
+    }
+    if ($FormResults.AssetTag -and $FormResults.AssetTag -ne 'NA'){
+        Write-CMTraceLog -Message "AssetTag = $(${TSEnv:AssetTag})" -Type "Info" -Component "Main"
     }
     Write-CMTraceLog -Message "SelectedUserRole = $(${TSEnv:SelectedUserRole})" -Type "Info" -Component "Main"
     
@@ -1634,6 +1726,9 @@ else{
     if ($FormResults.DomainJoinOU) {
         $env:DomainJoinOU = $FormResults.DomainJoinOU
     }
+    if ($FormResults.AssetTag -and $FormResults.AssetTag -ne 'NA') {
+        $env:AssetTag = $FormResults.AssetTag
+    }
     $env:SelectedUserRole = $FormResults.SelectedUserRole
     
     $env:SelectedSoftwareCsv = $FormResults.SelectedSoftwareCsv
@@ -1658,6 +1753,7 @@ else{
     if ($env:HardwareIdType) { write-Host "HardwareIdType = $($env:HardwareIdType)" -ForegroundColor Green }
     write-Host "WorkplaceJoin = $($env:WorkplaceJoin)" -ForegroundColor Green
     if ($env:DomainJoinOU) { write-Host "DomainJoinOU = $($env:DomainJoinOU)" -ForegroundColor Green }
+    if ($env:AssetTag -and $env:AssetTag -ne 'NA') { write-Host "AssetTag = $($env:AssetTag)" -ForegroundColor Green }
     if ($env:EntraIDUserUPN) { write-Host "EntraIDUserUPN = $($env:EntraIDUserUPN)" -ForegroundColor Green }
     write-Host "SelectedUserRole = $($env:SelectedUserRole)" -ForegroundColor Green
     write-Host "AutopilotGroupTag = $($env:AutopilotGroupTag)" -ForegroundColor Green
