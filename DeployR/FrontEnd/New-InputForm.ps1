@@ -444,12 +444,7 @@ Function Get-InputFormData {
                                              GroupName="WorkplaceJoin"
                                              Margin="0,0,0,8"/>
                                 
-                                <RadioButton Name="rbOnlineDomainJoin"
-                                             Content="Online Domain Join (less secure)"
-                                             FontSize="12"
-                                             FontWeight="Normal"
-                                             GroupName="WorkplaceJoin"
-                                             Margin="0,0,0,8"/>
+                                <!-- Online Domain Join option removed -->
                                 
                                 <RadioButton Name="rbDomainJoin" 
                                              Content="Offline Domain Join" 
@@ -621,7 +616,7 @@ Function Get-InputFormData {
     $rbWorkgroup = $Window.FindName("rbWorkgroup")
     $rbEntraID = $Window.FindName("rbEntraID")
     $rbAutopilot = $Window.FindName("rbAutopilot")
-    $rbOnlineDomainJoin = $Window.FindName("rbOnlineDomainJoin")
+    # rbOnlineDomainJoin removed - no FindName required
     $rbDomainJoin = $Window.FindName("rbDomainJoin")
     $spEntraIDOptions = $Window.FindName("spEntraIDOptions")
     $txtPrimaryUserUPN = $Window.FindName("txtPrimaryUserUPN")
@@ -1081,7 +1076,7 @@ Function Get-InputFormData {
     $rbWorkgroup.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
     $rbEntraID.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
     $rbAutopilot.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
-    $rbOnlineDomainJoin.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$true })
+    # Online Domain Join removed - keep Domain Join (offline) enabling OU controls
     # Show the Domain Join OU controls for both Online and Offline Domain Join selections
     $rbDomainJoin.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$true })
     
@@ -1089,11 +1084,11 @@ Function Get-InputFormData {
     $rbWorkgroup.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
     $rbEntraID.Add_Checked({ Set-EntraIDOptionsState -Enabled:$true })
     $rbAutopilot.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
-    $rbOnlineDomainJoin.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
+    # Online Domain Join removed - EntraID options handled by other radio handlers
     $rbDomainJoin.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
     
     # Ensure Online Domain Join also turns off Autopilot controls when selected
-    $rbOnlineDomainJoin.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
+    # Online Domain Join removed - Autopilot controls handled by other radio handlers
     
     # Text Changed Events
     $txtManualName.Add_TextChanged({
@@ -1221,12 +1216,10 @@ Function Get-InputFormData {
         elseif ($rbAutopilot.IsChecked) {
             $script:WorkplaceJoin = "Autopilot"
         }
-        elseif ($rbOnlineDomainJoin.IsChecked) {
-            $script:WorkplaceJoin = "OnlineDomainJoin"
-            $script:OnlineOU = $cmbOnlineOU.SelectedItem
-        }
         elseif ($rbDomainJoin.IsChecked) {
             $script:WorkplaceJoin = "ODJ"
+            # Capture the selected OU from the Domain Join OU combo (now used for ODJ)
+            $script:OnlineOU = $cmbOnlineOU.SelectedItem
         }
         
         # Store user role - use ComboBoxItem.Tag (Value) when available
@@ -1365,8 +1358,8 @@ Function Get-InputFormData {
             WorkplaceJoin = $script:WorkplaceJoin
             SelectedUserRole = $script:SelectedUserRole
             AutopilotGroupTag = $script:AutopilotGroupTag
-            OnlineDomainJoinOU = $script:OnlineOU
-            OnlineDomainJoinSelected = ($script:WorkplaceJoin -eq 'OnlineDomainJoin')
+            DomainJoinOU = $script:OnlineOU
+            DomainJoinSelected = ($script:WorkplaceJoin -eq 'ODJ')
             EntraIDUserUPN = $script:EntraIDUserUPN
             SelectedSoftware = $script:SelectedSoftware
             SelectedSoftwareMap = $script:SelectedSoftwareMap
@@ -1433,7 +1426,7 @@ Function Get-InputFormData {
             WorkplaceJoin = $null
             SelectedUserRole = $null
             AutopilotGroupTag = $null
-            OnlineDomainJoinOU = $null
+            DomainJoinOU = $null
             SelectedSoftware = @()
             SelectedSoftwareCsv = ""
             FormSubmitted = $false
@@ -1581,8 +1574,8 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
         ${TSEnv:EntraIDUserUPN} = $FormResults.EntraIDUserUPN
         ${TSEnv:ENTRAUPN} = $FormResults.EntraIDUserUPN
     }
-    if ($FormResults.OnlineDomainJoinOU) {
-        ${TSEnv:OnlineDomainJoinOU} = $FormResults.OnlineDomainJoinOU
+    if ($FormResults.DomainJoinOU) {
+        ${TSEnv:DomainJoinOU} = $FormResults.DomainJoinOU
     }
     if (($FormResults.WorkplaceJoin) -eq "Autopilot"){
         if ($FormResults.AutopilotGroupTag) {
@@ -1607,8 +1600,8 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     if ($FormResults.AutopilotGroupTag){
         Write-CMTraceLog -Message "AutopilotGroupTag = $(${TSEnv:AutopilotGroupTag})" -Type "Info" -Component "Main"
     }
-    if ($FormResults.OnlineDomainJoinOU){
-        Write-CMTraceLog -Message "OnlineDomainJoinOU = $(${TSEnv:OnlineDomainJoinOU})" -Type "Info" -Component "Main"
+    if ($FormResults.DomainJoinOU){
+        Write-CMTraceLog -Message "DomainJoinOU = $(${TSEnv:DomainJoinOU})" -Type "Info" -Component "Main"
     }
     Write-CMTraceLog -Message "SelectedUserRole = $(${TSEnv:SelectedUserRole})" -Type "Info" -Component "Main"
     
@@ -1638,8 +1631,8 @@ else{
     if ($FormResults.AutopilotGroupTag) {
         $env:AutopilotGroupTag = $FormResults.AutopilotGroupTag
     }
-    if ($FormResults.OnlineDomainJoinOU) {
-        $env:OnlineDomainJoinOU = $FormResults.OnlineDomainJoinOU
+    if ($FormResults.DomainJoinOU) {
+        $env:DomainJoinOU = $FormResults.DomainJoinOU
     }
     $env:SelectedUserRole = $FormResults.SelectedUserRole
     
@@ -1664,7 +1657,7 @@ else{
     write-Host "DomainSuffix = $($env:DomainSuffix)" -ForegroundColor Green
     if ($env:HardwareIdType) { write-Host "HardwareIdType = $($env:HardwareIdType)" -ForegroundColor Green }
     write-Host "WorkplaceJoin = $($env:WorkplaceJoin)" -ForegroundColor Green
-    if ($env:OnlineDomainJoinOU) { write-Host "OnlineDomainJoinOU = $($env:OnlineDomainJoinOU)" -ForegroundColor Green }
+    if ($env:DomainJoinOU) { write-Host "DomainJoinOU = $($env:DomainJoinOU)" -ForegroundColor Green }
     if ($env:EntraIDUserUPN) { write-Host "EntraIDUserUPN = $($env:EntraIDUserUPN)" -ForegroundColor Green }
     write-Host "SelectedUserRole = $($env:SelectedUserRole)" -ForegroundColor Green
     write-Host "AutopilotGroupTag = $($env:AutopilotGroupTag)" -ForegroundColor Green

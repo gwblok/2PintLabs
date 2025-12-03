@@ -27,7 +27,7 @@
 #     - ${TSEnv:DomainJoinUsername}  (username used to join, e.g. CM_DJ)
 #     - ${TSEnv:DomainJoinPassword}  (SecureString or plain-text)
 #     - ${TSEnv:DomainJoinDomain}    (DNS domain name, e.g. 2P.GARYTOWN.COM)
-#     - ${TSEnv:OnlineDomainJoinOU}  (optional OU distinguishedName when using
+#     - ${TSEnv:DomainJoinOU}  (optional OU distinguishedName when using
 #                                     Online Domain Join workflow)
 #
 #   If `DeployR.Utility` isn't present this script will rely on the calling scope to
@@ -69,7 +69,7 @@ catch {
 
 if (Get-Module -name "DeployR.Utility"){
     write-Host "Using DeployR.Utility Module to get FQDN" -ForegroundColor Green
-    $OU = ${TSEnv:OnlineDomainJoinOU}
+    $OU = ${TSEnv:DomainJoinOU}
     $UserName = ${TSEnv:DomainJoinUsername}
     $Password = ${TSEnv:DomainJoinPassword}
     $Domain = ${TSEnv:DomainJoinDomain}
