@@ -1,4 +1,56 @@
 $FORM = @'
+
+
+
+<#
+EDITOR NOTES - How to customize this form
+
+    Author: Created for 2PintLabs by Gary Blok
+    Date: October 20, 2025
+
+1) Changing the Domain Join OU list
+     - The Online OU combo box is populated near the bottom of this function using the
+         $cmbOnlineOU control. To change the static OU entries, update the block that
+         populates $cmbOnlineOU.Items, e.g.:
+
+             # Populate Online OU ComboBox
+             $cmbOnlineOU.Items.Add("OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com") | Out-Null
+             $cmbOnlineOU.Items.Add("OU=Servers,OU=2PintTown,DC=2P,DC=garytown,DC=com") | Out-Null
+
+     - If you need the OU list to come from an external source (file, web, or ConfigMgr), replace
+         the above block with logic to read your source (e.g., ConvertFrom-Json or Invoke-RestMethod)
+         and call $cmbOnlineOU.Items.Add($ou) for each OU string.
+
+     - The selected value is returned in the FormResults as `DomainJoinOU` and exported as the
+         Task Sequence variable `DomainJoinOU` when present.
+
+2) Changing the Logo
+     - The script supports two logo methods at the top of the function:
+             - $LogoBase64 : set to a base64-encoded PNG/JPEG string to embed the image in the script.
+             - $LogoPath   : set to a filesystem path used during development.
+
+     - There's a companion helper used during development to convert and resize images:
+         see `Convert-ImageToBase64.ps1` (dot-source it and call Convert-ImageToBase64 -ImagePath <path>).
+         Typical workflow:
+             1) . .\Convert-ImageToBase64.ps1
+             2) $result = Convert-ImageToBase64 -ImagePath "C:\path\to\logo.png"
+             3) $result.Base64String | Set-Clipboard
+             4) Paste the base64 string into $LogoBase64 below.
+
+     - The actual XAML Image control is named `imgLogo` and is set from $LogoBase64 first,
+         then falls back to $LogoPath if base64 isn't provided or fails to load.
+
+3) Returned results and naming
+     - The function returns a PSCustomObject named $FormResults. Key fields you may care about:
+             - DomainJoinOU : selected OU string (or $null)
+
+             - GeneratedComputerName, NamingStrategy, WorkplaceJoin, SelectedUserRole, etc.
+
+Edit these settings near the top of this file and the corresponding UI population sections.
+#>
+
+
+#Region Functions
 Function Get-InputFormData {
     
     <#
@@ -48,6 +100,10 @@ Function Get-InputFormData {
     # Option 1: File path to image (useful during development)
     #$LogoPath = "c:\Users\GaryBlok\OneDrive - garytown\Pictures\2PintSoftware\Logo-blue.png"
     
+    #To Update OU List in Dropdown:
+    #Search of this section: # Populate Online OU ComboBox
+
+
     # Option 2: Base64 encoded image string (best for production/distribution)
     # This example shows a resized version of 2Pint Logo-blue.png (425x100, ~13KB)
     # $LogoBase64 = "iVBORw0KGg..."  # Your base64 string here
@@ -1615,13 +1671,17 @@ function Get-DeployRFrontEndApps {
     return $FrontEndApps
 }
 #
+#endregion Functions
+
+
+#######################################################
+# SCRIPT Execution
+#######################################################
+
 $FormResults = Get-InputFormData
 try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
-    # Fucntion for Logging
-    #Borrowed from https://github.com/hypercube33/SCCM/blob/master/Detect_Report_Remove_1909_G3%20Scrubbed.ps1
     $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
-    
 }
 catch {
     Write-Warning "DeployR.Utility module not found. Environment variables will be set in the standard environment."
@@ -1664,7 +1724,7 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
         ${TSEnv:DomainJoinOU} = $FormResults.DomainJoinOU
     }
     # Export AssetTag as TS variable
-    if ($FormResults.AssetTag -and $FormResults.AssetTag -ne 'NA') {
+    if ($FormResults.AssetTag) {
         ${TSEnv:AssetTag} = $FormResults.AssetTag
     }
     if (($FormResults.WorkplaceJoin) -eq "Autopilot"){
