@@ -55,7 +55,9 @@ Here is where we set the Computer Name.  There are several method in which you c
 Here we can set the final environment of the device once it's done, based on the option you choose, submenus will appear
 
 - **Local Workgroup**
+  
 ![FE02](./media/FE02.png)
+
 - **EntraID Join**
   - Add the Primary User UPN (Manually)
 ![FE03](./media/FE03.png)
@@ -103,6 +105,7 @@ This list of applications is dynamically pulled from the JSON file.  The Friendl
 The process will loop through all of the applications in the list and create a variable for each one called "Install_softwareid" = True or False.  Using those variables, you can then set them as conditions on the Application Install step in the Task Sequence.
 
 #### Other Notes on Software
+
 Long term goal would be to make this software list dynamic based on a Tag in DeployR.  The Task Sequence would ask the DeployR server "What software do you have" then populate the list in the Frontend based on the return from the server, however that's a future state and for now, this was a simple method to setup software selections.
 
 ### Hardware
@@ -126,9 +129,11 @@ Build a content item with the scripts, call the script from a command line step,
 Create a content item "other" with the 4 files.
 ![InTS01](./media/InTS01.png)
 ![InTS02](./media/InTS02.png)
+
 ```PowerShell
 pwsh.exe -NoProfile -ExecutionPolicy Bypass -File ".\FrontEnd-JSONBased.ps1" -Wait -NoNewWindow -PassThru
 ```
+
 ![InTS03](./media/InTS03.png)
 ![InTS04](./media/InTS04.png)
 ![InTS05](./media/InTS05.png)
