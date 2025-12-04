@@ -126,7 +126,8 @@ Build a content item with the scripts, call the script from a command line step,
 
 ### Create the Package
 
-Create a content item "other" with the 4 files.
+Create a content item "other" with the 3 files.
+
 ![InTS01](./media/InTS01.png)
 ![InTS02](./media/InTS02.png)
 
