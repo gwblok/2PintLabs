@@ -117,4 +117,22 @@ I've setup the frontend so you can call the powershell script and see the output
 
 ![FE11](./media/FE11.png)
 
+## Running in Task Sequence
 
+Build a content item with the scripts, call the script from a command line step, watch it work.
+
+### Create the Package
+
+Create a content item "other" with the 4 files.
+![InTS01](./media/InTS01.png)
+![InTS02](./media/InTS02.png)
+```PowerShell
+pwsh.exe -NoProfile -ExecutionPolicy Bypass -File ".\FrontEnd-JSONBased.ps1" -Wait -NoNewWindow -PassThru
+```
+![InTS03](./media/InTS03.png)
+![InTS04](./media/InTS04.png)
+![InTS05](./media/InTS05.png)
+
+So that's how it works, the logs show that the variables are created based on the options I picked, and they will be used later for dynamically deploying the machine.
+
+If you have questions, post them on Reddit in the 2Pint DeployR area, or find me on Discord WinAdmins
