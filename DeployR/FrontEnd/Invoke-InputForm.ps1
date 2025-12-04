@@ -1727,16 +1727,6 @@ function Get-DeployRFrontEndApps {
 #######################################################
 # Start a PowerShell transcription to capture verbose output in a separate file
 try {
-    if (!(Test-Path -Path $Global:LogFolderPath)) { New-Item -ItemType Directory -Path $Global:LogFolderPath -Force | Out-Null }
-    $transcriptPath = Join-Path -Path $Global:LogFolderPath -ChildPath 'FrontendTranscription.log'
-    Start-Transcript -Path $transcriptPath -Force -ErrorAction SilentlyContinue
-    Write-CMTraceLog -Message "Started PowerShell transcription to $transcriptPath" -Type "Info" -Component "Main"
-} catch {
-    Write-Warning "Failed to start transcript: $_"
-}
-
-$FormResults = Get-InputFormData
-try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
     $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
 }
@@ -1755,6 +1745,17 @@ if (!($Global:LogFolderPath)) {
         else { $Global:LogFolderPath = Join-Path -Path $env:USERPROFILE -ChildPath 'DeployRLogs' }
     }
 }
+try {
+    if (!(Test-Path -Path $Global:LogFolderPath)) { New-Item -ItemType Directory -Path $Global:LogFolderPath -Force | Out-Null }
+    $transcriptPath = Join-Path -Path $Global:LogFolderPath -ChildPath 'FrontendTranscription.log'
+    Start-Transcript -Path $transcriptPath -Force -ErrorAction SilentlyContinue
+    Write-CMTraceLog -Message "Started PowerShell transcription to $transcriptPath" -Type "Info" -Component "Main"
+} catch {
+    Write-Warning "Failed to start transcript: $_"
+}
+
+$FormResults = Get-InputFormData
+
 $Global:LogFilePath = "$($Global:LogFolderPath)\FrontEnd.log"
 $Global:LogFileSize   = "40"
 
