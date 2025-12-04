@@ -82,21 +82,84 @@ Function Get-InputFormData {
         }
     } catch {}
 
-    #User Role Options
-    $UserRoleOptions = @()
-    $JSONConfig.Roles | ForEach-Object {
-        $UserRoleOptions += $_
-    }
-
     #Default Domain Suffix
     $DefaultDomainSuffix = $JSONConfig.DomainSuffix
 
     #OU Options
+    $OUOptions = @()
+    $JSONConfig.OUs | ForEach-Object {
+        $OUOptions += $_
+    }
 
+    #Autopilot Group Tags
+    $AutopilotGroupTagOptions = @()
+    $JSONConfig.AutopilotGroupTags | ForEach-Object {
+        $AutopilotGroupTagOptions += $_
+    }
 
+    #Role Options
+    $RoleOptions = @()
+    $JSONConfig.Roles | ForEach-Object {
+        $RoleOptions += $_
+    }
 
+    # Software options - try to pull dynamically from DeployR, fall back to static list if unavailable
+    # Try to get apps dynamically from DeployR
+    $UseDeployRSoftwareList = $JSONConfig.SoftwareFromDeployR
+    $SoftwareOptions = $null
+    $DeployRRetrievalFailed = $false
+    
+    # Only attempt DeployR retrieval if explicitly enabled in JSON config
+    if ($UseDeployRSoftwareList -eq "True") {
+        Write-Host "Attempting to retrieve software list from DeployR..." -ForegroundColor Cyan
+        try {
+            # Call the function that's defined later in this script
+            $DeployRApps = Get-DeployRFrontEndApps -ErrorAction Stop
+            
+            if ($DeployRApps -and $DeployRApps.Count -gt 0) {
+                Write-Host "Successfully retrieved $($DeployRApps.Count) apps from DeployR" -ForegroundColor Green
+                # Build PSObject array with DisplayName and Id (Id = name without spaces)
+                $SoftwareOptions = @()
+                foreach ($app in $DeployRApps) {
+                    $SoftwareOptions += [PSCustomObject]@{
+                        DisplayName = $app.Name
+                        Id = $app.Name -replace '\s+', ''  # Remove all spaces for Id
+                    }
+                }
+            }
+            else {
+                # DeployR call succeeded but returned no apps
+                $DeployRRetrievalFailed = $true
+            }
+        }
+        catch {
+            $msg = "Could not retrieve apps from DeployR: $($_.Exception.Message)"
+            Write-Warning $msg
+            try { Write-CMTraceLog -Message $msg -Type "Warning" -Component "DeployR" } catch {}
+            $DeployRRetrievalFailed = $true
+        }
+    }
+    else {
+        Write-Host "DeployR software retrieval disabled in config - using static list from JSON" -ForegroundColor Cyan
+    }
+    
+    # Fall back to static list if:
+    # 1. DeployR was not enabled, OR
+    # 2. DeployR retrieval was attempted but failed
+    if (-not $SoftwareOptions -or $SoftwareOptions.Count -eq 0) {
+        $msg = "Using static software list from JSON config"
+        Write-Host $msg -ForegroundColor Yellow
+        try { Write-CMTraceLog -Message $msg -Type "Info" -Component "Software" } catch {}
+        $SoftwareOptions = @()
+        $JSONConfig.Software | ForEach-Object {
+            $SoftwareOptions += [PSCustomObject]@{
+                DisplayName = $_.DisplayName
+                Id = $_.Id
+            }
+        }
+    }
 
-    # Define hardware ID type options
+    # Define hardware ID type options (If you change this, you'll need to also update methods to gather this info)
     $HardwareIdOptions = @(
     "Serial Number",
     "MAC Address",
@@ -231,55 +294,7 @@ Function Get-InputFormData {
     $ModelAlias = $LocalInfo['ModelAlias']
     $SystemAlias = $LocalInfo['SystemAlias']
     $AssetTag = (Get-CimInstance -ClassName Win32_SystemEnclosure).SMBIOSAssetTag.Trim()
-
-    #endregion
     
-    
-    # (Workplace join radio buttons are defined directly in XAML; the explicit options array was removed)
-    
-    # Software options - try to pull dynamically from DeployR, fall back to static list if unavailable
-    # Try to get apps dynamically from DeployR
-    $SoftwareOptions = $null
-    try {
-        # Call the function that's defined later in this script
-        $DeployRApps = Get-DeployRFrontEndApps -ErrorAction Stop
-        
-        if ($DeployRApps -and $DeployRApps.Count -gt 0) {
-            Write-Host "Successfully retrieved $($DeployRApps.Count) apps from DeployR" -ForegroundColor Green
-            # Build PSObject array with DisplayName and Id (Id = name without spaces)
-            $SoftwareOptions = @()
-            foreach ($app in $DeployRApps) {
-                $SoftwareOptions += [PSCustomObject]@{
-                    DisplayName = $app.Name
-                    Id = $app.Name -replace '\s+', ''  # Remove all spaces for Id
-                }
-            }
-        }
-    }
-    catch {
-        $msg = "Could not retrieve apps from DeployR: $($_.Exception.Message)"
-        Write-Warning $msg
-        try { Write-CMTraceLog -Message $msg -Type "Warning" -Component "DeployR" } catch {}
-    }
-    
-    # Fall back to static list if dynamic retrieval failed
-    $UseStaticSoftware = $false
-    if (-not $SoftwareOptions -or $SoftwareOptions.Count -eq 0) {
-        $msg = "Using static software list as fallback"
-        Write-Host $msg -ForegroundColor Yellow
-        try { Write-CMTraceLog -Message $msg -Type "Info" -Component "DeployR" } catch {}
-        $UseStaticSoftware = $true
-        $SoftwareOptions = @(
-        [PSCustomObject]@{ DisplayName = 'GreenShot'; Id = 'greenshot' },
-        [PSCustomObject]@{ DisplayName = 'Office 365'; Id = 'office365' },
-        [PSCustomObject]@{ DisplayName = 'Adobe Reader'; Id = 'adobereader' },
-        [PSCustomObject]@{ DisplayName = 'Notepad++'; Id = 'notepadplusplus' },
-        [PSCustomObject]@{ DisplayName = 'WMIExplorer'; Id = 'wmiexplorer' },
-        [PSCustomObject]@{ DisplayName = 'Google Chrome'; Id = 'googlechrome' },
-        [PSCustomObject]@{ DisplayName = '7-Zip'; Id = '7zip' },
-        [PSCustomObject]@{ DisplayName = 'VLC Media Player'; Id = 'vlc' }
-        )
-    }
     
     
     
@@ -320,7 +335,8 @@ Function Get-InputFormData {
         }
         return "UNKNOWN"
     }
-    
+    #endregion Hardware 
+
     # XAML Form Definition
     [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -776,26 +792,30 @@ Function Get-InputFormData {
         $imgLogo.Visibility = "Collapsed"
     }
     
-        
-    # Get current device serial number
-    $currentSerial = (Get-CimInstance -ClassName Win32_BIOS -ErrorAction SilentlyContinue).SerialNumber
-    
+    # Populate User Role ComboBox from $RoleOptions
+    foreach ($role in $RoleOptions) {
+        $comboItem = New-Object System.Windows.Controls.ComboBoxItem
+        $comboItem.Content = $role.DisplayName
+        $comboItem.Tag = $role.Value
+        $cmbUserRole.Items.Add($comboItem) | Out-Null
+    }
 
     # select first item by default if present
     if ($cmbUserRole.Items.Count -gt 0) { $cmbUserRole.SelectedIndex = 0 }
     
-    # Update status to show where roles were loaded from
-    $txtStatus.Text = "Roles populated from: $roleSource"
-    $txtRoleSource.Text = "Roles populated from: $roleSource"
+    # Update role source label
+    $txtRoleSource.Text = "Roles populated from JSON config"
     
     # Populate Autopilot Group Tag ComboBox
-    $cmbAutopilotGroupTag.Items.Add("Enterprise") | Out-Null
-    $cmbAutopilotGroupTag.Items.Add("Hub Self Deploy") | Out-Null
+    foreach ($tag in $AutopilotGroupTagOptions) {
+        $cmbAutopilotGroupTag.Items.Add($tag) | Out-Null
+    }
     $cmbAutopilotGroupTag.SelectedIndex = 0
     
-    # Populate Online OU ComboBox
-    $cmbOptionOU.Items.Add("OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com") | Out-Null
-    $cmbOptionOU.Items.Add("OU=Servers,OU=2PintTown,DC=2P,DC=garytown,DC=com") | Out-Null
+    # Populate Online OU ComboBox From $OUOptions
+    foreach ($ou in $OUOptions) {
+        $cmbOptionOU.Items.Add($ou) | Out-Null
+    }
     $cmbOptionOU.SelectedIndex = 0
 
     # Populate Hardware ID Type ComboBox
@@ -821,26 +841,13 @@ Function Get-InputFormData {
             }
         }
     }
-    else {
-        # No software entries - populate with a few defaults and show fallback warning
-        $defaults = @('GreenShot','Office 365','Adobe Reader')
-        foreach ($d in $defaults) {
-            try {
-                $cb = New-Object System.Windows.Controls.CheckBox
-                $cb.Content = $d
-                $cb.Margin = '6,4,0,4'
-                $cb.FontSize = 12
-                $spSoftwareList.Children.Add($cb) | Out-Null
-            } catch {
-                Write-Warning "Failed to add default software entry '$d': $_"
-            }
-        }
-        try { $txtSoftwareFallback.Text = "Warning: Could not retrieve software list from DeployR — using built-in static list."; $txtSoftwareFallback.Visibility = 'Visible' } catch {}
-    }
 
-    # If we explicitly set the fallback flag earlier, ensure the warning is visible
+    # Only show warning if DeployR was supposed to be used (SoftwareFromDeployR = True) but failed
     try {
-        if ($UseStaticSoftware) { $txtSoftwareFallback.Text = "Warning: Could not retrieve software list from DeployR — using built-in static list."; $txtSoftwareFallback.Visibility = 'Visible' }
+        if ($UseDeployRSoftwareList -eq "True" -and $DeployRRetrievalFailed) {
+            $txtSoftwareFallback.Text = "Warning: Could not retrieve software list from DeployR — using built-in static list."
+            $txtSoftwareFallback.Visibility = 'Visible'
+        }
     } catch {}
     
     # Get DNS suffix from the machine
@@ -1192,15 +1199,13 @@ Function Get-InputFormData {
             $script:OptionOU = $cmbOptionOU.SelectedItem
         }
         
-        # Store user role - use ComboBoxItem.Tag (Value) when available
+        # Store user role - use ComboBoxItem.Tag (Value)
         $selectedItem = $cmbUserRole.SelectedItem
         if ($selectedItem -is [System.Windows.Controls.ComboBoxItem]) {
             $script:SelectedUserRole = $selectedItem.Tag
         } else {
-            # Fallback: if for some reason the combo contains plain strings, attempt lookup
-            $selectedDisplayName = [string]$selectedItem
-            $match = $UserRoleOptions | Where-Object { $_.DisplayName -eq $selectedDisplayName }
-            $script:SelectedUserRole = if ($match) { $match.Value } else { $null }
+            # Fallback if something unexpected happened
+            $script:SelectedUserRole = $null
         }
         
         # Map Autopilot Group Tag display value to return value
@@ -1296,40 +1301,6 @@ Function Get-InputFormData {
     })
     $script:AutoCloseTimer.Start()
     
-    # Apply device-specific defaults if matched in RoleDatabase.json
-    if ($script:DeviceFound -and $script:MatchedDevice) {
-        # Pre-populate device name from JSON if available
-        if ($script:MatchedDevice.DeviceName) {
-            $rbManualName.IsChecked = $true
-            $txtManualName.Text = $script:MatchedDevice.DeviceName.ToString().Trim()
-        }
-        
-        # Set default to EntraID Join
-        $rbEntraID.IsChecked = $true
-        
-        # Pre-populate Primary User UPN if available
-        if ($script:MatchedDevice.PrimaryUserUPN) {
-            $txtPrimaryUserUPN.Text = $script:MatchedDevice.PrimaryUserUPN.ToString().Trim()
-        }
-        
-        # Set the role based on Category from JSON
-        if ($script:MatchedDevice.Category) {
-            $categoryValue = $script:MatchedDevice.Category.ToString().Trim()
-            # Find and select the matching role in the ComboBox
-            for ($i = 0; $i -lt $cmbUserRole.Items.Count; $i++) {
-                $item = $cmbUserRole.Items[$i]
-                if ($item.Content -eq $categoryValue) {
-                    $cmbUserRole.SelectedIndex = $i
-                    break
-                }
-            }
-        }
-    }
-    else {
-        # No device match or no JSON found - default to Local Workgroup
-        $rbWorkgroup.IsChecked = $true
-    }
-    
     # Apply initial visual state for radios and labels
     try { Set-PanelVisualState -noNameSelected ([bool]$rbNoName.IsChecked) -manualSelected ([bool]$rbManualName.IsChecked) -hardwareSelected ([bool]$rbHardwareName.IsChecked) } catch {}
 
@@ -1339,8 +1310,6 @@ Function Get-InputFormData {
     # Create and return PSObject with form results
     if ($result -eq $true) {
         $FormResults = [PSCustomObject]@{
-            JSONDBMatch = $script:DeviceFound
-            GitHubJSONDB = $script:GitHubJSONDB
             NamingStrategy = $script:NamingStrategy
             GeneratedComputerName = $script:GeneratedComputerName
             DomainSuffix = $script:DomainSuffix
@@ -1601,8 +1570,6 @@ write-host "========================================" -ForegroundColor DarkGray
 # Set the provided variables
 if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"))) {
     $DEPLOYRCLIENTPASSCODE = ${TSEnv:DEPLOYRCLIENTPASSCODE}
-    ${TSEnv:GitHubJSONDB} = $script:GitHubJSONDB
-    ${TSEnv:JSONDBMatch} = $FormResults.JSONDBMatch
     ${TSEnv:NamingStrategy} = $FormResults.NamingStrategy
     ${TSEnv:ComputerName} = $FormResults.GeneratedComputerName
     ${TSEnv:DomainSuffix} = $FormResults.DomainSuffix
@@ -1630,8 +1597,6 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     ${TSEnv:SelectedSoftwareCsv} = $FormResults.SelectedSoftwareCsv
     
     Write-CMTraceLog -Message  "Set DeployR TS Environment Variables:" -Type "Info" -Component "Main"
-    Write-CMTraceLog -Message "GitHubJSONDB = $(${TSEnv:GitHubJSONDB})" -Type "Info" -Component "Main"
-    Write-CMTraceLog -Message "JSONDBMatch = $(${TSEnv:JSONDBMatch})" -Type "Info" -Component "Main"
     Write-CMTraceLog -Message "NamingStrategy = $(${TSEnv:NamingStrategy})" -Type "Info" -Component "Main"
     Write-CMTraceLog -Message "ComputerName = $(${TSEnv:ComputerName})" -Type "Info" -Component "Main"
     Write-CMTraceLog -Message "DomainSuffix = $(${TSEnv:DomainSuffix})" -Type "Info" -Component "Main"

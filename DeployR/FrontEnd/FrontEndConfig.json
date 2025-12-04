@@ -1,14 +1,30 @@
 {
+  "//": "=== DeployR FrontEnd Configuration File ===",
+  "//Description": "This file controls the System Configuration Input Form (New-InputForm-JSONDriven.ps1)",
+  
+  "//DomainSuffix": "Default domain suffix displayed in the computer naming preview (optional)",
   "DomainSuffix": "2p.garytown.com",
+  
+  "//LogoFileName": "Logo image file name (must be in same directory as script)",
   "LogoFileName": "Logo-blue.png",
+  
+  "//SoftwareFromDeployR": "Set to 'True' to retrieve software list dynamically from DeployR API, 'False' to use static Software list below",
+  "SoftwareFromDeployR": "False",
+  
+  "//OUs": "List of Organizational Units available for domain join operations",
   "OUs": [
     "OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com",
-    "OU=Servers,OU=2PintTown,DC=2P,DC=garytown,DC=com"
+    "OU=Servers,OU=2PintTown,DC=2P,DC=garytown,DC=com",
+    "OU=IT,OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com"
   ],
+  
+  "//AutopilotGroupTags": "Available Autopilot group tags for device registration",
   "AutopilotGroupTags": [
     "Enterprise",
     "Hub Self Deploy"
   ],
+  
+  "//Roles": "User role options - DisplayName is shown in UI, Value is what gets stored/returned",
   "Roles": [
     { "DisplayName": "Default - None", "Value": null },
     { "DisplayName": "Lab Computer - HR", "Value": "HR" },
@@ -16,6 +32,8 @@
     { "DisplayName": "Lab Computer - Execs", "Value": "Execs" },
     { "DisplayName": "Family Computer", "Value": "Family" }
   ],
+  
+  "//Software": "Static software list (used when SoftwareFromDeployR is False or if DeployR retrieval fails) - DisplayName shown in UI, Id used for identification",
   "Software": [
     { "DisplayName": "GreenShot", "Id": "greenshot" },
     { "DisplayName": "Office 365", "Id": "office365" },
@@ -24,7 +42,10 @@
     { "DisplayName": "WMIExplorer", "Id": "wmiexplorer" },
     { "DisplayName": "Google Chrome", "Id": "googlechrome" },
     { "DisplayName": "7-Zip", "Id": "7zip" },
-    { "DisplayName": "VLC Media Player", "Id": "vlc" }
+    { "DisplayName": "VLC Media Player", "Id": "vlc" },
+    { "DisplayName": "Mozilla Firefox", "Id": "firefox" }
   ],
+  
+  "//Apps": "Reserved for future use",
   "Apps": []
 }
