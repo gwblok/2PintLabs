@@ -6,7 +6,7 @@
   "DomainSuffix": "2p.garytown.com",
   
   "//LogoFileName": "Logo image file name (must be in same directory as script)",
-  "LogoFileName": "Logo-blue.png",
+  "LogoFileName": "Logo.png",
   
   "//SoftwareFromDeployR": "Set to 'True' to retrieve software list dynamically from DeployR API, 'False' to use static Software list below",
   "SoftwareFromDeployR": "False",
