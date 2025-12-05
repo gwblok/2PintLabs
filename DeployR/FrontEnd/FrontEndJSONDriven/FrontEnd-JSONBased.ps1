@@ -1527,30 +1527,41 @@ catch {
 #Logic to support ConfigMgr TS Environment Variables
 try {
     $tsenv = new-object -comobject Microsoft.SMS.TSEnvironment
-    $Global:LogFolderPath = $TSENV.value("_SMSTSLogPath")
 }
 catch{}
+if ($TSEnv){
+    $Global:LogFolderPath = $TSEnv.value("_SMSTSLogPath")
+    Write-Output "ConfigMgr TS Environment detected. Log Path set to $Global:LogFolderPath"
+}
 
 # Start up the logs paths for DeployR / ConfigMgr or Local Testing
 if (!($Global:LogFolderPath)) {
     if ($env:SystemDrive -eq "X:") {
         if (!(Test-Path -Path "$env:SystemDrive\_2P")) {
             $Global:LogFolderPath = "$env:temp\Logs"
+            Write-Output "System Drive is X:, and _2P folder not found. Log Path set to $Global:LogFolderPath"
         }
         else {
             $Global:LogFolderPath = "$env:SystemDrive\_2P\Logs"
+            Write-Output "System Drive is X:, Log Path set to $Global:LogFolderPath"
         }
     }
     else {
         # Prefer user-writable temp folder to avoid permission issues when not elevated
-        if ($env:TEMP) { $Global:LogFolderPath = Join-Path -Path $env:TEMP -ChildPath 'DeployRLogs' }
-        elseif (Test-Path -Path 'C:\Windows\Temp') { $Global:LogFolderPath = 'C:\Windows\Temp\DeployRLogs' }
+        if ($env:TEMP) {
+            $Global:LogFolderPath = Join-Path -Path $env:TEMP -ChildPath 'DeployRLogs'
+            Write-Output "Using TEMP folder for logs: $Global:LogFolderPath"
+        }
+        elseif (Test-Path -Path 'C:\Windows\Temp') {
+            $Global:LogFolderPath = 'C:\Windows\Temp\DeployRLogs'
+            Write-Output "Using Windows Temp folder for logs: $Global:LogFolderPath"
+        }
     }
 }
 # Start a PowerShell transcription to capture verbose output in a separate file
 try {
     if (!(Test-Path -Path $Global:LogFolderPath)) { New-Item -ItemType Directory -Path $Global:LogFolderPath -Force | Out-Null }
-    $transcriptPath = Join-Path -Path $Global:LogFolderPath -ChildPath 'FrontendTranscription.log'
+    $transcriptPath = "$Global:LogFolderPath\FrontendTranscription.log"
     Start-Transcript -Path $transcriptPath -Force -ErrorAction SilentlyContinue
     Write-CMTraceLog -Message "Started PowerShell transcription to $transcriptPath" -Type "Info" -Component "Main"
 } catch {
@@ -1570,26 +1581,37 @@ write-host "========================================" -ForegroundColor DarkGray
 
 
 if ($TSEnv){
-    Write-Host "Setting ConfigMgr TS Environment Variables..." -ForegroundColor Cyan
+    Write-Output "Setting ConfigMgr TS Environment Variables..."
+    Write-CMTraceLog -Message "Setting ConfigMgr TS Environment Variables..." -Type "Info" -Component "Main"
     $tsenv.value("NamingStrategy") = $FormResults.NamingStrategy
+    Write-CMTraceLog -Message "NamingStrategy =  $tsenv.value('NamingStrategy')" -Type "Info" -Component "Main"
     $tsenv.value("OSDComputerName") = $FormResults.GeneratedComputerName
+    Write-CMTraceLog -Message "OSDComputerName = $($tsenv.value('OSDComputerName'))" -Type "Info" -Component "Main"
     $tsenv.value("DomainSuffix") = $FormResults.DomainSuffix
+    Write-CMTraceLog -Message "DomainSuffix = $($tsenv.value('DomainSuffix'))" -Type "Info" -Component "Main"
     $tsenv.value("HardwareIdType") = $FormResults.HardwareIdType
+    Write-CMTraceLog -Message "HardwareIdType = $($tsenv.value('HardwareIdType'))" -Type "Info" -Component "Main"
     $tsenv.value("WorkplaceJoin") = $FormResults.WorkplaceJoin
     if ($FormResults.EntraIDUserUPN) {
         $tsenv.value("EntraIDUserUPN") = $FormResults.EntraIDUserUPN
         $tsenv.value("ENTRAUPN") = $FormResults.EntraIDUserUPN
+        Write-CMTraceLog -Message "EntraIDUserUPN = $($tsenv.value('EntraIDUserUPN'))" -Type "Info" -Component "Main"
+        Write-CMTraceLog -Message "ENTRAUPN = $($tsenv.value('ENTRAUPN'))" -Type "Info" -Component "Main"
     }
     if ($FormResults.DomainJoinOU) {
-        $tsenv.value("DomainJoinOU") = $FormResults.DomainJoinOU
-        $tsenv.value("OU") = $FormResults.DomainJoinOU
+        $tsenv.value("FrontEndDomainJoinOU") = $FormResults.DomainJoinOU
+        $tsenv.value("OSDJoinDomainOUName") = $FormResults.DomainJoinOU
+        Write-CMTraceLog -Message "FrontEndDomainJoinOU = $($tsenv.value('FrontEndDomainJoinOU'))" -Type "Info" -Component "Main"
+        Write-CMTraceLog -Message "OSDJoinDomainOUName = $($tsenv.value('OSDJoinDomainOUName'))" -Type "Info" -Component "Main"
     }
     if ($FormResults.WorkplaceJoin -eq "Autopilot"){
         if ($FormResults.AutopilotGroupTag) {
             $tsenv.value("AutopilotGroupTag") = $FormResults.AutopilotGroupTag
+            Write-CMTraceLog -Message "AutopilotGroupTag = $($tsenv.value('AutopilotGroupTag'))" -Type "Info" -Component "Main"
         }
     }
     $tsenv.value("SelectedUserRole") = $FormResults.SelectedUserRole
+    Write-CMTraceLog -Message "SelectedUserRole = $($tsenv.value('SelectedUserRole'))" -Type "Info" -Component "Main"
     $tsenv.value("SelectedSoftwareCsv") = $FormResults.SelectedSoftwareCsv
 }
 
