@@ -1572,7 +1572,7 @@ write-host "========================================" -ForegroundColor DarkGray
 if ($TSEnv){
     Write-Host "Setting ConfigMgr TS Environment Variables..." -ForegroundColor Cyan
     $tsenv.value("NamingStrategy") = $FormResults.NamingStrategy
-    $tsenv.value("ComputerName") = $FormResults.GeneratedComputerName
+    $tsenv.value("OSDComputerName") = $FormResults.GeneratedComputerName
     $tsenv.value("DomainSuffix") = $FormResults.DomainSuffix
     $tsenv.value("HardwareIdType") = $FormResults.HardwareIdType
     $tsenv.value("WorkplaceJoin") = $FormResults.WorkplaceJoin
