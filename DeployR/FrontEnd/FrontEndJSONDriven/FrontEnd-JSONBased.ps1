@@ -1557,8 +1557,38 @@ Write-CMTraceLog -Message "Starting Script..." -Type "Info" -Component "Main"
 Write-CMTraceLog -Message "=====================================================" -Type "Info" -Component "Main"
 write-host "========================================" -ForegroundColor DarkGray
 
+#Logic to support ConfigMgr TS Environment Variables
+try {
+$tsenv = new-object -comobject Microsoft.SMS.TSEnvironment
+}
+catch{
+Write-Output "Not in TS"
+}
+if ($TSEnv){
+    Write-Host "Setting ConfigMgr TS Environment Variables..." -ForegroundColor Cyan
+    $tsenv.value("NamingStrategy") = $FormResults.NamingStrategy
+    $tsenv.value("ComputerName") = $FormResults.GeneratedComputerName
+    $tsenv.value("DomainSuffix") = $FormResults.DomainSuffix
+    $tsenv.value("HardwareIdType") = $FormResults.HardwareIdType
+    $tsenv.value("WorkplaceJoin") = $FormResults.WorkplaceJoin
+    if ($FormResults.EntraIDUserUPN) {
+        $tsenv.value("EntraIDUserUPN") = $FormResults.EntraIDUserUPN
+        $tsenv.value("ENTRAUPN") = $FormResults.EntraIDUserUPN
+    }
+    if ($FormResults.DomainJoinOU) {
+        $tsenv.value("DomainJoinOU") = $FormResults.DomainJoinOU
+        $tsenv.value("OU") = $FormResults.DomainJoinOU
+    }
+    if ($FormResults.WorkplaceJoin -eq "Autopilot"){
+        if ($FormResults.AutopilotGroupTag) {
+            $tsenv.value("AutopilotGroupTag") = $FormResults.AutopilotGroupTag
+        }
+    }
+    $tsenv.value("SelectedUserRole") = $FormResults.SelectedUserRole
+    $tsenv.value("SelectedSoftwareCsv") = $FormResults.SelectedSoftwareCsv
+}
 
-# Set the provided variables
+# Set Variables in DeployR TS Environment if DeployR.Utility is available and no existing installation
 if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"))) {
     $DEPLOYRCLIENTPASSCODE = ${TSEnv:DEPLOYRCLIENTPASSCODE}
     ${TSEnv:NamingStrategy} = $FormResults.NamingStrategy
