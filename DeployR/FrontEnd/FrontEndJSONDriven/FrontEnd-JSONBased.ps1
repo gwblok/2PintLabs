@@ -846,7 +846,7 @@ Function Get-InputFormData {
     # Only show warning if DeployR was supposed to be used (SoftwareFromDeployR = True) but failed
     try {
         if ($UseDeployRSoftwareList -eq "True" -and $DeployRRetrievalFailed) {
-            $txtSoftwareFallback.Text = "Warning: Could not retrieve software list from DeployR — using built-in static list."
+            $txtSoftwareFallback.Text = "Warning: Could not retrieve software list from DeployR - using built-in static list."
             $txtSoftwareFallback.Visibility = 'Visible'
         }
     } catch {}
@@ -929,7 +929,7 @@ Function Get-InputFormData {
 
             # If Asset Tag selected but not available, show a warning in the status area
             if ($hwType -eq "Asset Tag" -and ([string]::IsNullOrWhiteSpace($hwId) -or $hwId -eq "UNKNOWN")) {
-                $txtWarning.Text = "Warning: Asset Tag not available — generated name may be invalid"
+                $txtWarning.Text = "Warning: Asset Tag not available - generated name may be invalid"
                 $txtWarning.Visibility = 'Visible'
                 $txtPreview.Foreground = "Red"
             }
