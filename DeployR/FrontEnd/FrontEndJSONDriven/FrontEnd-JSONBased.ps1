@@ -3,6 +3,16 @@
 
 
 #Region Functions
+# Helper function to stop transcription
+function Stop-FrontendTranscription {
+    try {
+        if ((Get-Command Stop-Transcript -ErrorAction SilentlyContinue) -and (Get-Variable -Name transcript -Scope Global -ErrorAction SilentlyContinue)) {
+            Stop-Transcript -ErrorAction SilentlyContinue
+            Write-CMTraceLog -Message "Stopped PowerShell transcription" -Type "Info" -Component "Main"
+        }
+    } catch {}
+}
+
 Function Get-InputFormData {
     
     <#
@@ -1387,16 +1397,6 @@ Function Get-InputFormData {
             SelectedSoftwareCsv = ""
             FormSubmitted = $false
         }
-    }
-    
-    # Ensure we stop any running transcript when the function exits
-    function Stop-FrontendTranscription {
-        try {
-            if ((Get-Command Stop-Transcript -ErrorAction SilentlyContinue) -and (Get-Variable -Name transcript -Scope Global -ErrorAction SilentlyContinue)) {
-                Stop-Transcript -ErrorAction SilentlyContinue
-                Write-CMTraceLog -Message "Stopped PowerShell transcription" -Type "Info" -Component "Main"
-            }
-        } catch {}
     }
     
 }
