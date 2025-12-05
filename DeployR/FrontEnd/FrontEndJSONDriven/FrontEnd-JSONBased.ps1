@@ -1517,26 +1517,37 @@ function Get-DeployRFrontEndApps {
 #######################################################
 # SCRIPT Execution
 #######################################################
-# Start a PowerShell transcription to capture verbose output in a separate file
+
 try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
     $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
 }
 catch {
-    Write-Warning "DeployR.Utility module not found. Environment variables will be set in the standard environment."
 }
-# Start up the logs
+#Logic to support ConfigMgr TS Environment Variables
+try {
+    $tsenv = new-object -comobject Microsoft.SMS.TSEnvironment
+    $Global:LogFolderPath = $TSENV.value("_SMSTSLogPath")
+}
+catch{}
+
+# Start up the logs paths for DeployR / ConfigMgr or Local Testing
 if (!($Global:LogFolderPath)) {
     if ($env:SystemDrive -eq "X:") {
-        $Global:LogFolderPath = "$env:SystemDrive\_2P\Logs"
+        if (!(Test-Path -Path "$env:SystemDrive\_2P")) {
+            $Global:LogFolderPath = "$env:temp\Logs"
+        }
+        else {
+            $Global:LogFolderPath = "$env:SystemDrive\_2P\Logs"
+        }
     }
     else {
         # Prefer user-writable temp folder to avoid permission issues when not elevated
         if ($env:TEMP) { $Global:LogFolderPath = Join-Path -Path $env:TEMP -ChildPath 'DeployRLogs' }
         elseif (Test-Path -Path 'C:\Windows\Temp') { $Global:LogFolderPath = 'C:\Windows\Temp\DeployRLogs' }
-        else { $Global:LogFolderPath = Join-Path -Path $env:USERPROFILE -ChildPath 'DeployRLogs' }
     }
 }
+# Start a PowerShell transcription to capture verbose output in a separate file
 try {
     if (!(Test-Path -Path $Global:LogFolderPath)) { New-Item -ItemType Directory -Path $Global:LogFolderPath -Force | Out-Null }
     $transcriptPath = Join-Path -Path $Global:LogFolderPath -ChildPath 'FrontendTranscription.log'
@@ -1557,13 +1568,7 @@ Write-CMTraceLog -Message "Starting Script..." -Type "Info" -Component "Main"
 Write-CMTraceLog -Message "=====================================================" -Type "Info" -Component "Main"
 write-host "========================================" -ForegroundColor DarkGray
 
-#Logic to support ConfigMgr TS Environment Variables
-try {
-$tsenv = new-object -comobject Microsoft.SMS.TSEnvironment
-}
-catch{
-Write-Output "Not in TS"
-}
+
 if ($TSEnv){
     Write-Host "Setting ConfigMgr TS Environment Variables..." -ForegroundColor Cyan
     $tsenv.value("NamingStrategy") = $FormResults.NamingStrategy
