@@ -1613,6 +1613,19 @@ if ($TSEnv){
     $tsenv.value("SelectedUserRole") = $FormResults.SelectedUserRole
     Write-CMTraceLog -Message "SelectedUserRole = $($tsenv.value('SelectedUserRole'))" -Type "Info" -Component "Main"
     $tsenv.value("SelectedSoftwareCsv") = $FormResults.SelectedSoftwareCsv
+
+    # Export individual software selections as Install_<id> = 'True'/'False'
+    try {
+        foreach ($kv in $FormResults.SelectedSoftwareMap.GetEnumerator()) {
+            $key = $kv.Key
+            $val = if ($kv.Value) { 'True' } else { 'False' }
+            $varName = "Install_$($key)"
+            $tsenv.value("$varName") = $val
+            Write-CMTraceLog -Message "$varName = $val" -Type "Info" -Component "Main"
+        }
+    } catch {
+        Write-Warning "Failed to export individual software TS variables: $_"
+    }
 }
 
 # Set Variables in DeployR TS Environment if DeployR.Utility is available and no existing installation
@@ -1643,6 +1656,7 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     
     ${TSEnv:SelectedUserRole} = $FormResults.SelectedUserRole
     ${TSEnv:SelectedSoftwareCsv} = $FormResults.SelectedSoftwareCsv
+    
     
     Write-CMTraceLog -Message  "Set DeployR TS Environment Variables:" -Type "Info" -Component "Main"
     Write-CMTraceLog -Message "NamingStrategy = $(${TSEnv:NamingStrategy})" -Type "Info" -Component "Main"
