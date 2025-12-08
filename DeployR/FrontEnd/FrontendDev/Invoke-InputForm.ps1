@@ -2,6 +2,7 @@ $FORM = @'
 
 
 
+
 <#
 EDITOR NOTES - How to customize this form
 
@@ -266,8 +267,6 @@ Function Get-InputFormData {
     # Software options - try to pull dynamically from DeployR, fall back to static list if unavailable
     # Try to get apps dynamically from DeployR
     $SoftwareOptions = $null
-    # Flag to indicate we fell back to the built-in static list
-    $UseStaticSoftware = $false
     try {
         # Call the function that's defined later in this script
         $DeployRApps = Get-DeployRFrontEndApps -ErrorAction Stop
@@ -285,15 +284,17 @@ Function Get-InputFormData {
         }
     }
     catch {
-        Write-Warning "Could not retrieve apps from DeployR: $($_.Exception.Message)"
-        # Mark that we're using the static fallback so the UI can show a persistent warning
-        $UseStaticSoftware = $true
+        $msg = "Could not retrieve apps from DeployR: $($_.Exception.Message)"
+        Write-Warning $msg
+        try { Write-CMTraceLog -Message $msg -Type "Warning" -Component "DeployR" } catch {}
     }
     
     # Fall back to static list if dynamic retrieval failed
+    $UseStaticSoftware = $false
     if (-not $SoftwareOptions -or $SoftwareOptions.Count -eq 0) {
-        Write-Host "Using static software list as fallback" -ForegroundColor Yellow
-        # Indicate fallback occurred so the UI can surface this to the user
+        $msg = "Using static software list as fallback"
+        Write-Host $msg -ForegroundColor Yellow
+        try { Write-CMTraceLog -Message $msg -Type "Info" -Component "DeployR" } catch {}
         $UseStaticSoftware = $true
         $SoftwareOptions = @(
         [PSCustomObject]@{ DisplayName = 'GreenShot'; Id = 'greenshot' },
@@ -575,9 +576,9 @@ Function Get-InputFormData {
                     <StackPanel Margin="0,6,0,0">
                         <TextBlock Text="Select software to install:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
                         <!-- Dynamic software list populated from SoftwareList.json -->
-                        <StackPanel Name="spSoftwareList" Margin="6,4,0,0" />
-                        <!-- Warning shown when dynamic retrieval fails and static list is used -->
-                        <TextBlock Name="txtSoftwareFallback" Text="" FontSize="11" Foreground="OrangeRed" Visibility="Collapsed" Margin="6,6,0,0" TextWrapping="Wrap" />
+                                <StackPanel Name="spSoftwareList" Margin="6,4,0,0" />
+                                <!-- Warning displayed when dynamic retrieval fails and static list is used -->
+                                <TextBlock Name="txtSoftwareFallback" Text="" FontSize="11" Foreground="OrangeRed" Visibility="Collapsed" Margin="6,8,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -756,7 +757,7 @@ Function Get-InputFormData {
         }
     }
     
-    function Set-OnlineDomainJoinControlsState {
+    function Set-DomainJoinControlsState {
         param([bool]$Enabled)
         if ($Enabled) {
             $txtOnlineOULabel.Visibility = 'Visible'
@@ -852,7 +853,9 @@ Function Get-InputFormData {
                     if ($device.SerialNumber -and ($device.SerialNumber.ToString().Trim() -eq $currentSerial.Trim())) {
                         $script:MatchedDevice = $device
                         $script:DeviceFound = $true
-                        Write-Host "Device match found in RoleDatabase.json for serial: $currentSerial"
+                        $msg = "Device match found in RoleDatabase.json for serial: $currentSerial"
+                        Write-Host $msg
+                        try { Write-CMTraceLog -Message $msg -Type "Info" -Component "RoleDB" } catch {}
                         break
                     }
                 }
@@ -985,29 +988,28 @@ Function Get-InputFormData {
                 Write-Warning "Failed to add software entry '$($item.DisplayName)': $_"
             }
         }
-        # If we used the static fallback, show the persistent warning on the Software tab
-        try {
-            if ($UseStaticSoftware -or ($spSoftwareList.Children.Count -eq 0)) {
-                $txtSoftwareFallback.Text = "Warning: Could not retrieve software list from DeployR — using built-in static list."
-                $txtSoftwareFallback.Visibility = 'Visible'
-            }
-            else {
-                $txtSoftwareFallback.Text = ""
-                $txtSoftwareFallback.Visibility = 'Collapsed'
-            }
-        } catch {}
     }
     else {
-        # Fallback: populate with a few defaults if no software options defined
+        # No software entries - populate with a few defaults and show fallback warning
         $defaults = @('GreenShot','Office 365','Adobe Reader')
         foreach ($d in $defaults) {
-            $cb = New-Object System.Windows.Controls.CheckBox
-            $cb.Content = $d
-            $cb.Margin = '6,4,0,4'
-            $cb.FontSize = 12
-            $spSoftwareList.Children.Add($cb) | Out-Null
+            try {
+                $cb = New-Object System.Windows.Controls.CheckBox
+                $cb.Content = $d
+                $cb.Margin = '6,4,0,4'
+                $cb.FontSize = 12
+                $spSoftwareList.Children.Add($cb) | Out-Null
+            } catch {
+                Write-Warning "Failed to add default software entry '$d': $_"
+            }
         }
+        try { $txtSoftwareFallback.Text = "Warning: Could not retrieve software list from DeployR — using built-in static list."; $txtSoftwareFallback.Visibility = 'Visible' } catch {}
     }
+
+    # If we explicitly set the fallback flag earlier, ensure the warning is visible
+    try {
+        if ($UseStaticSoftware) { $txtSoftwareFallback.Text = "Warning: Could not retrieve software list from DeployR — using built-in static list."; $txtSoftwareFallback.Visibility = 'Visible' }
+    } catch {}
     
     # Get DNS suffix from the machine
     $dnsSuffix = $null
@@ -1206,13 +1208,12 @@ Function Get-InputFormData {
     $rbEntraID.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
     $rbAutopilot.Add_Checked({ Set-AutopilotControlsState -Enabled:$true })
     $rbDomainJoin.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
-    # Wire Online Domain Join radio handlers
-    $rbWorkgroup.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
-    $rbEntraID.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
-    $rbAutopilot.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$false })
-    # Online Domain Join removed - keep Domain Join (offline) enabling OU controls
-    # Show the Domain Join OU controls for both Online and Offline Domain Join selections
-    $rbDomainJoin.Add_Checked({ Set-OnlineDomainJoinControlsState -Enabled:$true })
+    # Wire Domain Join radio handlers (Offline Domain Join uses the OU controls)
+    $rbWorkgroup.Add_Checked({ Set-DomainJoinControlsState -Enabled:$false })
+    $rbEntraID.Add_Checked({ Set-DomainJoinControlsState -Enabled:$false })
+    $rbAutopilot.Add_Checked({ Set-DomainJoinControlsState -Enabled:$false })
+    # Show the Domain Join OU controls when Domain Join (ODJ) is selected
+    $rbDomainJoin.Add_Checked({ Set-DomainJoinControlsState -Enabled:$true })
     
     # Wire EntraID options visibility
     $rbWorkgroup.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
@@ -1570,12 +1571,16 @@ Function Get-InputFormData {
         #     "Execs" { # Apply executive lab settings }
         # }
         
-        return $FormResults
+    # Stop transcription before returning
+    try { Stop-FrontendTranscription } catch {}
+    return $FormResults
         
     } else {
         Write-Host "`nForm was cancelled." -ForegroundColor Yellow
         
         # Return object indicating cancellation
+        # Stop transcription before returning
+        try { Stop-FrontendTranscription } catch {}
         return [PSCustomObject]@{
             NamingStrategy = $null
             GeneratedComputerName = $null
@@ -1590,6 +1595,16 @@ Function Get-InputFormData {
             SelectedSoftwareCsv = ""
             FormSubmitted = $false
         }
+    }
+    
+    # Ensure we stop any running transcript when the function exits
+    function Stop-FrontendTranscription {
+        try {
+            if ((Get-Command Stop-Transcript -ErrorAction SilentlyContinue) -and (Get-Variable -Name transcript -Scope Global -ErrorAction SilentlyContinue)) {
+                Stop-Transcript -ErrorAction SilentlyContinue
+                Write-CMTraceLog -Message "Stopped PowerShell transcription" -Type "Info" -Component "Main"
+            }
+        } catch {}
     }
     
 }
@@ -1643,7 +1658,20 @@ function Write-CMTraceLog {
     $LineFormat = $Message, $TimeGenerated, (Get-Date -Format MM-dd-yyyy), $Component, $LogLevel
     $Line = $Line -f $LineFormat
     # Write new line in the log file
-    Add-Content -Value $Line -Path $LogPath
+    try {
+        if (-not $LogPath) {
+            if ($env:TEMP) { $defaultDir = Join-Path -Path $env:TEMP -ChildPath 'DeployRLogs' } else { $defaultDir = Join-Path -Path $env:USERPROFILE -ChildPath 'DeployRLogs' }
+            if (!(Test-Path -Path $defaultDir)) { New-Item -ItemType Directory -Path $defaultDir -Force | Out-Null }
+            $LogPath = Join-Path -Path $defaultDir -ChildPath 'FrontEnd.log'
+        } else {
+            $indexoflastslash = $LogPath.lastindexof('\')
+            $directory = $LogPath.substring(0, $indexoflastslash)
+            if (!(Test-Path -Path $directory)) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
+        }
+        Add-Content -Value $Line -Path $LogPath
+    } catch {
+        # Swallow this to avoid breaking the UI flow
+    }
     # Roll log file over at size threshold
     if ((Get-Item $Global:LogFilePath).Length / 1KB -gt $Global:LogFileSize) {
         $log = $Global:LogFilePath
@@ -1697,8 +1725,7 @@ function Get-DeployRFrontEndApps {
 #######################################################
 # SCRIPT Execution
 #######################################################
-
-$FormResults = Get-InputFormData
+# Start a PowerShell transcription to capture verbose output in a separate file
 try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
     $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
@@ -1718,6 +1745,17 @@ if (!($Global:LogFolderPath)) {
         else { $Global:LogFolderPath = Join-Path -Path $env:USERPROFILE -ChildPath 'DeployRLogs' }
     }
 }
+try {
+    if (!(Test-Path -Path $Global:LogFolderPath)) { New-Item -ItemType Directory -Path $Global:LogFolderPath -Force | Out-Null }
+    $transcriptPath = Join-Path -Path $Global:LogFolderPath -ChildPath 'FrontendTranscription.log'
+    Start-Transcript -Path $transcriptPath -Force -ErrorAction SilentlyContinue
+    Write-CMTraceLog -Message "Started PowerShell transcription to $transcriptPath" -Type "Info" -Component "Main"
+} catch {
+    Write-Warning "Failed to start transcript: $_"
+}
+
+$FormResults = Get-InputFormData
+
 $Global:LogFilePath = "$($Global:LogFolderPath)\FrontEnd.log"
 $Global:LogFileSize   = "40"
 
@@ -1726,6 +1764,8 @@ Write-CMTraceLog -Message "=====================================================
 Write-CMTraceLog -Message "Starting Script..." -Type "Info" -Component "Main"
 Write-CMTraceLog -Message "=====================================================" -Type "Info" -Component "Main"
 write-host "========================================" -ForegroundColor DarkGray
+
+
 # Set the provided variables
 if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"))) {
     $DEPLOYRCLIENTPASSCODE = ${TSEnv:DEPLOYRCLIENTPASSCODE}
@@ -1742,6 +1782,7 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     }
     if ($FormResults.DomainJoinOU) {
         ${TSEnv:DomainJoinOU} = $FormResults.DomainJoinOU
+        ${TSEnv:OU} = $FormResults.DomainJoinOU
     }
     # Export AssetTag as TS variable
     if ($FormResults.AssetTag) {
@@ -1840,8 +1881,19 @@ else{
     write-Host "AutopilotGroupTag = $($env:AutopilotGroupTag)" -ForegroundColor Green
     write-Host "SelectedSoftwareCsv = $($env:SelectedSoftwareCsv)" -ForegroundColor Green
 }
+Stop-Transcript
 '@
 
 $FORM | Out-File $env:TEMP\DeployR_TestInputForm.ps1 -Encoding UTF8 -Force
 # Execute the generated form script
 Start-Process pwsh.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$env:TEMP\DeployR_TestInputForm.ps1`"" -Wait -NoNewWindow -PassThru
+
+# Stop the PowerShell transcription we started earlier (if any)
+try {
+    if (Get-Command -Name Stop-Transcript -ErrorAction SilentlyContinue) {
+        Stop-Transcript -ErrorAction SilentlyContinue
+        Write-CMTraceLog -Message "Stopped PowerShell transcription (Invoke-InputForm)" -Type "Info" -Component "Main"
+    }
+} catch {
+    Write-Warning "Failed to stop transcript: $_"
+}
