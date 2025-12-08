@@ -112,6 +112,7 @@ Size=NormalSize
 AutoColorization=0
 ColorizationColor=0XC40078D7
 SystemMode=$SystemMode
+AppMode=$SystemMode
 
 [boot]
 SCRNSAVE.EXE=
