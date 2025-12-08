@@ -80,6 +80,10 @@ Function Get-InputFormData {
     #Build Data from JSON
     ##########################################
 
+    #Usage (DeployR or ConfigMgr)
+    $Usage = $JSONConfig.Usage
+    if (-not $Usage) { $Usage = "DeployR" }  # Default to DeployR if not specified
+
     #Logo File Name
     $LogoFileName = $JSONConfig.LogoFileName
         try {
@@ -347,11 +351,17 @@ Function Get-InputFormData {
     }
     #endregion Hardware 
 
+    # Build dynamic UI strings based on Usage
+    $WindowTitle = "System Configuration - $Usage OSD"
+    $HeaderText = "System Configuration - $Usage"
+    $DomainSuffixLabel = if ($Usage -eq "ConfigMgr") { "Domain Suffix, used as Domain for Domain Join:" } else { "Domain Suffix (optional):" }
+    $DomainJoinRadioLabel = if ($Usage -eq "ConfigMgr") { "Domain Join" } else { "Offline Domain Join" }
+
     # XAML Form Definition
     [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="System Configuration Input Form" 
+    Title="$WindowTitle" 
     Height="700" 
         Width="540"
         MinHeight="400"
@@ -392,7 +402,7 @@ Function Get-InputFormData {
                 
                 <!-- Header -->
                 <TextBlock Grid.Row="1" 
-                           Text="System Configuration" 
+                           Text="$HeaderText" 
                            FontSize="18" 
                            FontWeight="Bold" 
                            Margin="0,0,0,15"/>
@@ -452,7 +462,7 @@ Function Get-InputFormData {
                 
                 <!-- Domain Suffix -->
                 <StackPanel Margin="0,5,0,10">
-                    <TextBlock Text="Domain Suffix (optional):" 
+                    <TextBlock Text="$DomainSuffixLabel" 
                                FontSize="11" 
                                Margin="0,0,0,3"/>
                     <TextBox Name="txtDomainSuffix" 
@@ -523,7 +533,7 @@ Function Get-InputFormData {
                                 <!-- Online Domain Join option removed -->
                                 
                                 <RadioButton Name="rbDomainJoin" 
-                                             Content="Offline Domain Join" 
+                                             Content="$DomainJoinRadioLabel" 
                                              FontSize="12" 
                                              FontWeight="Normal"
                                              GroupName="WorkplaceJoin"
@@ -1589,6 +1599,8 @@ if ($TSEnv){
     Write-CMTraceLog -Message "OSDComputerName = $($tsenv.value('OSDComputerName'))" -Type "Info" -Component "Main"
     $tsenv.value("DomainSuffix") = $FormResults.DomainSuffix
     Write-CMTraceLog -Message "DomainSuffix = $($tsenv.value('DomainSuffix'))" -Type "Info" -Component "Main"
+    $tsenv.value("OSDDomainName") = $FormResults.DomainSuffix
+    Write-CMTraceLog -Message "OSDDomainName = $($tsenv.value('OSDDomainName'))" -Type "Info" -Component "Main"
     $tsenv.value("HardwareIdType") = $FormResults.HardwareIdType
     Write-CMTraceLog -Message "HardwareIdType = $($tsenv.value('HardwareIdType'))" -Type "Info" -Component "Main"
     $tsenv.value("WorkplaceJoin") = $FormResults.WorkplaceJoin

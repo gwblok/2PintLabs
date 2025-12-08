@@ -1,7 +1,10 @@
 {
   "//": "=== DeployR FrontEnd Configuration File ===",
   "//Description": "This file controls the System Configuration Input Form (New-InputForm-JSONDriven.ps1)",
-  
+
+  "//Usage": "ConfigMgr or 2Pint DeployR",
+  "Usage": "ConfigMgr",
+
   "//DomainSuffix": "Default domain suffix displayed in the computer naming preview (optional)",
   "DomainSuffix": "2p.garytown.com",
   

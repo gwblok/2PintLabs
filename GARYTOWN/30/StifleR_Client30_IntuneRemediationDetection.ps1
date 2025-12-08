@@ -1,4 +1,4 @@
-$TargetVersion = '3.0.2547.150'
+$TargetVersion = '3.0.2549.169'
 
 function Get-InstalledApps
 {
