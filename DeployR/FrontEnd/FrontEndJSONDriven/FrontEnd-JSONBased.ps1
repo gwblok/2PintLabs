@@ -1542,6 +1542,8 @@ catch{}
 if ($TSEnv){
     $Global:LogFolderPath = $TSEnv.value("_SMSTSLogPath")
     Write-Output "ConfigMgr TS Environment detected. Log Path set to $Global:LogFolderPath"
+    #Close the Progress UI to not cover Frontend
+    (new-object -ComObject Microsoft.SMS.TsProgressUI).CloseProgressDialog()
 }
 
 # Start up the logs paths for DeployR / ConfigMgr or Local Testing
