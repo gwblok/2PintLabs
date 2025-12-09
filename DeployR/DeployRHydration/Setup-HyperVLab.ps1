@@ -283,8 +283,8 @@ function New-LabVM {
         
         Set-VMFirmware -VMName $VMName -BootOrder $bootOrder -ErrorAction Stop
         
-        # Enable secure boot
-        Set-VMFirmware -VMName $VMName -EnableSecureBoot On -SecureBootTemplate MicrosoftWindows -ErrorAction Stop
+        # Disable secure boot
+        Set-VMFirmware -VMName $VMName -EnableSecureBoot Off -ErrorAction Stop
         
         # Set display resolution to 1280x720
         try {
