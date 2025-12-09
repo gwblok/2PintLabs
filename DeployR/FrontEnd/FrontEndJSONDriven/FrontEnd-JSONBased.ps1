@@ -1614,9 +1614,9 @@ if ($TSEnv){
     }
     if ($FormResults.DomainJoinOU) {
         $tsenv.value("FrontEndDomainJoinOU") = $FormResults.DomainJoinOU
-        $tsenv.value("OSDJoinDomainOUName") = $FormResults.DomainJoinOU
+        $tsenv.value("OSDDomainOUName") = $FormResults.DomainJoinOU
         Write-CMTraceLog -Message "FrontEndDomainJoinOU = $($tsenv.value('FrontEndDomainJoinOU'))" -Type "Info" -Component "Main"
-        Write-CMTraceLog -Message "OSDJoinDomainOUName = $($tsenv.value('OSDJoinDomainOUName'))" -Type "Info" -Component "Main"
+        Write-CMTraceLog -Message "OSDDomainOUName = $($tsenv.value('OSDDomainOUName'))" -Type "Info" -Component "Main"
     }
     if ($FormResults.WorkplaceJoin -eq "Autopilot"){
         if ($FormResults.AutopilotGroupTag) {
