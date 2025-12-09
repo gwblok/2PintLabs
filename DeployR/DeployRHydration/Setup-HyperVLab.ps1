@@ -19,9 +19,17 @@
 
 #Requires -RunAsAdministrator
 
+########## Set Vars ##############
+
+$VMFolderDrive = "C"
+$VMFolderPath = "$VMFolderDrive:\HyperVLab"
+
 [CmdletBinding()]
 param()
 
+##################################
+#region functions
+##################################
 # Function to enable Hyper-V
 function Enable-HyperV {
     Write-Host "`n=== Enabling Hyper-V ===" -ForegroundColor Cyan
@@ -299,7 +307,9 @@ function New-LabVM {
         throw
     }
 }
-
+##################################
+#endregion functions
+##################################
 # Main Script Execution
 try {
     Write-Host "`n================================================" -ForegroundColor Cyan
@@ -326,7 +336,7 @@ try {
     $vmSwitch = New-ExternalVirtualSwitch -SwitchName $switchName
     
     # Step 3: Create VM folder
-    $vmPath = New-VMFolder -Path "C:\HyperVLab"
+    $vmPath = New-VMFolder -Path $VMFolderPath
     
     # Step 4: Create DeployR VM
     $deployRVhdFolder = Join-Path -Path $vmPath -ChildPath "DeployR\Virtual Hard Disks"
@@ -354,8 +364,8 @@ try {
         -VirtualHardDisks $deployRDisks
     
     # Check for ISO in C:\HyperVLab and attach to DeployR VM
-    Write-Host "  Checking for ISO files in C:\HyperVLab..." -ForegroundColor Gray
-    $isoFiles = Get-ChildItem -Path "C:\HyperVLab" -Filter "*.iso" -ErrorAction SilentlyContinue
+    Write-Host "  Checking for ISO files in $($VMFolderDrive):\HyperVLab..." -ForegroundColor Gray
+    $isoFiles = Get-ChildItem -Path "$($VMFolderDrive):\HyperVLab" -Filter "*.iso" -ErrorAction SilentlyContinue
     if ($isoFiles) {
         $isoFile = $isoFiles | Select-Object -First 1
         Write-Host "  Found ISO: $($isoFile.Name)" -ForegroundColor Yellow
@@ -369,7 +379,7 @@ try {
         }
     }
     else {
-        Write-Host "  No ISO files found in C:\HyperVLab" -ForegroundColor Gray
+        Write-Host "  No ISO files found in $($VMFolderDrive):\HyperVLab" -ForegroundColor Gray
     }
     
     # Step 5: Create Client VM

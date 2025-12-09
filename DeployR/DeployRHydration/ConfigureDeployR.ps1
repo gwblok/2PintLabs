@@ -475,6 +475,8 @@ try {
 catch {
     <#Do this if a terminating exception happens#>
 }
+
+<# not using yet, future enhancement or removal
 try {
     $ModulePath = 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
     if ((Get-Service -Name DeployRService).status -ne 'Running') {
@@ -493,10 +495,11 @@ try {
         Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
     }
     else {
-        throw "Cannot find DeployR Client Passcode in registry or D:\DeployRPasscode.txt"
+        Write-Host "Cannot find DeployR Client Passcode in registry or D:\DeployRPasscode.txt" -ForegroundColor Red
         Connect-DeployR
     }
 }
 catch {
-    <#Do this if a terminating exception happens#>
+    #Do this if a terminating exception happens#
 }
+#>
