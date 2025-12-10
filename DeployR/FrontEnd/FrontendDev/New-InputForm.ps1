@@ -499,6 +499,13 @@ Function Get-InputFormData {
                                              IsChecked="True"
                                              Margin="0,5,0,8"/>
                                 
+                                <RadioButton Name="rbOOBEWorkgroup" 
+                                             Content="OOBE Workgroup" 
+                                             FontSize="12" 
+                                             FontWeight="Normal"
+                                             GroupName="WorkplaceJoin"
+                                             Margin="0,0,0,8"/>
+                                
                                 <RadioButton Name="rbEntraID" 
                                              Content="EntraID Join" 
                                              FontSize="12" 
@@ -692,6 +699,7 @@ Function Get-InputFormData {
     $txtDomainSuffix = $Window.FindName("txtDomainSuffix")
     $txtPreview = $Window.FindName("txtPreview")
     $rbWorkgroup = $Window.FindName("rbWorkgroup")
+    $rbOOBEWorkgroup = $Window.FindName("rbOOBEWorkgroup")
     $rbEntraID = $Window.FindName("rbEntraID")
     $rbAutopilot = $Window.FindName("rbAutopilot")
     # rbOnlineDomainJoin removed - no FindName required
@@ -1203,11 +1211,13 @@ Function Get-InputFormData {
     
     # Wire Workplace Join radio buttons to toggle Autopilot controls
     $rbWorkgroup.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
+    $rbOOBEWorkgroup.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
     $rbEntraID.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
     $rbAutopilot.Add_Checked({ Set-AutopilotControlsState -Enabled:$true })
     $rbDomainJoin.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
     # Wire Domain Join radio handlers (Offline Domain Join uses the OU controls)
     $rbWorkgroup.Add_Checked({ Set-DomainJoinControlsState -Enabled:$false })
+    $rbOOBEWorkgroup.Add_Checked({ Set-DomainJoinControlsState -Enabled:$false })
     $rbEntraID.Add_Checked({ Set-DomainJoinControlsState -Enabled:$false })
     $rbAutopilot.Add_Checked({ Set-DomainJoinControlsState -Enabled:$false })
     # Show the Domain Join OU controls when Domain Join (ODJ) is selected
@@ -1215,6 +1225,7 @@ Function Get-InputFormData {
     
     # Wire EntraID options visibility
     $rbWorkgroup.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
+    $rbOOBEWorkgroup.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
     $rbEntraID.Add_Checked({ Set-EntraIDOptionsState -Enabled:$true })
     $rbAutopilot.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
     # Online Domain Join removed - EntraID options handled by other radio handlers
@@ -1345,6 +1356,9 @@ Function Get-InputFormData {
         # Determine workplace join method
         if ($rbWorkgroup.IsChecked) {
             $script:WorkplaceJoin = "Workgroup"
+        }
+        elseif ($rbOOBEWorkgroup.IsChecked) {
+            $script:WorkplaceJoin = "OOBEWorkgroup"
         }
         elseif ($rbEntraID.IsChecked) {
             $script:WorkplaceJoin = "EntraID"
@@ -1795,6 +1809,13 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     ${TSEnv:SelectedUserRole} = $FormResults.SelectedUserRole
     ${TSEnv:SelectedSoftwareCsv} = $FormResults.SelectedSoftwareCsv
     
+    #Set Finish Action based on Workplace Join method
+    if ($FormResults.WorkplaceJoin -eq 'OOBEWorkgroup' -or $FormResults.WorkplaceJoin -eq 'Autopilot') {
+        ${TSEnv:FinishAction} = 'RESEAL'
+    } else {
+        ${TSEnv:FinishAction} = 'REBOOT'
+    }
+
     Write-CMTraceLog -Message  "Set DeployR TS Environment Variables:" -Type "Info" -Component "Main"
     Write-CMTraceLog -Message "GitHubJSONDB = $(${TSEnv:GitHubJSONDB})" -Type "Info" -Component "Main"
     Write-CMTraceLog -Message "JSONDBMatch = $(${TSEnv:JSONDBMatch})" -Type "Info" -Component "Main"

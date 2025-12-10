@@ -1,8 +1,5 @@
 $FORM = @'
 
-
-
-
 <#
 EDITOR NOTES - How to customize this form
 
@@ -1811,6 +1808,13 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     ${TSEnv:SelectedUserRole} = $FormResults.SelectedUserRole
     ${TSEnv:SelectedSoftwareCsv} = $FormResults.SelectedSoftwareCsv
     
+    #Set Finish Action based on Workplace Join method
+    if ($FormResults.WorkplaceJoin -eq 'OOBEWorkgroup' -or $FormResults.WorkplaceJoin -eq 'Autopilot') {
+        ${TSEnv:FinishAction} = 'RESEAL'
+    } else {
+        ${TSEnv:FinishAction} = 'REBOOT'
+    }
+
     Write-CMTraceLog -Message  "Set DeployR TS Environment Variables:" -Type "Info" -Component "Main"
     Write-CMTraceLog -Message "GitHubJSONDB = $(${TSEnv:GitHubJSONDB})" -Type "Info" -Component "Main"
     Write-CMTraceLog -Message "JSONDBMatch = $(${TSEnv:JSONDBMatch})" -Type "Info" -Component "Main"
