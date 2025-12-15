@@ -2,7 +2,7 @@
 $LogFolder = "$env:SystemDrive\Windows\Temp"
 Start-Transcript -Path "$LogFolder\StifleR_Client_Install_Transcript.log" -Append
 
-$STIFLERSETTINGSURL = "https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/GARYTOWN/214/dr2pintlabs.2psImport"
+$STIFLERSETTINGSURL = "https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/GARYTOWN/30/dr2pintlabs.2psImport"
 $ClientURL = 'https://dr.2pintlabs.com/StifleR-ClientApp.zip'
 $STIFLERSERVERS = 'https://dr.2pintlabs.com:1414'
 #$STIFLERSERVERS = 'https://214-StifleR.2p.garytown.com:1414'
