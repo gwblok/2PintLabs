@@ -150,8 +150,9 @@ else {
             try { ([version]($_.Version.ToString())).Major -eq $CurrentVersion.Major } catch { $false }
         } |
         Select-Object -First 1
-        
-        
+    }
+    else {
+        Write-Host "StifleR Client is not installed." -ForegroundColor Red
     }
     # If No StifleR Client or Match, just get the latest Version info from JSON
     if (!($MatchedEntry)) {
@@ -161,7 +162,9 @@ else {
             try { ([version]($_.Version.ToString())) -eq ($VERSIONS | Sort-Object -Descending | Select-Object -First 1) } catch { $false }
         } |
         Select-Object -First 1
+        Write-Host "No ForceVersion parameter provided, using version $($MatchedEntry.Version) from JSON" -ForegroundColor Yellow
     }
+    
 }
 
 #Set the URL for the Target Version
