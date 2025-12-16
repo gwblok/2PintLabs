@@ -63,7 +63,7 @@ if ($MatchedEntryInfo) {
             Write-Host "Found newer matched version: $MatchedVersion (installed: $CurrentVersion)" -ForegroundColor Yellow
             $Compliance = $false
         } else {
-            Write-Host "already compliant" -ForegroundColor Green
+            Write-Host "Already Compliant: Target version: $MatchedVersion matches installed: $CurrentVersion" -ForegroundColor Green
             #Machine is already compliant, just exit 0 now
             exit 0
         }
