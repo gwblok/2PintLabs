@@ -103,6 +103,9 @@ function Get-StifleRServerFromClientInstallation {
 }
 #endRegion Functions
 
+#Get Current Installed Version
+$StifleRClientAppInfo = Get-InstalledApps | Where-Object {$_.DisplayName -match "StifleR Client"}
+
 if ($ForceVersion){
     Write-Host "ForceVersion parameter provided, using version $ForceVersion from JSON" -ForegroundColor Yellow
     try {
@@ -128,22 +131,19 @@ if ($ForceVersion){
     # Try to find a matching major version
 }
 else {
-    #Get Current Installed Version
-    $StifleRClientAppInfo = Get-InstalledApps | Where-Object {$_.DisplayName -match "StifleR Client"}
     
-    #If StifleR Client is installed, then get corresponding Target Version from JSON
-    if ($StifleRClientAppInfo) {
-        Write-Host "StifleR Client is installed. Version: $($StifleRClientAppInfo.DisplayVersion)" -ForegroundColor Green
-        [Version]$CurrentVersion = $StifleRClientAppInfo.DisplayVersion
-        
-        # collect versions from JSONContent
-        $VERSIONS = $JSONContent |
+    # collect versions from JSONContent 
+    $VERSIONS = $JSONContent |
         ForEach-Object {
             try { [version]($_.Version.ToString()) } catch { $null }
         } |
         Where-Object { $_ -ne $null } |
         Sort-Object -Unique
-        
+    
+    #If StifleR Client is installed, then get corresponding Target Version from JSON
+    if ($StifleRClientAppInfo) {
+        Write-Host "StifleR Client is installed. Version: $($StifleRClientAppInfo.DisplayVersion)" -ForegroundColor Green
+        [Version]$CurrentVersion = $StifleRClientAppInfo.DisplayVersion
         # find JSON entry that matches the installed major version
         $MatchedEntry = $JSONContent |
         Where-Object {
