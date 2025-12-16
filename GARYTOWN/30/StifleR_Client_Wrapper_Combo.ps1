@@ -17,6 +17,9 @@ if ($JSONContent -eq $null -or $JSONContent.Count -eq 0) {
     Write-Host "Failed to retrieve StifleR Client JSON content." -ForegroundColor Red
     return
 }
+else{
+    Write-Host "Successfully retrieved StifleR Client JSON content." -ForegroundColor Green
+}
 #Set the Log Folder:
 $LogFolder = "$env:SystemDrive\Windows\Temp"
 Start-Transcript -Path "$LogFolder\StifleR_Client_Install_Transcript.log" -Append
