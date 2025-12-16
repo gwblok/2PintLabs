@@ -1,3 +1,4 @@
+Function Install-StifleRClient {
 [CmdletBinding()]
 param (
 [string]$ClientURL,
@@ -426,3 +427,4 @@ else{
     }
 }
 Stop-Transcript
+}
