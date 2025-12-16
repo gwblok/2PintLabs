@@ -13,6 +13,10 @@ param (
 
 #Gather Current Info (as long as I remember to update it)
 $JSONContent = Invoke-RestMethod -Uri "https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/GARYTOWN/StifleR-ClientApp.json"
+if ($JSONContent -eq $null -or $JSONContent.Count -eq 0) {
+    Write-Host "Failed to retrieve StifleR Client JSON content." -ForegroundColor Red
+    return
+}
 #Set the Log Folder:
 $LogFolder = "$env:SystemDrive\Windows\Temp"
 Start-Transcript -Path "$LogFolder\StifleR_Client_Install_Transcript.log" -Append
