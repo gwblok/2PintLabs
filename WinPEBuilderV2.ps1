@@ -56,10 +56,10 @@ I'm not going to explain anymore, read the code, it's all there, if you have que
 Push-Location
 
 #!!!!!Update these to fit your Needs!!!!!!
-$StifleR = $true
+$StifleR = $false
 $BranchCache = $true
 $SkipOptionalComponents = $false
-$WinPEBuilderPath = 'D:\WinPEBuilder'
+$WinPEBuilderPath = 'C:\WinPEBuilder'
 $Drivers = "$WinPEBuilderPath\Drivers"
 $ExtraFiles = "$WinPEBuilderPath\ExtraFiles"
 $UseWinRE = $false
