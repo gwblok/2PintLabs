@@ -433,6 +433,16 @@ $ADKBuild = $ADKWinPEInfo.Version
 $OSNameNeeded = ($Mappings | Where-Object {$_.Build -match $ADKBuild}).OSName
 $Lang = ($ADKWinPE.FullName | Split-Path) | Split-Path -Leaf
 
+if (Test-Path -path $WinPEBuilderPath){
+    Write-Host "Using WinPEBuilder Path: $WinPEBuilderPath" -ForegroundColor Green
+}
+else {
+    Write-Host "Creating WinPEBuilder Path: $WinPEBuilderPath" -ForegroundColor Green
+    New-Item -Path $WinPEBuilderPath -ItemType Directory -Force | Out-Null
+    Write-Host "Assuming this is the first time running... setting up folder structure" -ForegroundColor Yellow
+    $FirstRun = $true
+}
+
 #Create Folder Structure - ASSUMES everything based on the location you're running this script from.
 try {
     [void][System.IO.Directory]::CreateDirectory("$WinPEBuilderPath\Builds") #This is where WinPE builds will get staged once they are built.
@@ -452,6 +462,7 @@ try {
 }
 catch {throw}
 #Build  Files
+
 if ($AddSMSTSiniFile -eq $true){
     if (!(Test-Path "$WinPEBuilderPath\ExtraFiles\Windows\smsts.ini")){
         $SMSTSini | Out-File -FilePath "$WinPEBuilderPath\ExtraFiles\Windows\smsts.ini" -Encoding utf8
@@ -478,6 +489,23 @@ if (Test-Path -Path "$WinPEBuilderPath"){
     foreach ($File in $files){
         Unblock-File -Path $File.FullName
     }
+}
+
+if ($FirstRun){
+    write-host "+------------------------------------------------------------------------------------------------------+" -ForegroundColor Yellow
+    Write-Host "First Run detected, please review and add any needed files to the created folders and re-run the script." -ForegroundColor Yellow
+    write-host "Please ensure all necessary files are in place before proceeding, then re-run the script." -ForegroundColor Yellow
+    write-host "Check the Readme files in each folder for guidance on what to place where." -ForegroundColor Yellow
+    write-host "Required Files to add before re-running:" -ForegroundColor Cyan
+    write-host " - !!!! Place the OSD Toolkit extracted files in the OSDToolkit folder !!!!" -ForegroundColor Cyan
+    write-host " - !!!! Place the Windows Install.wim file in the OSSource\$OSNameNeeded folder !!!!" -ForegroundColor Cyan
+    write-host "Other Tips (optional):" -ForegroundColor Cyan
+    write-host " - Place your Windows Cumulative Updates (.msu files) in the Patches\CU\$OSNameNeeded folder" -ForegroundColor Cyan
+    Write-Host " - If you install the OSD module, it will automatically download the corresponding install.wim file needed" -ForegroundColor Cyan
+    write-host " - Place your StifleR source directory in the StifleRSource folder(s) if incorporating StifleR" -ForegroundColor Cyan
+    write-host " - Place any extra files you want in the ExtraFiles folder, maintaining the folder structure as needed" -ForegroundColor Cyan
+    write-host "+------------------------------------------------------------------------------------------------------+" -ForegroundColor Yellow
+    break
 }
 
 #Check for Install.WIM, make sure one is already there, if not, it will try to download / build one for you
@@ -510,6 +538,14 @@ else {$WimDownload = $true}
 
 if ($WimDownload -eq $true){
     
+    #Test if OSD module is installed
+    if (!(Get-Module -ListAvailable -Name OSD)){
+        Write-Host "OSD Module not found, please install the OSD Module from the PowerShell Gallery and try again" -ForegroundColor Red
+        Write-Host "Run: Install-Module -Name OSD -Scope AllUsers" -ForegroundColor Yellow
+        Write-Host "---------------------------------------------------------------------------------------------" -ForegroundColor Yellow
+        Write-Host "OR manually grab the correct install.wim file and place into the OSSource\$OSNameNeeded folder" -ForegroundColor Cyan
+        break
+    }
     #Check if previously downloaded and available
     if (Test-Path -Path "C:\OSDCloud\IPU\Media\$OSNameNeeded\sources\install.wim"){
         #Double check that there is no install.wim file there, if there isn't copy it there.
