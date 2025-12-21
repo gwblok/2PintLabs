@@ -4,16 +4,12 @@ WinPE Builder will generate a patched WinPE with Optional Components
 and also optionally add BranchCache and StifleR
 
 .REQUIREMENTS
-OSD Module
-Windows ADK for WinPE source
-Windows install ISO/media for install.wim source for the BranchCache binaries
+Windows ADK for WinPE source (Recommend 24H2, Dec Release at the time I'm writing this)
+Windows install ISO/media for install.wim source for the BranchCache binaries (if you don't have the OSD Module, you'll need to supply this yourself)
 - This it can grab using the OSD Module, it will grab the OS that matches your ADK (if available)
 Latest/recent Windows patch that matches the Windows install.wim version
-Optionally: OSD Toolkit for injecting BranchCache and StifleR
-Optionally: A copy of an installed StifleR Client folder
-
-.USAGE
-Set the parameters to match your environment in the parameters region
+OSD Toolkit for injecting BranchCache and StifleR
+Optionally: A copy of an installed StifleR Client folder (2.10 or 3.0)
 
 .NOTES
 AUTHOR: 2Pint Software
@@ -28,6 +24,8 @@ CHANGE LOG:
 - YES, that means you need to install OSD Module - "Install Module -Name OSD"
 25.02.25  : Added WinRE Support to build WinRE with WiFi Support
 25.02.28  : Added SMSTS.ini file to ExtraFiles\Windows folder
+25.12.19  : Added ability to choose StifleR 2.10 or 3.0 source folders
+25.12.20  : Added first run intelligence into the script to create folder structure if not present
 
 .LINK
 https://2pintsoftware.com
