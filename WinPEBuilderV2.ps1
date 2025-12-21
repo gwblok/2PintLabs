@@ -69,27 +69,11 @@ $Add7Zip = $false
 $AddOSDModule = $false
 
 
-#region functions
 
-<#
-.SYNOPSIS
-Gets many Windows ADK Paths into a hash to easily use in your code
-
-.DESCRIPTION
-Gets many Windows ADK Paths into a hash to easily use in your code
-
-.LINK
-https://github.com/OSDeploy/OSD/tree/master/Docs
-
-.NOTES
-21.3.15.2   Renamed to make it easier to understand what it does
-21.3.10     Initial Release
-24.12.25    Reworked a ton of things, will now automtically download the Windows OS needed to grab files from
-25.2.25     Added WinRE support for WiFi
-#>
 
 #region Functions
 function Get-AdkPaths {
+    #This function borrowed from OSD Module (Thanks David)
     [CmdletBinding()]
     param (
     [Parameter(Position = 0, ValueFromPipelineByPropertyName = $true)]
