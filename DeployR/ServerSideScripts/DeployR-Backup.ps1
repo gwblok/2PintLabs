@@ -239,7 +239,7 @@ if ($EnableBackup2GitHub -and $GitHubCustomSteps -and $GitHubCustomStepsReferenc
                 Remove-Item -Path "$GitHubCustomTaskSequenceModules\$ExportFolderName" -Recurse -Force
             }
             New-Item -Path "$GitHubCustomTaskSequenceModules\$ExportFolderName" -ItemType Directory -Force | Out-Null
-            write-host "Exporting step definition to: $GitHubCustomTaskSequenceModules\$ExportFolderName" -ForegroundColor Cyan
+            write-host "Exporting step Task Sequence Modules to: $GitHubCustomTaskSequenceModules\$ExportFolderName" -ForegroundColor Cyan
             Export-DeployRTaskSequence -Id $ts.id -DestinationFolder "$GitHubCustomTaskSequenceModules\$ExportFolderName"
             <#
             $versions = $ts.versions
