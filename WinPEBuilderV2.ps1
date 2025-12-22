@@ -4,16 +4,12 @@ WinPE Builder will generate a patched WinPE with Optional Components
 and also optionally add BranchCache and StifleR
 
 .REQUIREMENTS
-OSD Module
-Windows ADK for WinPE source
-Windows install ISO/media for install.wim source for the BranchCache binaries
+Windows ADK for WinPE source (Recommend 24H2, Dec Release at the time I'm writing this)
+Windows install ISO/media for install.wim source for the BranchCache binaries (if you don't have the OSD Module, you'll need to supply this yourself)
 - This it can grab using the OSD Module, it will grab the OS that matches your ADK (if available)
 Latest/recent Windows patch that matches the Windows install.wim version
-Optionally: OSD Toolkit for injecting BranchCache and StifleR
-Optionally: A copy of an installed StifleR Client folder
-
-.USAGE
-Set the parameters to match your environment in the parameters region
+OSD Toolkit for injecting BranchCache and StifleR
+Optionally: A copy of an installed StifleR Client folder (2.10 or 3.0)
 
 .NOTES
 AUTHOR: 2Pint Software
@@ -28,6 +24,8 @@ CHANGE LOG:
 - YES, that means you need to install OSD Module - "Install Module -Name OSD"
 25.02.25  : Added WinRE Support to build WinRE with WiFi Support
 25.02.28  : Added SMSTS.ini file to ExtraFiles\Windows folder
+25.12.19  : Added ability to choose StifleR 2.10 or 3.0 source folders
+25.12.20  : Added first run intelligence into the script to create folder structure if not present
 
 .LINK
 https://2pintsoftware.com
@@ -56,7 +54,8 @@ I'm not going to explain anymore, read the code, it's all there, if you have que
 Push-Location
 
 #!!!!!Update these to fit your Needs!!!!!!
-$StifleR = $false
+$StifleR210 = $false
+$StifleR30 = $true
 $BranchCache = $true
 $SkipOptionalComponents = $false
 $WinPEBuilderPath = 'C:\WinPEBuilder'
@@ -69,25 +68,12 @@ $AddHPCMSL = $false
 $Add7Zip = $false
 $AddOSDModule = $false
 
-#region functions
 
-<#
-.SYNOPSIS
-Gets many Windows ADK Paths into a hash to easily use in your code
 
-.DESCRIPTION
-Gets many Windows ADK Paths into a hash to easily use in your code
 
-.LINK
-https://github.com/OSDeploy/OSD/tree/master/Docs
-
-.NOTES
-21.3.15.2   Renamed to make it easier to understand what it does
-21.3.10     Initial Release
-24.12.25    Reworked a ton of things, will now automtically download the Windows OS needed to grab files from
-25.2.25     Added WinRE support for WiFi
-#>
+#region Functions
 function Get-AdkPaths {
+    #This function borrowed from OSD Module (Thanks David)
     [CmdletBinding()]
     param (
     [Parameter(Position = 0, ValueFromPipelineByPropertyName = $true)]
@@ -156,8 +142,177 @@ function Get-AdkPaths {
     }
     Return $Results
 }
+function Set-RegistryFromJson {
+    [CmdletBinding()]
+    param(
+    [Parameter(Mandatory = $true)]
+    [string]$RegistryBasePath,
+    
+    [Parameter(Mandatory = $true)]
+    [string]$JsonFilePath
+    )
+    
+    try {
+        # Read and parse JSON file
+        if (-not (Test-Path $JsonFilePath)) {
+            throw "JSON file not found: $JsonFilePath"
+        }
+        
+        $jsonContent = Get-Content -Path $JsonFilePath -Raw | ConvertFrom-Json
+        Write-Verbose "Successfully loaded JSON from: $JsonFilePath"
+        
+        # Convert PowerShell registry path to .NET format and clean it up
+        $registryBasePath = $RegistryBasePath -replace "^HKLM:", "" -replace "^HKEY_LOCAL_MACHINE\\", ""
+        $registryBasePath = $registryBasePath.TrimStart('\')
+        
+        Write-Verbose "Base registry path: $registryBasePath"
+        
+        # Process each key in the JSON
+        foreach ($keyName in $jsonContent.PSObject.Properties.Name) {
+            $keyData = $jsonContent.$keyName
+            $fullRegistryPath = if ($registryBasePath) { "$registryBasePath\$keyName" } else { $keyName }
+            
+            Write-Verbose "Processing registry key: $fullRegistryPath"
+            
+            # Create the registry key hierarchy step by step
+            $pathParts = $fullRegistryPath -split '\\'
+            $currentPath = ""
+            $registryKey = $null
+            
+            try {
+                # Build path incrementally and create each level
+                for ($i = 0; $i -lt $pathParts.Length; $i++) {
+                    if ($i -eq 0) {
+                        $currentPath = $pathParts[$i]
+                    }
+                    else {
+                        $currentPath = "$currentPath\$($pathParts[$i])"
+                    }
+                    
+                    Write-Verbose "Creating/Opening: $currentPath"
+                    
+                    if ($i -eq ($pathParts.Length - 1)) {
+                        # This is the final key where we'll set values
+                        $registryKey = [Microsoft.Win32.Registry]::LocalMachine.CreateSubKey($currentPath)
+                    }
+                    else {
+                        # Just ensure intermediate keys exist
+                        $tempKey = [Microsoft.Win32.Registry]::LocalMachine.CreateSubKey($currentPath)
+                        if ($tempKey) { $tempKey.Close() }
+                    }
+                }
+                
+                if ($null -eq $registryKey) {
+                    throw "Failed to create or open registry key: $fullRegistryPath"
+                }
+                
+                # Set each value in the key
+                foreach ($valueName in $keyData.PSObject.Properties.Name) {
+                    $valueData = $keyData.$valueName
+                    
+                    # URL decode the value data if needed
+                    $decodedValue = [System.Web.HttpUtility]::UrlDecode($valueData)
+                    
+                    <#
+                    if($valueName -eq "Features")
+                    {
+                    if($decodedValue -like "*EventLog*")
+                    {
+                    $newvalue = $null
+                    $newvalue = ($decodedValue -split ",").Trim() | Where-Object { $_ –ne "EventLog" }
+                    $decodedValue = $newvalue -join ","
+                    
+                    }
+                    }
+                    #>
+                    
+                    # Set the registry value as REG_SZ (String)
+                    $registryKey.SetValue($valueName, $decodedValue, [Microsoft.Win32.RegistryValueKind]::String)
+                    Write-Verbose "Set $valueName = $decodedValue"
+                }
+                
+                Write-Host "Successfully configured registry key: HKLM:\$fullRegistryPath" -ForegroundColor Green
+            }
+            finally {
+                # Always close the registry key
+                if ($registryKey) {
+                    $registryKey.Close()
+                }
+            }
+        }
+    }
+    catch {
+        Write-Error "Failed to set registry values: $($_.Exception.Message)"
+    }
+}
 
-#endregion 
+function Invoke-ExtractStiflerClientMSI {
+    [CmdletBinding()]
+    param(
+    [Parameter(Mandatory)]
+    [string]$MsiPath
+    )
+    
+    $Destination = $MsiPath + "\extracted"
+    if (Test-Path -LiteralPath $Destination) {
+        Write-Host "Already Extracted to: $Destination"
+        Write-Host "To extract again, remove $Destination and rerun the script"
+    }
+    else {
+        
+        try {
+            $MsiFilePath = (Get-ChildItem -Path $MsiPath -Filter "*.msi" | Select-Object -First 1).FullName
+            $msi = (Resolve-Path -LiteralPath $MsiFilePath -ErrorAction Stop).ProviderPath
+            if ([IO.Path]::GetExtension($msi).ToLowerInvariant() -ne '.msi') {
+                throw "Input must be an .msi file."
+            }
+            
+            if ([string]::IsNullOrWhiteSpace($Destination)) {
+                $name = [IO.Path]::GetFileNameWithoutExtension($msi)
+                $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+                $Destination = Join-Path $env:TEMP "MSI_${name}_$stamp"
+            }
+            
+            if (-not (Test-Path -LiteralPath $Destination)) {
+                $null = New-Item -ItemType Directory -Path $Destination -Force -ErrorAction Stop
+            }
+            
+            $args = @(
+            '/a'                                   # Administrative install (extract)
+            "`"$msi`""
+            '/qn'                                  # Quiet, no UI
+            "TARGETDIR=`"$Destination`""           # Extraction target
+            'REBOOT=ReallySuppress'                # Never prompt for reboot
+            )
+            
+            Write-Verbose "Running: msiexec.exe $($args -join ' ')"
+            $p = Start-Process -FilePath 'msiexec.exe' -ArgumentList $args -Wait -PassThru -NoNewWindow
+            
+            if ($p.ExitCode -ne 0) {
+                $map = @{
+                    1602 = 'User canceled.'
+                    1603 = 'Fatal error during extraction.'
+                    1605 = 'This action is only valid for products that are installed.'
+                    1618 = 'Another installation is already in progress.'
+                    1619 = 'MSI file could not be opened.'
+                    1620 = 'MSI is of an invalid format.'
+                    1624 = 'Error applying transform.'
+                    1639 = 'Invalid command line.'
+                }
+                $msg = $map[$p.ExitCode]
+                if (-not $msg) { $msg = 'Unknown error.' }
+                throw "msiexec failed with exit code $($p.ExitCode): $msg"
+            }
+            
+            Write-Host "Extracted to: $Destination"
+        }
+        catch {
+            Write-Error $_.Exception.Message
+            exit 1
+        }
+    }
+}
+#endregion Functions
 
 
 #region Readme Files
@@ -178,7 +333,9 @@ Note: 	The binaries in the Tools in this folder is already included in the WinPE
 	Please review the documentation for guidance on that.
 "
 
-$PatchesReadme = "Place the patch(es) you would like to apply to WinPE in this directory. Make sure they match the OS and architecture of the WinPE you are building."
+$PatchesReadme = "Place the patch(es) you would like to apply to WinPE in this directory. Make sure they match the OS and architecture of the WinPE you are building.
+https://catalog.update.microsoft.com/Search.aspx?q=24H2%20cumulative
+"
 
 
 $StifleRSourceReadme = "Place the StifleR source directory in this folder if incorporating the StifleR client into the WinPE build."
@@ -258,6 +415,16 @@ $ADKBuild = $ADKWinPEInfo.Version
 $OSNameNeeded = ($Mappings | Where-Object {$_.Build -match $ADKBuild}).OSName
 $Lang = ($ADKWinPE.FullName | Split-Path) | Split-Path -Leaf
 
+if (Test-Path -path $WinPEBuilderPath){
+    Write-Host "Using WinPEBuilder Path: $WinPEBuilderPath" -ForegroundColor Green
+}
+else {
+    Write-Host "Creating WinPEBuilder Path: $WinPEBuilderPath" -ForegroundColor Green
+    New-Item -Path $WinPEBuilderPath -ItemType Directory -Force | Out-Null
+    Write-Host "Assuming this is the first time running... setting up folder structure" -ForegroundColor Yellow
+    $FirstRun = $true
+}
+
 #Create Folder Structure - ASSUMES everything based on the location you're running this script from.
 try {
     [void][System.IO.Directory]::CreateDirectory("$WinPEBuilderPath\Builds") #This is where WinPE builds will get staged once they are built.
@@ -268,13 +435,16 @@ try {
     [void][System.IO.Directory]::CreateDirectory("$WinPEBuilderPath\OSSource\$OSNameNeeded") #Location for the Install.wim file from the Full OS
     [void][System.IO.Directory]::CreateDirectory("$WinPEBuilderPath\Patches\CU\$OSNameNeeded") #Location to save your .msu CU files
     [void][System.IO.Directory]::CreateDirectory("$WinPEBuilderPath\Scratch") #Temp location, has nothing to do with scratching of the itchy kind
-    [void][System.IO.Directory]::CreateDirectory("$WinPEBuilderPath\StifleRSource") #Place the StifleR source directory in this folder if incorporating the StifleR client into the WinPE build.
+    [void][System.IO.Directory]::CreateDirectory("$WinPEBuilderPath\StifleRSource210")
+    [void][System.IO.Directory]::CreateDirectory("$WinPEBuilderPath\StifleRSource30") #Place the StifleR source directory in this folder if incorporating the StifleR client into the WinPE build.
     [void][System.IO.Directory]::CreateDirectory("$WinPEBuilderPath\OSDToolkit") #Place OSDToolkit extract here
     [void][System.IO.Directory]::CreateDirectory("$WinPEBuilderPath\WinRE") #Place OSDToolkit extract here
     [void][System.IO.Directory]::CreateDirectory("$WinPEBuilderPath\WiFiSupport") #Place OSDToolkit extract here
+    [void][System.IO.Directory]::CreateDirectory("$WinPEBuilderPath\Certs") #Place Certs Here
 }
 catch {throw}
 #Build  Files
+
 if ($AddSMSTSiniFile -eq $true){
     if (!(Test-Path "$WinPEBuilderPath\ExtraFiles\Windows\smsts.ini")){
         $SMSTSini | Out-File -FilePath "$WinPEBuilderPath\ExtraFiles\Windows\smsts.ini" -Encoding utf8
@@ -290,7 +460,8 @@ if (!(Test-Path "$WinPEBuilderPath\Patches\Readme.txt")){
     $PatchesReadme | Out-File -FilePath "$WinPEBuilderPath\Patches\Readme.txt" -Encoding utf8
 }
 if (!(Test-Path "$WinPEBuilderPath\StifleRSource\Readme.txt")){
-    $StifleRSourceReadme | Out-File -FilePath "$WinPEBuilderPath\StifleRSource\Readme.txt" -Encoding utf8
+    $StifleRSourceReadme | Out-File -FilePath "$WinPEBuilderPath\StifleRSource210\Readme.txt" -Encoding utf8
+    $StifleRSourceReadme | Out-File -FilePath "$WinPEBuilderPath\StifleRSource30\Readme.txt" -Encoding utf8
 }
 if (!(Test-Path "$WinPEBuilderPath\WiFiSupport\Readme.txt")){
     $WiFiSupportReadme | Out-File -FilePath "$WinPEBuilderPath\WiFiSupport\Readme.txt" -Encoding utf8
@@ -300,6 +471,23 @@ if (Test-Path -Path "$WinPEBuilderPath"){
     foreach ($File in $files){
         Unblock-File -Path $File.FullName
     }
+}
+
+if ($FirstRun){
+    write-host "+------------------------------------------------------------------------------------------------------+" -ForegroundColor Yellow
+    Write-Host "First Run detected, please review and add any needed files to the created folders and re-run the script." -ForegroundColor Yellow
+    write-host "Please ensure all necessary files are in place before proceeding, then re-run the script." -ForegroundColor Yellow
+    write-host "Check the Readme files in each folder for guidance on what to place where." -ForegroundColor Yellow
+    write-host "Required Files to add before re-running:" -ForegroundColor Cyan
+    write-host " - !!!! Place the OSD Toolkit extracted files in the OSDToolkit folder !!!!" -ForegroundColor Cyan
+    write-host " - !!!! Place the Windows Install.wim file in the OSSource\$OSNameNeeded folder !!!!" -ForegroundColor Cyan
+    write-host "Other Tips (optional):" -ForegroundColor Cyan
+    write-host " - Place your Windows Cumulative Updates (.msu files) in the Patches\CU\$OSNameNeeded folder" -ForegroundColor Cyan
+    Write-Host " - If you install the OSD module, it will automatically download the corresponding install.wim file needed" -ForegroundColor Cyan
+    write-host " - Place your StifleR source directory in the StifleRSource folder(s) if incorporating StifleR" -ForegroundColor Cyan
+    write-host " - Place any extra files you want in the ExtraFiles folder, maintaining the folder structure as needed" -ForegroundColor Cyan
+    write-host "+------------------------------------------------------------------------------------------------------+" -ForegroundColor Yellow
+    break
 }
 
 #Check for Install.WIM, make sure one is already there, if not, it will try to download / build one for you
@@ -332,6 +520,14 @@ else {$WimDownload = $true}
 
 if ($WimDownload -eq $true){
     
+    #Test if OSD module is installed
+    if (!(Get-Module -ListAvailable -Name OSD)){
+        Write-Host "OSD Module not found, please install the OSD Module from the PowerShell Gallery and try again" -ForegroundColor Red
+        Write-Host "Run: Install-Module -Name OSD -Scope AllUsers" -ForegroundColor Yellow
+        Write-Host "---------------------------------------------------------------------------------------------" -ForegroundColor Yellow
+        Write-Host "OR manually grab the correct install.wim file and place into the OSSource\$OSNameNeeded folder" -ForegroundColor Cyan
+        break
+    }
     #Check if previously downloaded and available
     if (Test-Path -Path "C:\OSDCloud\IPU\Media\$OSNameNeeded\sources\install.wim"){
         #Double check that there is no install.wim file there, if there isn't copy it there.
@@ -650,10 +846,19 @@ $WinPESource = $ADKWinPE.FullName
 if ($UseWinRE){$WinPESource = $WinRESource}
 
 # Get the StifleR Client files from a full Windows StifleR client install (copy entire folder)
-$StifleRSource = "$WinPEBuilderPath\StifleRSource"
+if ($StifleR210){
+    $StifleRSource = "$WinPEBuilderPath\StifleRSource210"
+    # Get the StifleR Client config file from a full Windows client 
+    $StifleRClientRules = "$StifleRSource\StifleR.ClientApp.exe.Config"
+}
+#StifleR 3.0 requires the MSI file instead & the 2psimport file
+if ($StifleR30){
+    $StifleRSource = "$WinPEBuilderPath\StifleRSource30"
+    # Get the StifleR Client config file from a Stifler Client Config tool export (2psImport)
+    $StiflerConfigJSON = (Get-ChildItem -Path $StifleRSource -Filter *.2psImport | Select-Object -First 1).FullName
+}
 
-# Get the StifleR Client config file from a full Windows client 
-$StifleRClientRules = "$StifleRSource\StifleR.ClientApp.exe.Config"
+
 
 # List indexes in WIM Image
 # Get-WindowsImage -ImagePath $Windows11Media
@@ -692,16 +897,43 @@ If (!(Test-Path $OSSource)){Write-Warning "$Windows Media missing, aborting scri
 
 If (!(Test-Path $WinPESource)){Write-Warning "$WinPESource missing, aborting script...";Break}
 
-If ($BranchCache -or $StifleR) {
+If ($BranchCache -or $StifleR210 -or $StifleR30) {
     $WinPEGenVersion=(Get-ItemProperty "$OSDToolkitPath\x64\WinPEGen.exe").VersionInfo.FileVersion
     If ([Version]$WinPEGenVersion -lt [Version]"3.1.3.0"){Write-Warning "WinPEGen version too old. Aborting script...";Break}
     If (!(Test-Path $OSDToolkitPath)){Write-Warning "$OSDToolkitPath missing, aborting script...";Break}
 }
-If ($StifleR) {
+If ($StifleR210) {
     If (!(Test-Path $StifleRSource)){Write-Warning "$StifleRSource missing, aborting script...";Break}
     If (!(Test-Path $StifleRClientRules)){Write-Warning "$StifleRClientRules missing, aborting script...";Break}
     $StifleRClientVersion=(Get-ItemProperty "$StifleRSource\StifleR.ClientApp.exe").VersionInfo.FileVersion
     If ([version]$StifleRClientVersion -lt [version]"2.2.4.1"){Write-Warning "StifleR Client version too old. Aborting script...";Break}
+}
+if ($StifleR30) {
+    If (!(Test-Path $StifleRSource)) { Write-Warning "$StifleRSource missing, aborting script..."; Break }
+    # Check if StiflerSource contains StifleR.ClientApp.exe
+    If (!(Test-Path "$StifleRSource\StifleR.ClientApp.exe")) {
+        if (Test-Path "$StiflerSource\extracted\PFiles64\2Pint Software\StifleR Client\StifleR.ClientApp.exe") {
+            $StifleRSource = "$StifleRSource\extracted\PFiles64\2Pint Software\StifleR Client"
+            Write-Host "Found existing extracted StifleR Client, using $StifleRSource"
+        }
+        else {
+            Write-Host "StifleR.ClientApp.exe not found in $StifleRSource, checking for MSI to extract..."
+            IF (test-path "$StiflerSource\extracted") { 
+                Write-host "Cleaning up existing extracted folder..."
+                Remove-Item "$StiflerSource\extracted" -Recurse -Force 
+            }
+            $MSIFiles = (Get-ChildItem -Path $StifleRSource -Filter "*.msi" | Select-Object -First 1).FullName
+            If ($MSIFiles.Count -eq 1) {
+                Write-Host "Found $($MSIFiles.Name) MSI file, extracting..."
+                Invoke-ExtractStiflerClientMSI -MsiPath $StifleRSource 
+                Write-Host "Extracted MSI file, using $StifleRSource"
+                $StifleRSource = "$StifleRSource\extracted\PFiles64\2Pint Software\StifleR Client"
+            }
+            Else { 
+                Write-Warning "StifleR.ClientApp.exe missing in $StifleRSource, aborting script..."; Break 
+            } 
+        }
+    }
 }
 
 #Confirm Clean up
@@ -717,9 +949,17 @@ Set-Location "$OSDToolkitPath\x64"
 
 Copy-Item $WinPESource $WinPEScratch -Force -Verbose
 
-If ($StifleR) {
+If ($StifleR30 -or $StifleR210) {
     Write-Output "Adding BranchCache and StifleR to WinPE..."
-    .\WinPEGen.exe $OSSource $OSSourceIndex $WinPEScratch $WinPEIndex /Add-StifleR /StifleRConfig:$StifleRClientRules /StifleRSource:$StifleRSource
+    if ($StifleR30){
+        .\WinPEGen.exe $OSSource $OSSourceIndex $WinPEScratch $WinPEIndex /Add-StifleR /StifleRSource:$StifleRSource
+    }
+    Elseif ($StifleR210) {
+        Write-Output "Adding StifleR 2.1.0 Client to WinPE..."
+        .\WinPEGen.exe $OSSource $OSSourceIndex $WinPEScratch $WinPEIndex /Add-StifleR /StifleRConfig:$StifleRClientRules /StifleRSource:$StifleRSource
+    }
+    
+
 }
 Elseif ($BranchCache) {
     Write-Output "Adding BranchCache to WinPE..."
@@ -795,9 +1035,36 @@ else {
         write-host "Option to skip the OCs was enabled"
     }
 }
+
+# Add Stifler Config to registry
+$TempKey = "HKLM\TempHive"
+$RegistryFilePath = "$MountPath\Windows\System32\config\SOFTWARE"
+try {
+    Write-host "Loading registry hive..."
+    reg.exe load $TempKey $RegistryFilePath
+
+    Set-RegistryFromJson -RegistryBasePath "HKLM:\TempHive\2Pint Software\StifleR\Client" -JsonFilePath $StiflerConfigJSON
+    # Read-Host -Prompt "Press Enter to Continue"
+}
+catch {
+    write-error "An error occurred: $_"
+}
+finally {
+    Write-host "Unloading registry hive..."
+    [gc]::Collect()
+    Start-Sleep -Seconds 2
+    reg.exe unload $TempKey
+    Write-host "Registry hive processing completed." -ForegroundColor Green
+}
+
+if ($Cert) {
+    Copy-Item -Path $Cert -Destination "$MountPath\Windows\System32" -Force 
+}
+
+
 #Apply SSU - only required for WinPE 10 19041
 $SSUPath = "D:\WinPEBuilder\Patches\SSU\SSU-26100.1738-x64.cab"
-If ($SSUPath) {Add-WindowsPackage -Path $MountPath -PackagePath $SSUPath -Verbose}
+If (Test-Path -path $SSUPath) {Add-WindowsPackage -Path $MountPath -PackagePath $SSUPath -Verbose}
 
 #Apply LCU
 $CU_MSU = Get-ChildItem -Path "$WinPEBuilderPath\Patches\CU\$OSNameNeeded" -Filter *.msu -ErrorAction SilentlyContinue
@@ -818,7 +1085,13 @@ if ($CU_MSU){
         If ($PatchPath) {
             $AvailableCU = $PatchPath
             Write-Host -ForegroundColor DarkGray "Applying CU $PatchPath"
-            Add-WindowsPackage -Path $MountPath -PackagePath $PatchPath -Verbose
+            try {
+                Add-WindowsPackage -Path $MountPath -PackagePath $PatchPath -Verbose
+            }
+            catch {
+                Write-Host "Failed to add CU Package" -ForegroundColor Red
+                write-Host "This is typical when applying the Pre-Req CUs before the latest CU"
+            }
         }
     }
 }
@@ -856,7 +1129,7 @@ If (Test-Path -Path $Drivers\*){
             & DISM /Image:$MountPath /Add-Driver /Driver:$DriverPath /Recurse /ForceUnsigned /LogPath:$WinPEBuilderPath\Drivers.log
         }
     }
-
+    
     
 }
 #Verify added packages
@@ -874,7 +1147,7 @@ if ($Add7Zip -eq $true){
     # Example: https://github.com/ip7z/7zip/releases/download/24.07/7z2407-extra.7z
     $Download7zrURL = "https://github.com/ip7z/7zip/releases/download/$Version/7zr.exe"
     $DownloadURL ="https://github.com/ip7z/7zip/releases/download/$Version/$fileName"
-
+    
     Write-Host -ForegroundColor DarkGray "Downloading $DownloadURL"
     Invoke-WebRequest -Uri $Download7zrURL -OutFile "$env:TEMP\7zr.exe" -UseBasicParsing
     Invoke-WebRequest -Uri $DownloadURL -OutFile "$env:TEMP\$FileName" -UseBasicParsing
