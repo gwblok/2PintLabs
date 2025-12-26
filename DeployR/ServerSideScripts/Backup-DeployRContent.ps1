@@ -76,10 +76,54 @@ else {
     }
 }
 
+function Get-StepContentReferences {
+    <#
+    .SYNOPSIS
+        Recursively extracts content IDs from a step and its nested groupMembers.
+    
+    .PARAMETER Step
+        The step object to analyze.
+    
+    .OUTPUTS
+        Array of content item IDs.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object]$Step
+    )
+    
+    $contentIds = @()
+    
+    # Check if this step itself references content
+    if (($Step.type -match "Content") -or ($Step.options.type -match "Content")) {
+        # Primary defaultValue on step
+        if ($Step.defaultValue) {
+            $contentIds += ($Step.defaultValue).Split(':') | Select-Object -First 1
+        }
+        # Options array may carry content references
+        if ($Step.options) {
+            $contentOptions = $Step.options | Where-Object { $_.type -match "Content" -and $_.defaultValue }
+            foreach ($opt in $contentOptions) {
+                $contentIds += ($opt.defaultValue).Split(':') | Select-Object -First 1
+            }
+        }
+    }
+    
+    # Recursively process groupMembers if they exist
+    if ($Step.groupMembers -and $Step.groupMembers.Count -gt 0) {
+        foreach ($groupMember in $Step.groupMembers) {
+            $contentIds += Get-StepContentReferences -Step $groupMember
+        }
+    }
+    
+    return $contentIds
+}
+
 function Get-TaskSequenceReferencedContent {
     <#
     .SYNOPSIS
-        Analyzes Task Sequences to find all referenced content items.
+        Analyzes Task Sequences to find all referenced content items at any nesting level.
     
     .PARAMETER TaskSequences
         Array of task sequence objects to analyze.
@@ -100,24 +144,12 @@ function Get-TaskSequenceReferencedContent {
             if ($ts.versions) {
                 foreach ($version in $ts.versions) {
                     if ($version.steps) {
-                        # Find all steps that reference content (type match or option type match)
-                        $contentSteps = $version.steps | Where-Object { ($_.type -match "Content") -or ($_.options.type -match "Content") }
-                        
-                        foreach ($step in $contentSteps) {
-                            $candidateIds = @()
-                            # Primary defaultValue on step
-                            if ($step.defaultValue) {
-                                $candidateIds += ($step.defaultValue).Split(':') | Select-Object -First 1
-                            }
-                            # Options array may carry content references
-                            if ($step.options) {
-                                $contentOptions = $step.options | Where-Object { $_.type -match "Content" -and $_.defaultValue }
-                                foreach ($opt in $contentOptions) {
-                                    $candidateIds += ($opt.defaultValue).Split(':') | Select-Object -First 1
-                                }
-                            }
+                        # Process each top-level step recursively
+                        foreach ($step in $version.steps) {
+                            $contentIds = Get-StepContentReferences -Step $step
                             
-                            foreach ($cid in $candidateIds) {
+                            # Filter out built-in content IDs
+                            foreach ($cid in $contentIds) {
                                 if ($cid -and $cid -notlike '00000000-*' -and $cid -notlike '{00000000-*') {
                                     $referencedContentIds += $cid
                                 }
