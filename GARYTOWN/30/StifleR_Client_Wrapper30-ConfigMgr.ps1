@@ -4,18 +4,20 @@ $LogFolder = "$env:SystemDrive\Windows\Temp"
 Start-Transcript -Path "$LogFolder\StifleR_Client_Install_Transcript.log" -Append
 
 $StifleRSettingsConfigFileName = "settings.2psImport"
-$STIFLERSERVERS = 'https://214-StifleR.2p.garytown.com:1414'
+$STIFLERSERVERS = 'https://dr.2pintlabs.com:1414'
 $STIFLERULEZURL = 'https://raw.githubusercontent.com/2pintsoftware/StifleRRules/master/StifleRulez.xml'
 $OPTIONS = @"
 {"SettingsOptions":{"StifleRulezURL":"$STIFLERULEZURL","StiflerServers":"[\u0022$STIFLERSERVERS\u0022]","VPNStrings":"[\u0022VPN\u0022,\u0022Cisco%20AnyConnect\u0022,\u0022Virtual%20Private%20Network\u0022,\u0022SonicWall\u0022,\u0022WireGuard\u0022,\u0022PanGP\u0022,\u0022Virtual%20Private%20Network\u0022]","EnableDebugTelemetry":"True","UseServerAsClient":"True","SignalRLogging":"True","RemoteToolsCapabilitiesFlag":"FileExplorer,%20FileContent,%20RegistryViewer,%20WmiViewer,%20EventLogs,%20PerformanceCounters,%20ResourceMonitor,%20TaskManager,%20DeviceInformation,%20RemoteAssistance,%20Rdp,%20RemoteCli,%20TsData,%20Intune,%20TunnelRdp"}}
 "@
 
+#Get Path for Script Invocation
+$ScriptInvocationPath = $PSScriptRoot
 
-if (Test-Path -Path .\$StifleRSettingsConfigFileName) {
+if (Test-Path -Path $ScriptInvocationPath\$StifleRSettingsConfigFileName) {
     Write-Host "Found $StifleRSettingsConfigFileName file in the current directory, using settings from file." -ForegroundColor Green
     $OptionsFile = $true
-    $OPTIONS = Get-Content -Path .\$StifleRSettingsConfigFileName -Raw
-    
+    $OPTIONS = Get-Content -Path $ScriptInvocationPath\$StifleRSettingsConfigFileName -Raw
+
 }
 else{
     Write-Host -ForegroundColor Red "No $StifleRSettingsConfigFileName file found in the current directory"
