@@ -95,24 +95,25 @@ function Get-StepContentReferences {
     
     $contentIds = @()
     
-    # Check if this step itself references content
-    if (($Step.type -match "Content") -or ($Step.options.type -match "Content")) {
-        # Primary defaultValue on step
-        if ($Step.defaultValue) {
-            $contentIds += ($Step.defaultValue).Split(':') | Select-Object -First 1
-        }
-        # Options array may carry content references
-        if ($Step.options) {
-            $contentOptions = $Step.options | Where-Object { $_.type -match "Content" -and $_.defaultValue }
-            foreach ($opt in $contentOptions) {
-                $contentIds += ($opt.defaultValue).Split(':') | Select-Object -First 1
+
+    # Extract content IDs from contentItems (PSCustomObject)
+    if ($Step.contentItems) {
+        # Access the properties of the PSCustomObject
+        $Step.contentItems.psobject.Properties | ForEach-Object {
+            # Values are in format "ID:1", extract just the ID part
+            $contentId = $_.Value.Split(':')[0]
+            if ($contentId) {
+                $contentIds += $contentId
             }
         }
     }
     
+
     # Recursively process groupMembers if they exist
     if ($Step.groupMembers -and $Step.groupMembers.Count -gt 0) {
+        $script:GroupMember = $Step.groupMembers
         foreach ($groupMember in $Step.groupMembers) {
+            Write-Host "Processing nested group member step: $($groupMember.name)" -ForegroundColor Gray
             $contentIds += Get-StepContentReferences -Step $groupMember
         }
     }
@@ -134,7 +135,8 @@ function Get-TaskSequenceReferencedContent {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [object[]]$TaskSequences
+        [object[]]$TaskSequences,
+        [object[]]$AllTaskSequences
     )
     
     $referencedContentIds = @()
@@ -146,8 +148,35 @@ function Get-TaskSequenceReferencedContent {
                     if ($version.steps) {
                         # Process each top-level step recursively
                         foreach ($step in $version.steps) {
-                            $contentIds = Get-StepContentReferences -Step $step
+                            #$contentIds = Get-StepContentReferences -Step $step
+                            $contentIds = @()
+    
+                            if ($Step.typeId -eq "00000001-0000-0000-0000-00000000000d") {
+                                Write-Host "Processing Child Task Sequence: $($Step.name)" -ForegroundColor Gray
+                                $ChildTS = ($Step.settings.childTaskSequenceId).Split(':')[0]
+                                $CurrentTaskSequence = $DBTaskSequences | Where-Object {$_.id -eq "$ChildTS"}
+                                Get-TaskSequenceReferencedContent -TaskSequences $CurrentTaskSequence -AllTaskSequences $DBTaskSequences
+                            }
+                            # Extract content IDs from contentItems (PSCustomObject)
+                            if ($Step.contentItems) {
+                                # Access the properties of the PSCustomObject
+                                $Step.contentItems.psobject.Properties | ForEach-Object {
+                                    # Values are in format "ID:1", extract just the ID part
+                                    $contentId = $_.Value.Split(':')[0]
+                                    if ($contentId) {
+                                        $contentIds += $contentId
+                                    }
+                                }
+                            }
                             
+                            # Recursively process groupMembers if they exist
+                            if ($Step.groupMembers -and $Step.groupMembers.Count -gt 0) {
+                                $script:GroupMember = $Step.groupMembers
+                                foreach ($groupMember in $Step.groupMembers) {
+                                    Write-Host "Processing nested group member step: $($groupMember.name)" -ForegroundColor Gray
+                                    $contentIds += Get-StepContentReferences -Step $groupMember
+                                }
+                            }
                             # Filter out built-in content IDs
                             foreach ($cid in $contentIds) {
                                 if ($cid -and $cid -notlike '00000000-*' -and $cid -notlike '{00000000-*') {
@@ -307,6 +336,35 @@ Write-Host ""
 Write-Host "Selected content types:" -ForegroundColor Green
 $selectedTypes | ForEach-Object { Write-Host "  • $($_.DisplayName)" -ForegroundColor White }
 Write-Host ""
+$totalSelectedItems = @()
+if ($selectedTypes -contains ($contentTypes | Where-Object { $_.DisplayName -eq "Task Sequences" })) {
+    Write-Host "Gathering Task Sequence Information..." -ForegroundColor Yellow
+    $DBTaskSequences = Get-DeployRMetadata -Type TaskSequence
+    Write-Host "Found $($DBTaskSequences.Count) Task Sequences in DeployR." -ForegroundColor Green
+    Write-Host "Select which Task Sequences to backup..." -ForegroundColor Gray
+    $totalSelectedTaskSequences = $DBTaskSequences | Out-GridView -Title "Select $($type.DisplayName) to Backup (Hold Ctrl to select multiple)" -OutputMode Multiple
+    $totalSelectedItems += $totalSelectedTaskSequences
+}
+if ($selectedTypes -contains ($contentTypes | Where-Object { $_.DisplayName -eq "Step Definitions" }) ) {
+    Write-Host "Gathering Step Definition Information..." -ForegroundColor Yellow
+    $DBStepDefinitions = Get-DeployRMetadata -Type StepDefinition | Where-Object{$_.id -notlike '0000*'}
+    Write-Host "Found $($DBStepDefinitions.Count) Step Definitions in DeployR." -ForegroundColor Green
+    Write-Host "Select which Step Definitions to backup..." -ForegroundColor Gray
+    $totalSelectedStepDefinitions = $DBStepDefinitions | Out-GridView -Title "Select $($type.DisplayName) to Backup (Hold Ctrl to select multiple)" -OutputMode Multiple
+    $totalSelectedItems += $totalSelectedStepDefinitions
+}
+$DBContentItems = Get-DeployRMetadata -Type ContentItem | Where-Object{$_.id -notlike '00000000-*'}
+if ($selectedTypes | Where-Object { $_.QueryType -eq "ContentItem" }) {
+    Write-Host "Found $($DBContentItems.Count) Content Items in DeployR." -ForegroundColor Green
+    Write-Host "We'll now select specific content items for the selected content types." -ForegroundColor Gray
+    foreach ($type in $selectedTypes | Where-Object { $_.QueryType -eq "ContentItem" }) {
+        Write-Host "Select which $($type.DisplayName) to backup..." -ForegroundColor Gray
+        $itemsToSelect = $DBContentItems | Where-Object { $_.contentItemPurpose -match $type.Purpose }
+        $totalSelectedItems += $itemsToSelect | Out-GridView -Title "Select $($type.DisplayName) to Backup (Hold Ctrl to select multiple)" -OutputMode Multiple
+    }
+}
+
+
 
 # Process each selected content type
 $backupResults = @()
@@ -320,92 +378,77 @@ foreach ($type in $selectedTypes) {
     
     # Get content items for this type
     Write-Host "Retrieving $($type.DisplayName) from DeployR..." -ForegroundColor Gray
-    
-    try {
-        # Query based on type
-        if ($type.QueryType -eq "Metadata") {
-            # For Task Sequences and Step Definitions - exclude built-in items (ID starting with '0000*')
-            $contentItems = Get-DeployRMetadata -Type $type.MetadataType -ErrorAction Stop | Where-Object {$_.id -notlike '0000*'}
-        }
-        else {
-            # For Content Items - exclude built-in items (ID starting with '00000000-')
-            $contentItems = Get-DeployRContentItem -ErrorAction Stop | 
-                Where-Object {$_.id -notlike '00000000-*'} |
-                Where-Object {$_.contentItemPurpose -match $type.Purpose}
-        }
-        
-        if (-not $contentItems -or $contentItems.Count -eq 0) {
-            Write-Host "  No items found for $($type.DisplayName)" -ForegroundColor Yellow
-            Write-Host ""
-            continue
-        }
-        
-        Write-Host "  Found $($contentItems.Count) item(s)" -ForegroundColor Green
-        Write-Host ""
-        # Let user select specific items using Out-GridView
-        $selectedItems = $contentItems | Out-GridView -Title "Select $($type.DisplayName) to Backup (Hold Ctrl to select multiple)" -OutputMode Multiple
-        
-        if ($selectedItems.Count -eq 0) {
-            Write-Host "No items selected for $($type.DisplayName)" -ForegroundColor Yellow
-            Write-Host ""
-            continue
-        }
-        
-        # If Task Sequences are selected, analyze for referenced content
+
+    if ($type.QueryType -eq "Metadata") {
         if ($type.DisplayName -eq "Task Sequences") {
-            Write-Host ""
-            Write-Host "Analyzing Task Sequences for referenced content..." -ForegroundColor Cyan
-            $referencedIds = Get-TaskSequenceReferencedContent -TaskSequences $selectedItems
+            $selectedItems = $totalSelectedTaskSequences
+        }
+        elseif ($type.DisplayName -eq "Step Definitions") {
+            $selectedItems = $totalSelectedStepDefinitions
+        }
+    }
+    else {
+        $selectedItems = $totalSelectedItems | Where-Object { $_.contentItemPurpose -match $type.Purpose }
+    }
+
+    #backup Content Items here
+
+
+    # If Task Sequences are selected, analyze for referenced content
+    if ($type.DisplayName -eq "Task Sequences") {
+        Write-Host ""
+        Write-Host "Analyzing Task Sequences for referenced content..." -ForegroundColor Cyan
+        $referencedIds = Get-TaskSequenceReferencedContent -TaskSequences $selectedItems -AllTaskSequences $DBTaskSequences
+        
+        if ($referencedIds.Count -gt 0) {
+            Write-Host "  Found $($referencedIds.Count) referenced content item(s)" -ForegroundColor Yellow
             
-            if ($referencedIds.Count -gt 0) {
-                Write-Host "  Found $($referencedIds.Count) referenced content item(s)" -ForegroundColor Yellow
+            # Get the full content item details
+            $allContentItems = $DBContentItems #Get-DeployRContentItem -ErrorAction SilentlyContinue
+            $referencedContent = $allContentItems | Where-Object { $referencedIds -contains $_.id }
+            
+            if ($referencedContent) {
+                # Show referenced content to user
+                Write-Host ""
+                Write-Host "The selected Task Sequences reference the following content items:" -ForegroundColor Yellow
+                $referencedContent | ForEach-Object { 
+                    Write-Host "  • $($_.name) ($($_.contentItemPurpose))" -ForegroundColor Gray 
+                }
+                Write-Host ""
                 
-                # Get the full content item details
-                $allContentItems = Get-DeployRContentItem -ErrorAction SilentlyContinue
-                $referencedContent = $allContentItems | Where-Object { $referencedIds -contains $_.id }
-                
-                if ($referencedContent) {
-                    # Show referenced content to user
-                    Write-Host ""
-                    Write-Host "The selected Task Sequences reference the following content items:" -ForegroundColor Yellow
-                    $referencedContent | ForEach-Object { 
-                        Write-Host "  • $($_.name) ($($_.contentItemPurpose))" -ForegroundColor Gray 
-                    }
-                    Write-Host ""
-                    
-                    # Prompt user to include referenced content in backup
-                    $userChoice = Read-Host "Would you like to include these referenced content items in the backup? (Y/N)"
-                    if ($userChoice -eq 'Y' -or $userChoice -eq 'y') {
-                        Write-Host "  Referenced content will be included in backup" -ForegroundColor Green
-                        $referencedContentToBackup += $referencedContent
-                    }
-                    else {
-                        Write-Host "  Referenced content will NOT be backed up" -ForegroundColor Yellow
-                    }
+                # Prompt user to include referenced content in backup
+                $userChoice = Read-Host "Would you like to include these referenced content items in the backup? (Y/N)"
+                if ($userChoice -eq 'Y' -or $userChoice -eq 'y') {
+                    Write-Host "  Referenced content will be included in backup" -ForegroundColor Green
+                    $referencedContentToBackup += $referencedContent
+                }
+                else {
+                    Write-Host "  Referenced content will NOT be backed up" -ForegroundColor Yellow
                 }
             }
-            else {
-                Write-Host "  No referenced content found" -ForegroundColor Gray
-            }
         }
-        
-        Write-Host ""
-        Write-Host "Backing up $($selectedItems.Count) $($type.DisplayName)..." -ForegroundColor Cyan
-        Write-Host ""
-        
-        # Backup each selected item
-        foreach ($item in $selectedItems) {
-            $result = Backup-DeployRContentItem -ContentItem $item -BackupPath $BackupPath -ContentType $type.DisplayName -QueryType $type.QueryType
-            $backupResults += $result
+        else {
+            Write-Host "  No referenced content found" -ForegroundColor Gray
         }
-        
-        Write-Host ""
     }
+    
+    Write-Host ""
+    Write-Host "Backing up $($selectedItems.Count) $($type.DisplayName)..." -ForegroundColor Cyan
+    Write-Host ""
+    
+    # Backup each selected item
+    foreach ($item in $selectedItems) {
+        $result = Backup-DeployRContentItem -ContentItem $item -BackupPath $BackupPath -ContentType $type.DisplayName -QueryType $type.QueryType
+        $backupResults += $result
+    }
+    
+    Write-Host ""
+}
     catch {
         Write-Warning "Failed to retrieve $($type.DisplayName): $_"
         Write-Host ""
     }
-}
+
 
 # Backup any referenced content that was identified from Task Sequences
 if ($referencedContentToBackup.Count -gt 0) {

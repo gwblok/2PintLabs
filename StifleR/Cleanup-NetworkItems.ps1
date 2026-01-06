@@ -96,11 +96,11 @@ foreach ($client in $clients)
             if($client.ClientFlags -band 4294967296) 
             {
                 $roamingForever++
-                #Write-Host $roamingForever
-                #$conn = [wmi]"\root\StifleR:Connections.ConnectionID='$($client.ConnectionId)'"
-                #$conn.ResetRoamingForeverFlag();
+                Write-Host $roamingForever
+                $conn = [wmi]"\root\StifleR:Connections.ConnectionID='$($client.ConnectionId)'"
+                $conn.ResetRoamingForeverFlag();
 
-                #Start-Sleep -Milliseconds 20
+                Start-Sleep -Milliseconds 20
             
             }
         #}  
