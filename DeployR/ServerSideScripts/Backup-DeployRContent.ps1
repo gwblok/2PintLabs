@@ -140,7 +140,8 @@ function Get-TaskSequenceReferencedContent {
     )
     
     $referencedContentIds = @()
-    
+    $referencedTaskSequences = @()
+
     foreach ($ts in $TaskSequences) {
         try {
             if ($ts.versions) {
@@ -155,6 +156,7 @@ function Get-TaskSequenceReferencedContent {
                                 Write-Host "Processing Child Task Sequence: $($Step.name)" -ForegroundColor Gray
                                 $ChildTS = ($Step.settings.childTaskSequenceId).Split(':')[0]
                                 $CurrentTaskSequence = $DBTaskSequences | Where-Object {$_.id -eq "$ChildTS"}
+                                $referencedTaskSequences += $CurrentTaskSequence
                                 Get-TaskSequenceReferencedContent -TaskSequences $CurrentTaskSequence -AllTaskSequences $DBTaskSequences
                             }
                             # Extract content IDs from contentItems (PSCustomObject)
@@ -174,6 +176,13 @@ function Get-TaskSequenceReferencedContent {
                                 $script:GroupMember = $Step.groupMembers
                                 foreach ($groupMember in $Step.groupMembers) {
                                     Write-Host "Processing nested group member step: $($groupMember.name)" -ForegroundColor Gray
+                                    if ($groupMember.typeId -eq "00000001-0000-0000-0000-00000000000d") {
+                                        Write-Host "Processing Child Task Sequence: $($groupMember.name)" -ForegroundColor Gray
+                                        $ChildTS = ($groupMember.settings.childTaskSequenceId).Split(':')[0]
+                                        $CurrentTaskSequence = $DBTaskSequences | Where-Object {$_.id -eq "$ChildTS"}
+                                        $referencedTaskSequences += $CurrentTaskSequence
+                                        Get-TaskSequenceReferencedContent -TaskSequences $CurrentTaskSequence -AllTaskSequences $DBTaskSequences
+                                    }
                                     $contentIds += Get-StepContentReferences -Step $groupMember
                                 }
                             }
@@ -194,7 +203,13 @@ function Get-TaskSequenceReferencedContent {
     }
     
     # Return unique IDs
-    return ($referencedContentIds | Select-Object -Unique)
+    #Create a PS Object of the referenced Task Sequences & Content Items to return
+    $result = [PSCustomObject]@{
+        referencedContentIDs = ($referencedContentIds | Select-Object -Unique)
+        referenceTaskSequences = ($referencedTaskSequences | Select-Object -Unique)
+    }
+    
+    return $result
 }
 
 function Backup-DeployRContentItem {
