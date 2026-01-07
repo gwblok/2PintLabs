@@ -1,32 +1,38 @@
 <#
 .SYNOPSIS
-    Interactive backup script for DeployR content items.
+Interactive backup script for DeployR content items.
 
 .DESCRIPTION
-    Connects to DeployR and provides an interactive menu to select content types
-    (Applications, Task Sequences, OS Packages, Driver Packs, etc.) and specific
-    items to backup to a configured location.
+Connects to DeployR and provides an interactive menu to select content types
+(Applications, Task Sequences, OS Packages, Driver Packs, etc.) and specific
+items to backup to a configured location.
 
 .PARAMETER BackupPath
-    The root directory where backups will be stored.
-    Default: D:\DeployRBackups
+The root directory where backups will be stored.
+Default: D:\DeployRBackups
 
 .EXAMPLE
-    .\Backup-DeployRContent.ps1
+.\Backup-DeployRContent.ps1
 
 .EXAMPLE
-    .\Backup-DeployRContent.ps1 -BackupPath "C:\Backups\DeployR"
+.\Backup-DeployRContent.ps1 -BackupPath "C:\Backups\DeployR"
 
 .NOTES
-    Author: Gary Blok
-    Date: December 18, 2025
-    Requires: DeployR.Utility module
+Author: Gary Blok
+Date: December 18, 2025
+Requires: DeployR.Utility module
 #>
 
 [CmdletBinding()]
 param(
-    [Parameter()]
-    [string]$BackupPath = "D:\DeployRBackups"
+[Parameter()]
+[string]$BackupPath = "D:\DeployRBackups",
+
+[Parameter()]
+[string]$ReferenceJsonPath,
+
+[Parameter()]
+[object]$ReferenceJsonObject
 )
 
 #region Functions
@@ -34,7 +40,7 @@ param(
 function Connect-ToDeployR {
     <#
     .SYNOPSIS
-        Connects to DeployR server.
+    Connects to DeployR server.
     #>
     
     try {
@@ -51,22 +57,22 @@ function Connect-ToDeployR {
         
         Write-Host "Connecting to DeployR..." -ForegroundColor Cyan
         Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
-#Set-DeployRHost "http://localhost:7282"
-
-if (Test-Path "HKLM:\software\2Pint Software\DeployR\GeneralSettings") {
-    $DeployRReg = Get-Item -Path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"
-    $ClientPasscode = $DeployRReg.GetValue("ClientPasscode")
-    Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
-}
-elseif (Test-Path "D:\DeployRPasscode.txt") {
-    $ClientPasscode = (Get-Content "D:\DeployRPasscode.txt" -Raw)
-    Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
-}
-else {
-    throw "Cannot find DeployR Client Passcode in registry or D:\DeployRPasscode.txt"
-    Connect-DeployR
-}
-
+        #Set-DeployRHost "http://localhost:7282"
+        
+        if (Test-Path "HKLM:\software\2Pint Software\DeployR\GeneralSettings") {
+            $DeployRReg = Get-Item -Path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"
+            $ClientPasscode = $DeployRReg.GetValue("ClientPasscode")
+            Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+        }
+        elseif (Test-Path "D:\DeployRPasscode.txt") {
+            $ClientPasscode = (Get-Content "D:\DeployRPasscode.txt" -Raw)
+            Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+        }
+        else {
+            throw "Cannot find DeployR Client Passcode in registry or D:\DeployRPasscode.txt"
+            Connect-DeployR
+        }
+        
         Write-Host "Connected to DeployR" -ForegroundColor Green
         return $true
     }
@@ -79,23 +85,23 @@ else {
 function Get-StepContentReferences {
     <#
     .SYNOPSIS
-        Recursively extracts content IDs from a step and its nested groupMembers.
+    Recursively extracts content IDs from a step and its nested groupMembers.
     
     .PARAMETER Step
-        The step object to analyze.
+    The step object to analyze.
     
     .OUTPUTS
-        Array of content item IDs.
+    Array of content item IDs.
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)]
-        [object]$Step
+    [Parameter(Mandatory)]
+    [object]$Step
     )
     
     $contentIds = @()
     
-
+    
     # Extract content IDs from contentItems (PSCustomObject)
     if ($Step.contentItems) {
         # Access the properties of the PSCustomObject
@@ -108,82 +114,117 @@ function Get-StepContentReferences {
         }
     }
     
-
+    
     # Recursively process groupMembers if they exist
     if ($Step.groupMembers -and $Step.groupMembers.Count -gt 0) {
         $script:GroupMember = $Step.groupMembers
         foreach ($groupMember in $Step.groupMembers) {
-            Write-Host "Processing nested group member step: $($groupMember.name)" -ForegroundColor Gray
+            Write-Host "Processing step: $($groupMember.name)" -ForegroundColor Gray
             $contentIds += Get-StepContentReferences -Step $groupMember
         }
     }
     
     return $contentIds
 }
-
+function Get-StepInfo {
+    [CmdletBinding()]
+    param(
+    [Parameter(Mandatory)]
+    [object]$Step
+    )
+    $referencedTaskSequences = @()
+    $contentIds = @()
+    if ($Step.typeId -eq "00000001-0000-0000-0000-00000000000d") {
+        Write-Host "Processing Child Task Sequence: $($Step.name)" -ForegroundColor Gray
+        $ChildTS = ($Step.settings.childTaskSequenceId).Split(':')[0]
+        $CurrentTaskSequence = $DBTaskSequences | Where-Object {$_.id -eq "$ChildTS"}
+        $referencedTaskSequences += $CurrentTaskSequence
+        Get-TaskSequenceReferencedContent -TaskSequences $CurrentTaskSequence -AllTaskSequences $DBTaskSequences
+    }
+    # Extract content IDs from contentItems (PSCustomObject)
+    if ($Step.contentItems) {
+        # Access the properties of the PSCustomObject
+        $Step.contentItems.psobject.Properties | ForEach-Object {
+            # Values are in format "ID:1", extract just the ID part
+            $contentId = $_.Value.Split(':')[0]
+            if ($contentId) {
+                $contentIds += $contentId
+            }
+        }
+    }
+    # Create a PS Object of the referenced Task Sequences & Content Items to return
+    $script:result = [PSCustomObject]@{
+        contentIDs = $contentIds
+        referenceTaskSequences = $referencedTaskSequences
+    }
+    
+}
 function Get-TaskSequenceReferencedContent {
     <#
     .SYNOPSIS
-        Analyzes Task Sequences to find all referenced content items at any nesting level.
+    Analyzes Task Sequences to find all referenced content items at any nesting level.
     
     .PARAMETER TaskSequences
-        Array of task sequence objects to analyze.
+    Array of task sequence objects to analyze.
     
     .OUTPUTS
-        Array of content item IDs referenced in the task sequences.
+    Array of content item IDs referenced in the task sequences.
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)]
-        [object[]]$TaskSequences,
-        [object[]]$AllTaskSequences
+    [Parameter(Mandatory)]
+    [object[]]$TaskSequences,
+    [object[]]$AllTaskSequences
     )
     
     $referencedContentIds = @()
     $referencedTaskSequences = @()
-
-    foreach ($ts in $TaskSequences) {
+    
+    foreach ($ts in $TaskSequences) { #foreach ($ts in $TaskSequences) {}
         try {
             if ($ts.versions) {
-                foreach ($version in $ts.versions) {
+                foreach ($version in $ts.versions) { #foreach ($version in $ts.versions) {}
                     if ($version.steps) {
                         # Process each top-level step recursively
                         foreach ($step in $version.steps) {
                             #$contentIds = Get-StepContentReferences -Step $step
-                            $contentIds = @()
-    
-                            if ($Step.typeId -eq "00000001-0000-0000-0000-00000000000d") {
-                                Write-Host "Processing Child Task Sequence: $($Step.name)" -ForegroundColor Gray
-                                $ChildTS = ($Step.settings.childTaskSequenceId).Split(':')[0]
-                                $CurrentTaskSequence = $DBTaskSequences | Where-Object {$_.id -eq "$ChildTS"}
-                                $referencedTaskSequences += $CurrentTaskSequence
-                                Get-TaskSequenceReferencedContent -TaskSequences $CurrentTaskSequence -AllTaskSequences $DBTaskSequences
-                            }
-                            # Extract content IDs from contentItems (PSCustomObject)
-                            if ($Step.contentItems) {
-                                # Access the properties of the PSCustomObject
-                                $Step.contentItems.psobject.Properties | ForEach-Object {
-                                    # Values are in format "ID:1", extract just the ID part
-                                    $contentId = $_.Value.Split(':')[0]
-                                    if ($contentId) {
-                                        $contentIds += $contentId
-                                    }
-                                }
-                            }
+                            $TSInfoReturn =  Get-StepInfo -Step $step
+                            $referencedContentIds += $TSInfoReturn.contentIDs
+                            $referencedTaskSequences += $TSInfoReturn.referenceTaskSequences
                             
                             # Recursively process groupMembers if they exist
                             if ($Step.groupMembers -and $Step.groupMembers.Count -gt 0) {
                                 $script:GroupMember = $Step.groupMembers
                                 foreach ($groupMember in $Step.groupMembers) {
-                                    Write-Host "Processing nested group member step: $($groupMember.name)" -ForegroundColor Gray
-                                    if ($groupMember.typeId -eq "00000001-0000-0000-0000-00000000000d") {
-                                        Write-Host "Processing Child Task Sequence: $($groupMember.name)" -ForegroundColor Gray
-                                        $ChildTS = ($groupMember.settings.childTaskSequenceId).Split(':')[0]
-                                        $CurrentTaskSequence = $DBTaskSequences | Where-Object {$_.id -eq "$ChildTS"}
-                                        $referencedTaskSequences += $CurrentTaskSequence
-                                        Get-TaskSequenceReferencedContent -TaskSequences $CurrentTaskSequence -AllTaskSequences $DBTaskSequences
+                                    Write-Host "Processing nested Level 1 member step: $($groupMember.name)" -ForegroundColor Gray
+                                    $TSInfoReturn =  Get-StepInfo -Step $groupMember
+                                    $referencedContentIds += $TSInfoReturn.contentIDs
+                                    $referencedTaskSequences += $TSInfoReturn.referenceTaskSequences
+                                    if ($groupMember.groupMembers -and $groupMember.groupMembers.Count -gt 0){
+                                        foreach ($subGroupMember in $groupMember.groupMembers) {
+                                            Write-Host "Processing nested Level 2 member step: $($subGroupMember.name)" -ForegroundColor Gray
+                                            $TSInfoReturn =  Get-StepInfo -Step $subGroupMember
+                                            $referencedContentIds += $TSInfoReturn.contentIDs
+                                            $referencedTaskSequences += $TSInfoReturn.referenceTaskSequences
+                                            if ($subGroupMember.groupMembers -and $subGroupMember.groupMembers.Count -gt 0){
+                                                foreach ($subSubGroupMember in $subGroupMember.groupMembers) {
+                                                    Write-Host "Processing nested Level 3 member step: $($subSubGroupMember.name)" -ForegroundColor Gray
+                                                    $TSInfoReturn =  Get-StepInfo -Step $subSubGroupMember
+                                                    $referencedContentIds += $TSInfoReturn.contentIDs
+                                                    $referencedTaskSequences += $TSInfoReturn.referenceTaskSequences
+                                                    if ($subSubGroupMember.groupMembers -and $subSubGroupMember.groupMembers.Count -gt 0){
+                                                        foreach ($subSubSubGroupMember in $subSubGroupMember.groupMembers) {
+                                                            Write-Host "Processing nested Level 4 member step: $($subSubSubGroupMember.name)" -ForegroundColor Gray
+                                                            $TSInfoReturn =  Get-StepInfo -Step $subSubSubGroupMember
+                                                            $referencedContentIds += $TSInfoReturn.contentIDs
+                                                            $referencedTaskSequences += $TSInfoReturn.referenceTaskSequences
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
-                                    $contentIds += Get-StepContentReferences -Step $groupMember
+                                    
                                 }
                             }
                             # Filter out built-in content IDs
@@ -204,44 +245,232 @@ function Get-TaskSequenceReferencedContent {
     
     # Return unique IDs
     #Create a PS Object of the referenced Task Sequences & Content Items to return
-    $result = [PSCustomObject]@{
+    $script:result = [PSCustomObject]@{
         referencedContentIDs = ($referencedContentIds | Select-Object -Unique)
         referenceTaskSequences = ($referencedTaskSequences | Select-Object -Unique)
     }
     
-    return $result
+    return $script:result
+}
+function Get-DeployRContentReferences {
+    [CmdletBinding(DefaultParameterSetName = "Path")]
+    param(
+    [Parameter(Mandatory = $true, ParameterSetName = "Path")]
+    [string]$JsonFilePath,
+    
+    [Parameter(Mandatory = $true, ParameterSetName = "Object")]
+    [object]$JsonObject,
+    
+    [Parameter(Mandatory = $false)]
+    [switch]$ExportResults
+    )
+    
+    # Load JSON based on input mode
+    if ($PSCmdlet.ParameterSetName -eq "Path") {
+        if (-not (Test-Path $JsonFilePath)) {
+            Write-Error "File not found: $JsonFilePath"
+            return $null
+        }
+        Write-Verbose "Loading JSON file: $JsonFilePath"
+        $jsonContent = Get-Content $JsonFilePath -Raw | ConvertFrom-Json
+        $sourceLabel = $JsonFilePath
+    }
+    else {
+        if (-not $JsonObject) {
+            Write-Error "JsonObject is null or empty."
+            return $null
+        }
+        $jsonContent = $JsonObject
+        $sourceLabel = "ObjectInput"
+    }
+    
+    # Normalize to array of items
+    if ($jsonContent -is [array]) { $items = $jsonContent } else { $items = @($jsonContent) }
+    
+    # Filter: we only care about objects that have versions with steps
+    $items = $items | Where-Object { $_.versions -and $_.versions.Count -gt 0 }
+    
+    # Collector
+    $allExtracted = @()
+    
+    filter Extract-StepReferences {
+        param(
+        [Parameter(ValueFromPipeline = $true)]
+        [object]$Step,
+        
+        [Parameter(Mandatory = $false)]
+        [int]$DepthLevel = 0
+        )
+        
+        if ($null -eq $Step) { return }
+        
+        $indent = "  " * $DepthLevel
+        $stepName = $Step.name
+        $stepId = $Step.id
+        $typeId = $Step.typeId
+        
+        # Emit step summary
+        [PSCustomObject]@{
+            Type       = "Step"
+            Name       = $stepName
+            Id         = $stepId
+            TypeId     = $typeId
+            IsGroup    = $Step.isGroup
+            DepthLevel = $DepthLevel
+            Enabled    = $Step.enabled
+        }
+        
+        # Child task sequence
+        if ($typeId -eq "00000001-0000-0000-0000-00000000000d" -and $Step.settings -and $Step.settings.childTaskSequenceId) {
+            $childTsId = $Step.settings.childTaskSequenceId.Split(':')[0]
+            Write-Verbose "${indent}[Child TS] $stepName -> $childTsId"
+            [PSCustomObject]@{
+                Type                = "ChildTaskSequence"
+                StepName            = $stepName
+                StepId              = $stepId
+                ChildTaskSequenceId = $childTsId
+                DepthLevel          = $DepthLevel
+                TypeId              = $typeId
+            }
+        }
+        
+        # Content references
+        if ($Step.contentItems) {
+            $props = $Step.contentItems | Get-Member -MemberType NoteProperty
+            foreach ($p in $props) {
+                $propertyName = $p.Name
+                $propertyValue = $Step.contentItems.$propertyName
+                if ($propertyValue) {
+                    $contentId = $propertyValue.Split(':')[0]
+                    Write-Verbose "${indent}[Content] $stepName -> $propertyName : $contentId"
+                    [PSCustomObject]@{
+                        Type          = "ContentReference"
+                        StepName      = $stepName
+                        StepId        = $stepId
+                        PropertyName  = $propertyName
+                        ContentId     = $contentId
+                        FullValue     = $propertyValue
+                        DepthLevel    = $DepthLevel
+                        TypeId        = $typeId
+                    }
+                }
+            }
+        }
+        
+        # Recurse group members
+        if ($Step.groupMembers -and $Step.groupMembers.Count -gt 0) {
+            Write-Verbose "${indent}[Group] $($Step.groupMembers.Count) member(s)"
+            $Step.groupMembers | Extract-StepReferences -DepthLevel ($DepthLevel + 1)
+        }
+    }
+    
+    # Process items
+    foreach ($item in $items) {
+        foreach ($version in $item.versions) {
+            if ($version.steps) {
+                $allExtracted += @($version.steps | Extract-StepReferences -DepthLevel 1)
+            }
+        }
+    }
+    
+    # Separate results
+    $stepSummary = @($allExtracted | Where-Object { $_.Type -eq "Step" })
+    $allContentReferences = @($allExtracted | Where-Object { $_.Type -eq "ContentReference" })
+    $allTaskSequenceReferences = @($allExtracted | Where-Object { $_.Type -eq "ChildTaskSequence" })
+    
+    # Flattened unique IDs for easy downstream use (e.g. backup)
+    $contentIdsUnique = @($allContentReferences.ContentId | Where-Object { $_ } | Select-Object -Unique)
+    $childTaskSequenceIdsUnique = @($allTaskSequenceReferences.ChildTaskSequenceId | Where-Object { $_ } | Select-Object -Unique)
+    
+    # Build results object
+    $results = [PSCustomObject]@{
+        ExportDate              = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+        Source                  = $sourceLabel
+        TotalSteps              = $stepSummary.Count
+        TotalContentReferences  = $allContentReferences.Count
+        TotalTaskSequences      = $allTaskSequenceReferences.Count
+        ContentReferences       = $allContentReferences
+        TaskSequenceReferences  = $allTaskSequenceReferences
+        StepSummary             = $stepSummary
+        ContentIds              = $contentIdsUnique
+        ChildTaskSequenceIds    = $childTaskSequenceIdsUnique
+    }
+    
+    # Export results to JSON if requested
+    if ($ExportResults) {
+        $outputPath = "$([System.IO.Path]::GetDirectoryName($JsonFilePath))\ParsedReferences.json"
+        $results | ConvertTo-Json -Depth 10 | Out-File -FilePath $outputPath -Encoding UTF8
+        Write-Host "Results exported to: $outputPath" -ForegroundColor Green
+    }
+    
+    # Print summary
+    Write-Host ""
+    Write-Host "=========================================================" -ForegroundColor Cyan
+    Write-Host "SUMMARY REPORT" -ForegroundColor Cyan
+    Write-Host "=========================================================" -ForegroundColor Cyan
+    Write-Host ""
+    
+    Write-Host "STATISTICS" -ForegroundColor Yellow
+    Write-Host "  Total Steps Found: $($stepSummary.Count)"
+    Write-Host "  Total Content References: $($allContentReferences.Count)"
+    Write-Host "  Total Child Task Sequences: $($allTaskSequenceReferences.Count)"
+    Write-Host ""
+    
+    if ($allTaskSequenceReferences.Count -gt 0) {
+        Write-Host "CHILD TASK SEQUENCE REFERENCES" -ForegroundColor Yellow
+        $allTaskSequenceReferences | Format-Table -AutoSize @(
+        @{ Label = "Step Name"; Expression = { $_.StepName } },
+        @{ Label = "Step ID"; Expression = { $_.StepId } },
+        @{ Label = "Child TS ID"; Expression = { $_.ChildTaskSequenceId } },
+        @{ Label = "Depth"; Expression = { $_.DepthLevel } }
+        )
+        Write-Host ""
+    }
+    
+    if ($allContentReferences.Count -gt 0) {
+        Write-Host "CONTENT ITEM REFERENCES" -ForegroundColor Yellow
+        $allContentReferences | Format-Table -AutoSize @(
+        @{ Label = "Step Name"; Expression = { $_.StepName } },
+        @{ Label = "Content ID"; Expression = { $_.ContentId } },
+        @{ Label = "Property"; Expression = { $_.PropertyName } },
+        @{ Label = "Depth"; Expression = { $_.DepthLevel } }
+        )
+        Write-Host ""
+    }
+    
+    return $results
 }
 
 function Backup-DeployRContentItem {
     <#
     .SYNOPSIS
-        Backs up a DeployR content item.
+    Backs up a DeployR content item.
     
     .PARAMETER ContentItem
-        The content item to backup.
+    The content item to backup.
     
     .PARAMETER BackupPath
-        The destination path for the backup.
+    The destination path for the backup.
     
     .PARAMETER ContentType
-        The type of content being backed up.
+    The type of content being backed up.
     
     .PARAMETER QueryType
-        Whether this is a Metadata or ContentItem type.
+    Whether this is a Metadata or ContentItem type.
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)]
-        [object]$ContentItem,
-        
-        [Parameter(Mandatory)]
-        [string]$BackupPath,
-        
-        [Parameter(Mandatory)]
-        [string]$ContentType,
-        
-        [Parameter(Mandatory)]
-        [string]$QueryType
+    [Parameter(Mandatory)]
+    [object]$ContentItem,
+    
+    [Parameter(Mandatory)]
+    [string]$BackupPath,
+    
+    [Parameter(Mandatory)]
+    [string]$ContentType,
+    
+    [Parameter(Mandatory)]
+    [string]$QueryType
     )
     
     try {
@@ -329,12 +558,12 @@ Write-Host ""
 
 # Define content types
 $contentTypes = @(
-    [PSCustomObject]@{ DisplayName = "Applications"; QueryType = "ContentItem"; Purpose = "Application" },
-    [PSCustomObject]@{ DisplayName = "Task Sequences"; QueryType = "Metadata"; MetadataType = "TaskSequence" },
-    [PSCustomObject]@{ DisplayName = "OS Packages"; QueryType = "ContentItem"; Purpose = "OSPackage" },
-    [PSCustomObject]@{ DisplayName = "Driver Packs"; QueryType = "ContentItem"; Purpose = "DriverPack" },
-    [PSCustomObject]@{ DisplayName = "Step Definitions"; QueryType = "Metadata"; MetadataType = "StepDefinition" },
-    [PSCustomObject]@{ DisplayName = "Other Content"; QueryType = "ContentItem"; Purpose = "Other" }
+[PSCustomObject]@{ DisplayName = "Applications"; QueryType = "ContentItem"; Purpose = "Application" },
+[PSCustomObject]@{ DisplayName = "Task Sequences"; QueryType = "Metadata"; MetadataType = "TaskSequence" },
+[PSCustomObject]@{ DisplayName = "OS Packages"; QueryType = "ContentItem"; Purpose = "OSPackage" },
+[PSCustomObject]@{ DisplayName = "Driver Packs"; QueryType = "ContentItem"; Purpose = "DriverPack" },
+[PSCustomObject]@{ DisplayName = "Step Definitions"; QueryType = "Metadata"; MetadataType = "StepDefinition" },
+[PSCustomObject]@{ DisplayName = "Other Content"; QueryType = "ContentItem"; Purpose = "Other" }
 )
 
 # Select content types to backup
@@ -357,7 +586,8 @@ if ($selectedTypes -contains ($contentTypes | Where-Object { $_.DisplayName -eq 
     $DBTaskSequences = Get-DeployRMetadata -Type TaskSequence
     Write-Host "Found $($DBTaskSequences.Count) Task Sequences in DeployR." -ForegroundColor Green
     Write-Host "Select which Task Sequences to backup..." -ForegroundColor Gray
-    $totalSelectedTaskSequences = $DBTaskSequences | Out-GridView -Title "Select $($type.DisplayName) to Backup (Hold Ctrl to select multiple)" -OutputMode Multiple
+    $totalSelectedTaskSequences = @()
+    $totalSelectedTaskSequences += $DBTaskSequences | Out-GridView -Title "Select $($type.DisplayName) to Backup (Hold Ctrl to select multiple)" -OutputMode Multiple
     $totalSelectedItems += $totalSelectedTaskSequences
 }
 if ($selectedTypes -contains ($contentTypes | Where-Object { $_.DisplayName -eq "Step Definitions" }) ) {
@@ -365,7 +595,8 @@ if ($selectedTypes -contains ($contentTypes | Where-Object { $_.DisplayName -eq 
     $DBStepDefinitions = Get-DeployRMetadata -Type StepDefinition | Where-Object{$_.id -notlike '0000*'}
     Write-Host "Found $($DBStepDefinitions.Count) Step Definitions in DeployR." -ForegroundColor Green
     Write-Host "Select which Step Definitions to backup..." -ForegroundColor Gray
-    $totalSelectedStepDefinitions = $DBStepDefinitions | Out-GridView -Title "Select $($type.DisplayName) to Backup (Hold Ctrl to select multiple)" -OutputMode Multiple
+    $totalSelectedStepDefinitions = @()
+    $totalSelectedStepDefinitions += $DBStepDefinitions | Out-GridView -Title "Select $($type.DisplayName) to Backup (Hold Ctrl to select multiple)" -OutputMode Multiple
     $totalSelectedItems += $totalSelectedStepDefinitions
 }
 $DBContentItems = Get-DeployRMetadata -Type ContentItem | Where-Object{$_.id -notlike '00000000-*'}
@@ -379,11 +610,64 @@ if ($selectedTypes | Where-Object { $_.QueryType -eq "ContentItem" }) {
     }
 }
 
+# Optional: pull referenced content/task sequences from an exported JSON
+$parsedReferences = $null
+$extraContentFromJson = @()
+$extraChildTsFromJson = @()
+foreach ($ReferenceJsonObject in $totalSelectedTaskSequences){
+    if ($ReferenceJsonPath -or $ReferenceJsonObject) {
+        
+        if (Get-Command Get-DeployRContentReferences -ErrorAction SilentlyContinue) {
+            # Determine which input mode to use
+            if ($ReferenceJsonObject) {
+                Write-Host "Parsing task sequence object for references..." -ForegroundColor Gray
+                $parsedReferences = Get-DeployRContentReferences -JsonObject $ReferenceJsonObject
+            }
+            elseif ($ReferenceJsonPath) {
+                if (-not (Test-Path $ReferenceJsonPath)) {
+                    Write-Warning "ReferenceJsonPath not found: $ReferenceJsonPath"
+                }
+                else {
+                    Write-Host "Parsing JSON file for references: $ReferenceJsonPath" -ForegroundColor Gray
+                    $parsedReferences = Get-DeployRContentReferences -JsonFilePath $ReferenceJsonPath
+                }
+            }
+            
+            # Process parsed results
+            if ($parsedReferences) {
+                $extraContentIds = $parsedReferences.ContentIds | Where-Object { $_ -and $_ -notlike '00000000-*' }
+                $extraChildTsIds = $parsedReferences.ChildTaskSequenceIds | Where-Object { $_ }
+                if ($extraContentIds.Count -gt 0) {
+                    $extraContentFromJson = $DBContentItems | Where-Object { $extraContentIds -contains $_.id }
+                    Write-Host "Including $($extraContentFromJson.Count) content item(s) from JSON references" -ForegroundColor Yellow
+                }
+                if ($extraChildTsIds.Count -gt 0) {
+                    if (-not $DBTaskSequences) {
+                        $DBTaskSequences = Get-DeployRMetadata -Type TaskSequence
+                    }
+                    $extraChildTsFromJson = $DBTaskSequences | Where-Object { $extraChildTsIds -contains $_.id }
+                    Write-Host "Including $($extraChildTsFromJson.Count) child task sequence(s) from JSON references" -ForegroundColor Yellow
+                }
+            }
+        }
+    }
+}
 
 
 # Process each selected content type
 $backupResults = @()
 $referencedContentToBackup = @()
+
+# Fold in JSON-derived references
+if ($extraChildTsFromJson.Count -gt 0) {
+    if (-not $totalSelectedTaskSequences) { $totalSelectedTaskSequences = @() }
+    $totalSelectedTaskSequences += $extraChildTsFromJson
+    $totalSelectedTaskSequences = $totalSelectedTaskSequences | Sort-Object id -Unique
+}
+if ($extraContentFromJson.Count -gt 0) {
+    $referencedContentToBackup += $extraContentFromJson
+    $referencedContentToBackup = $referencedContentToBackup | Sort-Object id -Unique
+}
 
 foreach ($type in $selectedTypes) {
     Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Cyan
@@ -393,7 +677,7 @@ foreach ($type in $selectedTypes) {
     
     # Get content items for this type
     Write-Host "Retrieving $($type.DisplayName) from DeployR..." -ForegroundColor Gray
-
+    
     if ($type.QueryType -eq "Metadata") {
         if ($type.DisplayName -eq "Task Sequences") {
             $selectedItems = $totalSelectedTaskSequences
@@ -405,23 +689,23 @@ foreach ($type in $selectedTypes) {
     else {
         $selectedItems = $totalSelectedItems | Where-Object { $_.contentItemPurpose -match $type.Purpose }
     }
-
+    
     #backup Content Items here
-
-
+    
+    
     # If Task Sequences are selected, analyze for referenced content
     if ($type.DisplayName -eq "Task Sequences") {
         Write-Host ""
         Write-Host "Analyzing Task Sequences for referenced content..." -ForegroundColor Cyan
-        $referencedIds = Get-TaskSequenceReferencedContent -TaskSequences $selectedItems -AllTaskSequences $DBTaskSequences
+        $referencedIds = $referencedContentToBackup.id
         
         if ($referencedIds.Count -gt 0) {
             Write-Host "  Found $($referencedIds.Count) referenced content item(s)" -ForegroundColor Yellow
             
             # Get the full content item details
             $allContentItems = $DBContentItems #Get-DeployRContentItem -ErrorAction SilentlyContinue
-            $referencedContent = $allContentItems | Where-Object { $referencedIds -contains $_.id }
-            
+            $referencedContent = $referencedContentToBackup
+            $referencedTaskSequences = $extraChildTsFromJson
             if ($referencedContent) {
                 # Show referenced content to user
                 Write-Host ""
@@ -441,6 +725,15 @@ foreach ($type in $selectedTypes) {
                     Write-Host "  Referenced content will NOT be backed up" -ForegroundColor Yellow
                 }
             }
+            if ($referencedTaskSequences) {
+                Write-Host ""
+                Write-Host "The selected Task Sequences also reference the following Task Sequences:" -ForegroundColor Yellow
+                $referencedTaskSequences | ForEach-Object { 
+                    Write-Host "  • $($_.name)" -ForegroundColor Gray 
+                }
+                Write-Host "They will also be backed up" -ForegroundColor Yellow
+                Write-Host ""
+            }
         }
         else {
             Write-Host "  No referenced content found" -ForegroundColor Gray
@@ -459,10 +752,6 @@ foreach ($type in $selectedTypes) {
     
     Write-Host ""
 }
-    catch {
-        Write-Warning "Failed to retrieve $($type.DisplayName): $_"
-        Write-Host ""
-    }
 
 
 # Backup any referenced content that was identified from Task Sequences
