@@ -539,6 +539,11 @@ if (-not (Test-Path $BackupPath)) {
     Write-Host "Creating backup directory: $BackupPath" -ForegroundColor Yellow
     New-Item -ItemType Directory -Path $BackupPath -Force | Out-Null
 }
+#Create Backup Subfolder with DateTime
+$timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+$BackupPath = Join-Path -Path $BackupPath -ChildPath "DeployRBackup_$timestamp"
+New-Item -ItemType Directory -Path $BackupPath -Force | Out-Null
+
 
 Write-Host "Backup Location: $BackupPath" -ForegroundColor White
 Write-Host ""
@@ -606,12 +611,13 @@ if ($selectedTypes | Where-Object { $_.QueryType -eq "ContentItem" }) {
 }
 
 # Optional: pull referenced content/task sequences from an exported JSON
-$parsedReferences = $null
-$extraContentFromJson = @()
-$extraChildTsFromJson = @()
+$extraContentFromJsonCombine = @()
+$extraChildTsFromJsonCombine = @()
 foreach ($ReferenceJsonObject in $totalSelectedTaskSequences){
     if ($ReferenceJsonPath -or $ReferenceJsonObject) {
-        
+        $parsedReferences = $null
+        $extraContentFromJson = @()
+        $extraChildTsFromJson = @()
         if (Get-Command Get-DeployRContentReferences -ErrorAction SilentlyContinue) {
             # Determine which input mode to use
             if ($ReferenceJsonObject) {
@@ -635,6 +641,7 @@ foreach ($ReferenceJsonObject in $totalSelectedTaskSequences){
                 if ($extraContentIds.Count -gt 0) {
                     $extraContentFromJson = $DBContentItems | Where-Object { $extraContentIds -contains $_.id }
                     Write-Host "Including $($extraContentFromJson.Count) content item(s) from JSON references" -ForegroundColor Yellow
+                    $extraContentFromJsonCombine += $extraContentFromJson
                 }
                 if ($extraChildTsIds.Count -gt 0) {
                     if (-not $DBTaskSequences) {
@@ -642,6 +649,7 @@ foreach ($ReferenceJsonObject in $totalSelectedTaskSequences){
                     }
                     $extraChildTsFromJson = $DBTaskSequences | Where-Object { $extraChildTsIds -contains $_.id }
                     Write-Host "Including $($extraChildTsFromJson.Count) child task sequence(s) from JSON references" -ForegroundColor Yellow
+                    $extraChildTsFromJsonCombine += $extraChildTsFromJson
                 }
             }
         }
@@ -654,13 +662,13 @@ $backupResults = @()
 $referencedContentToBackup = @()
 
 # Fold in JSON-derived references
-if ($extraChildTsFromJson.Count -gt 0) {
+if ($extraChildTsFromJsonCombine.Count -gt 0) {
     if (-not $totalSelectedTaskSequences) { $totalSelectedTaskSequences = @() }
-    $totalSelectedTaskSequences += $extraChildTsFromJson
+    $totalSelectedTaskSequences += $extraChildTsFromJsonCombine
     $totalSelectedTaskSequences = $totalSelectedTaskSequences | Sort-Object id -Unique
 }
-if ($extraContentFromJson.Count -gt 0) {
-    $referencedContentToBackup += $extraContentFromJson
+if ($extraContentFromJsonCombine.Count -gt 0) {
+    $referencedContentToBackup += $extraContentFromJsonCombine
     $referencedContentToBackup = $referencedContentToBackup | Sort-Object id -Unique
 }
 
@@ -698,9 +706,8 @@ foreach ($type in $selectedTypes) {
             Write-Host "  Found $($referencedIds.Count) referenced content item(s)" -ForegroundColor Yellow
             
             # Get the full content item details
-            $allContentItems = $DBContentItems #Get-DeployRContentItem -ErrorAction SilentlyContinue
             $referencedContent = $referencedContentToBackup
-            $referencedTaskSequences = $extraChildTsFromJson
+            $referencedTaskSequences = $extraChildTsFromJsonCombine
             if ($referencedContent) {
                 # Show referenced content to user
                 Write-Host ""
@@ -714,7 +721,7 @@ foreach ($type in $selectedTypes) {
                 $userChoice = Read-Host "Would you like to include these referenced content items in the backup? (Y/N)"
                 if ($userChoice -eq 'Y' -or $userChoice -eq 'y') {
                     Write-Host "  Referenced content will be included in backup" -ForegroundColor Green
-                    $referencedContentToBackup += $referencedContent
+                    $referencedContentToBackup = $referencedContent
                 }
                 else {
                     Write-Host "  Referenced content will NOT be backed up" -ForegroundColor Yellow
