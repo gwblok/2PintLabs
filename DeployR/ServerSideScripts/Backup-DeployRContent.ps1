@@ -38,11 +38,6 @@ param(
 #region Functions
 
 function Connect-ToDeployR {
-    <#
-    .SYNOPSIS
-    Connects to DeployR server.
-    #>
-    
     try {
         # Check if module is available
         if (Test-Path 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility') {
