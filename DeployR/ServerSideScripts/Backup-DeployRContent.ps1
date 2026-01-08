@@ -77,176 +77,7 @@ function Connect-ToDeployR {
     }
 }
 
-function Get-StepContentReferences {
-    <#
-    .SYNOPSIS
-    Recursively extracts content IDs from a step and its nested groupMembers.
-    
-    .PARAMETER Step
-    The step object to analyze.
-    
-    .OUTPUTS
-    Array of content item IDs.
-    #>
-    [CmdletBinding()]
-    param(
-    [Parameter(Mandatory)]
-    [object]$Step
-    )
-    
-    $contentIds = @()
-    
-    
-    # Extract content IDs from contentItems (PSCustomObject)
-    if ($Step.contentItems) {
-        # Access the properties of the PSCustomObject
-        $Step.contentItems.psobject.Properties | ForEach-Object {
-            # Values are in format "ID:1", extract just the ID part
-            $contentId = $_.Value.Split(':')[0]
-            if ($contentId) {
-                $contentIds += $contentId
-            }
-        }
-    }
-    
-    
-    # Recursively process groupMembers if they exist
-    if ($Step.groupMembers -and $Step.groupMembers.Count -gt 0) {
-        $script:GroupMember = $Step.groupMembers
-        foreach ($groupMember in $Step.groupMembers) {
-            Write-Host "Processing step: $($groupMember.name)" -ForegroundColor Gray
-            $contentIds += Get-StepContentReferences -Step $groupMember
-        }
-    }
-    
-    return $contentIds
-}
-function Get-StepInfo {
-    [CmdletBinding()]
-    param(
-    [Parameter(Mandatory)]
-    [object]$Step
-    )
-    $referencedTaskSequences = @()
-    $contentIds = @()
-    if ($Step.typeId -eq "00000001-0000-0000-0000-00000000000d") {
-        Write-Host "Processing Child Task Sequence: $($Step.name)" -ForegroundColor Gray
-        $ChildTS = ($Step.settings.childTaskSequenceId).Split(':')[0]
-        $CurrentTaskSequence = $DBTaskSequences | Where-Object {$_.id -eq "$ChildTS"}
-        $referencedTaskSequences += $CurrentTaskSequence
-        Get-TaskSequenceReferencedContent -TaskSequences $CurrentTaskSequence -AllTaskSequences $DBTaskSequences
-    }
-    # Extract content IDs from contentItems (PSCustomObject)
-    if ($Step.contentItems) {
-        # Access the properties of the PSCustomObject
-        $Step.contentItems.psobject.Properties | ForEach-Object {
-            # Values are in format "ID:1", extract just the ID part
-            $contentId = $_.Value.Split(':')[0]
-            if ($contentId) {
-                $contentIds += $contentId
-            }
-        }
-    }
-    # Create a PS Object of the referenced Task Sequences & Content Items to return
-    $script:result = [PSCustomObject]@{
-        contentIDs = $contentIds
-        referenceTaskSequences = $referencedTaskSequences
-    }
-    
-}
-function Get-TaskSequenceReferencedContent {
-    <#
-    .SYNOPSIS
-    Analyzes Task Sequences to find all referenced content items at any nesting level.
-    
-    .PARAMETER TaskSequences
-    Array of task sequence objects to analyze.
-    
-    .OUTPUTS
-    Array of content item IDs referenced in the task sequences.
-    #>
-    [CmdletBinding()]
-    param(
-    [Parameter(Mandatory)]
-    [object[]]$TaskSequences,
-    [object[]]$AllTaskSequences
-    )
-    
-    $referencedContentIds = @()
-    $referencedTaskSequences = @()
-    
-    foreach ($ts in $TaskSequences) { #foreach ($ts in $TaskSequences) {}
-        try {
-            if ($ts.versions) {
-                foreach ($version in $ts.versions) { #foreach ($version in $ts.versions) {}
-                    if ($version.steps) {
-                        # Process each top-level step recursively
-                        foreach ($step in $version.steps) {
-                            #$contentIds = Get-StepContentReferences -Step $step
-                            $TSInfoReturn =  Get-StepInfo -Step $step
-                            $referencedContentIds += $TSInfoReturn.contentIDs
-                            $referencedTaskSequences += $TSInfoReturn.referenceTaskSequences
-                            
-                            # Recursively process groupMembers if they exist
-                            if ($Step.groupMembers -and $Step.groupMembers.Count -gt 0) {
-                                $script:GroupMember = $Step.groupMembers
-                                foreach ($groupMember in $Step.groupMembers) {
-                                    Write-Host "Processing nested Level 1 member step: $($groupMember.name)" -ForegroundColor Gray
-                                    $TSInfoReturn =  Get-StepInfo -Step $groupMember
-                                    $referencedContentIds += $TSInfoReturn.contentIDs
-                                    $referencedTaskSequences += $TSInfoReturn.referenceTaskSequences
-                                    if ($groupMember.groupMembers -and $groupMember.groupMembers.Count -gt 0){
-                                        foreach ($subGroupMember in $groupMember.groupMembers) {
-                                            Write-Host "Processing nested Level 2 member step: $($subGroupMember.name)" -ForegroundColor Gray
-                                            $TSInfoReturn =  Get-StepInfo -Step $subGroupMember
-                                            $referencedContentIds += $TSInfoReturn.contentIDs
-                                            $referencedTaskSequences += $TSInfoReturn.referenceTaskSequences
-                                            if ($subGroupMember.groupMembers -and $subGroupMember.groupMembers.Count -gt 0){
-                                                foreach ($subSubGroupMember in $subGroupMember.groupMembers) {
-                                                    Write-Host "Processing nested Level 3 member step: $($subSubGroupMember.name)" -ForegroundColor Gray
-                                                    $TSInfoReturn =  Get-StepInfo -Step $subSubGroupMember
-                                                    $referencedContentIds += $TSInfoReturn.contentIDs
-                                                    $referencedTaskSequences += $TSInfoReturn.referenceTaskSequences
-                                                    if ($subSubGroupMember.groupMembers -and $subSubGroupMember.groupMembers.Count -gt 0){
-                                                        foreach ($subSubSubGroupMember in $subSubGroupMember.groupMembers) {
-                                                            Write-Host "Processing nested Level 4 member step: $($subSubSubGroupMember.name)" -ForegroundColor Gray
-                                                            $TSInfoReturn =  Get-StepInfo -Step $subSubSubGroupMember
-                                                            $referencedContentIds += $TSInfoReturn.contentIDs
-                                                            $referencedTaskSequences += $TSInfoReturn.referenceTaskSequences
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    
-                                }
-                            }
-                            # Filter out built-in content IDs
-                            foreach ($cid in $contentIds) {
-                                if ($cid -and $cid -notlike '00000000-*' -and $cid -notlike '{00000000-*') {
-                                    $referencedContentIds += $cid
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        catch {
-            Write-Warning "Failed to analyze task sequence $($ts.name): $_"
-        }
-    }
-    
-    # Return unique IDs
-    #Create a PS Object of the referenced Task Sequences & Content Items to return
-    $script:result = [PSCustomObject]@{
-        referencedContentIDs = ($referencedContentIds | Select-Object -Unique)
-        referenceTaskSequences = ($referencedTaskSequences | Select-Object -Unique)
-    }
-    
-    return $script:result
-}
+ 
 function Get-DeployRContentReferences {
     [CmdletBinding(DefaultParameterSetName = "Path")]
     param(
@@ -560,7 +391,7 @@ Write-Host ""
 $contentTypes = @(
 [PSCustomObject]@{ DisplayName = "Applications"; QueryType = "ContentItem"; Purpose = "Application" },
 [PSCustomObject]@{ DisplayName = "Task Sequences"; QueryType = "Metadata"; MetadataType = "TaskSequence" },
-[PSCustomObject]@{ DisplayName = "OS Packages"; QueryType = "ContentItem"; Purpose = "OSPackage" },
+[PSCustomObject]@{ DisplayName = "OS Packages"; QueryType = "ContentItem"; Purpose = "OperatingSystem" },
 [PSCustomObject]@{ DisplayName = "Driver Packs"; QueryType = "ContentItem"; Purpose = "DriverPack" },
 [PSCustomObject]@{ DisplayName = "Step Definitions"; QueryType = "Metadata"; MetadataType = "StepDefinition" },
 [PSCustomObject]@{ DisplayName = "Other Content"; QueryType = "ContentItem"; Purpose = "Other" }
@@ -774,6 +605,10 @@ if ($referencedContentToBackup.Count -gt 0) {
             default { "Other Content" }
         }
         
+        if ($item.id -in $backupResults.Id) {
+            Write-Host "  • $($item.name) already backed up, skipping..." -ForegroundColor Gray
+            continue
+        }   
         $result = Backup-DeployRContentItem -ContentItem $item -BackupPath $BackupPath -ContentType $contentTypeName -QueryType "ContentItem"
         $backupResults += $result
     }
