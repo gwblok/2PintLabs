@@ -79,7 +79,7 @@ function Connect-ToDeployR {
     }
 }
 
-
+ 
 function Get-DeployRContentReferences {
     [CmdletBinding(DefaultParameterSetName = "Path")]
     param(
@@ -137,22 +137,15 @@ function Get-DeployRContentReferences {
         $stepId = $Step.id
         $typeId = $Step.typeId
         
-        # Safely get stepDefinitionId
-        $stepDefinitionId = $null
-        if ($Step.type -and $Step.type.versions -and $Step.type.versions.Count -gt 0) {
-            $stepDefinitionId = $Step.type.versions[0].stepDefinitionId
-        }
-        
         # Emit step summary
         [PSCustomObject]@{
-            Type               = "Step"
-            Name               = $stepName
-            Id                 = $stepId
-            TypeId             = $typeId
-            StepDefinitionId   = $stepDefinitionId
-            IsGroup            = $Step.isGroup
-            DepthLevel         = $DepthLevel
-            Enabled            = $Step.enabled
+            Type       = "Step"
+            Name       = $stepName
+            Id         = $stepId
+            TypeId     = $typeId
+            IsGroup    = $Step.isGroup
+            DepthLevel = $DepthLevel
+            Enabled    = $Step.enabled
         }
         
         # Child task sequence
@@ -217,13 +210,6 @@ function Get-DeployRContentReferences {
     $contentIdsUnique = @($allContentReferences.ContentId | Where-Object { $_ } | Select-Object -Unique)
     $childTaskSequenceIdsUnique = @($allTaskSequenceReferences.ChildTaskSequenceId | Where-Object { $_ } | Select-Object -Unique)
     
-    # Collect and filter stepDefinitionIds
-    $stepDefinitionIdsUnique = @(
-        $stepSummary.StepDefinitionId | 
-        Where-Object { $_ -and $_ -notmatch '^00000001' } | 
-        Select-Object -Unique
-    )
-    
     # Build results object
     $results = [PSCustomObject]@{
         ExportDate              = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
@@ -236,7 +222,6 @@ function Get-DeployRContentReferences {
         StepSummary             = $stepSummary
         ContentIds              = $contentIdsUnique
         ChildTaskSequenceIds    = $childTaskSequenceIdsUnique
-        StepDefinitionIds       = $stepDefinitionIdsUnique
     }
     
     # Export results to JSON if requested
@@ -257,7 +242,6 @@ function Get-DeployRContentReferences {
     Write-Host "  Total Steps Found: $($stepSummary.Count)"
     Write-Host "  Total Content References: $($allContentReferences.Count)"
     Write-Host "  Total Child Task Sequences: $($allTaskSequenceReferences.Count)"
-    Write-Host "  Total Unique Step Definitions (Custom): $($stepDefinitionIdsUnique.Count)"
     Write-Host ""
     
     if ($allTaskSequenceReferences.Count -gt 0) {
@@ -418,8 +402,7 @@ $contentTypes = @(
 # Select content types to backup
 Write-Host "Step 1: Select content types to backup" -ForegroundColor Cyan
 Write-Host ""
-$selectedTypes = @()
-$selectedTypes += $contentTypes | Out-GridView -Title "Select Content Types to Backup (Hold Ctrl to select multiple)" -OutputMode Multiple
+$selectedTypes = $contentTypes | Out-GridView -Title "Select Content Types to Backup (Hold Ctrl to select multiple)" -OutputMode Multiple
 
 if ($selectedTypes.Count -eq 0) {
     Write-Host "No content types selected. Exiting." -ForegroundColor Yellow
@@ -463,7 +446,6 @@ if ($selectedTypes | Where-Object { $_.QueryType -eq "ContentItem" }) {
 # Optional: pull referenced content/task sequences from an exported JSON
 $extraContentFromJsonCombine = @()
 $extraChildTsFromJsonCombine = @()
-$extraStepDefsFromJsonCombine = @()
 foreach ($ReferenceJsonObject in $totalSelectedTaskSequences){
     if ($ReferenceJsonPath -or $ReferenceJsonObject) {
         $parsedReferences = $null
@@ -489,7 +471,6 @@ foreach ($ReferenceJsonObject in $totalSelectedTaskSequences){
             if ($parsedReferences) {
                 $extraContentIds = $parsedReferences.ContentIds | Where-Object { $_ -and $_ -notlike '00000000-*' }
                 $extraChildTsIds = $parsedReferences.ChildTaskSequenceIds | Where-Object { $_ }
-                $extraStepDefIds = $parsedReferences.StepDefinitionIds | Where-Object { $_ -and $_ -notlike '00000001-*' }
                 if ($extraContentIds.Count -gt 0) {
                     $extraContentFromJson = $DBContentItems | Where-Object { $extraContentIds -contains $_.id }
                     Write-Host "Including $($extraContentFromJson.Count) content item(s) from JSON references" -ForegroundColor Yellow
@@ -502,14 +483,6 @@ foreach ($ReferenceJsonObject in $totalSelectedTaskSequences){
                     $extraChildTsFromJson = $DBTaskSequences | Where-Object { $extraChildTsIds -contains $_.id }
                     Write-Host "Including $($extraChildTsFromJson.Count) child task sequence(s) from JSON references" -ForegroundColor Yellow
                     $extraChildTsFromJsonCombine += $extraChildTsFromJson
-                }
-                if ($extraStepDefIds.Count -gt 0) {
-                    if (-not $DBStepDefinitions) {
-                        $DBStepDefinitions = Get-DeployRMetadata -Type StepDefinition | Where-Object{$_.id -notlike '0000*'}
-                    }
-                    $extraStepDefsFromJson = $DBStepDefinitions | Where-Object { $extraStepDefIds -contains $_.id }
-                    Write-Host "Including $($extraStepDefsFromJson.Count) step definition(s) from JSON references" -ForegroundColor Yellow
-                    $extraStepDefsFromJsonCombine += $extraStepDefsFromJson
                 }
             }
         }
@@ -526,19 +499,10 @@ if ($extraChildTsFromJsonCombine.Count -gt 0) {
     if (-not $totalSelectedTaskSequences) { $totalSelectedTaskSequences = @() }
     $totalSelectedTaskSequences += $extraChildTsFromJsonCombine
     $totalSelectedTaskSequences = $totalSelectedTaskSequences | Sort-Object id -Unique
-    $selectedTypes += $contentTypes | Where-Object { $_.DisplayName -eq "Task Sequences"}
 }
 if ($extraContentFromJsonCombine.Count -gt 0) {
     $referencedContentToBackup += $extraContentFromJsonCombine
     $referencedContentToBackup = $referencedContentToBackup | Sort-Object id -Unique
-    $selectedTypes += $contentTypes | Where-Object { $_.DisplayName -eq "Other Content"}
-}
-if ($extraStepDefsFromJsonCombine.Count -gt 0) {
-    if (-not $totalSelectedStepDefinitions) { $totalSelectedStepDefinitions = @() }
-    $totalSelectedStepDefinitions += $extraStepDefsFromJsonCombine
-    $totalSelectedStepDefinitions = $totalSelectedStepDefinitions | Sort-Object id -Unique
-    $totalSelectedItems += $extraStepDefsFromJsonCombine
-    $selectedTypes += $contentTypes | Where-Object { $_.DisplayName -eq "Step Definitions"}
 }
 
 foreach ($type in $selectedTypes) {
@@ -587,7 +551,6 @@ foreach ($type in $selectedTypes) {
                 Write-Host ""
                 
                 # Prompt user to include referenced content in backup
-                <#
                 $userChoice = Read-Host "Would you like to include these referenced content items in the backup? (Y/N)"
                 if ($userChoice -eq 'Y' -or $userChoice -eq 'y') {
                     Write-Host "  Referenced content will be included in backup" -ForegroundColor Green
@@ -596,7 +559,6 @@ foreach ($type in $selectedTypes) {
                 else {
                     Write-Host "  Referenced content will NOT be backed up" -ForegroundColor Yellow
                 }
-                #>
             }
             if ($referencedTaskSequences) {
                 Write-Host ""
@@ -611,7 +573,6 @@ foreach ($type in $selectedTypes) {
         else {
             Write-Host "  No referenced content found" -ForegroundColor Gray
         }
-
     }
     
     Write-Host ""
@@ -646,6 +607,10 @@ if ($referencedContentToBackup.Count -gt 0) {
             default { "Other Content" }
         }
         
+        if ($item.id -in $backupResults.Id) {
+            Write-Host "  • $($item.name) already backed up, skipping..." -ForegroundColor Gray
+            continue
+        }   
         $result = Backup-DeployRContentItem -ContentItem $item -BackupPath $BackupPath -ContentType $contentTypeName -QueryType "ContentItem"
         $backupResults += $result
     }
