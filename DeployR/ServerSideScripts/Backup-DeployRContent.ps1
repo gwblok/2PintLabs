@@ -605,10 +605,6 @@ if ($referencedContentToBackup.Count -gt 0) {
             default { "Other Content" }
         }
         
-        if ($item.id -in $backupResults.Id) {
-            Write-Host "  • $($item.name) already backed up, skipping..." -ForegroundColor Gray
-            continue
-        }   
         $result = Backup-DeployRContentItem -ContentItem $item -BackupPath $BackupPath -ContentType $contentTypeName -QueryType "ContentItem"
         $backupResults += $result
     }
