@@ -30,7 +30,7 @@ Requires: DeployR.Utility module
 [CmdletBinding()]
 param(
 [Parameter()]
-[string]$BackupPath = "D:\DeployRBackups"
+[string]$BackupPath = "D:\DeployRBackups\DeployRBackup_20260109_140042"
 )
 
 #region Functions
@@ -293,7 +293,7 @@ foreach ($item in $available) {
     Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Cyan
     Write-Host "Importing $($item.Name)" -ForegroundColor Cyan
     Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Cyan
-    $restoreResults += & $item.Handler.Invoke($item.Path)
+    $restoreResults += & $item.Handler $item.Path
     Write-Host ""
 }
 
