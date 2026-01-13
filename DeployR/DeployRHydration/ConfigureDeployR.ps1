@@ -9,19 +9,6 @@ catch {
     Write-Warning "DeployR.Utility module not found. Environment variables will be set in the standard environment."
 }
 
-if (Get-Module -name "DeployR.Utility"){
-    write-Host "Using DeployR.Utility Module to get FQDN" -ForegroundColor Green
-    $FQDN = ${TSEnv:FormFQDN}
-    $ContentLocation = ${TSEnv:CONTENT-CONTENT}
-    write-Host "FQDN = $(${TSEnv:FormFQDN})" -ForegroundColor Green
-}
-else{
-    Write-Host "Using Test Values for FQDN" -ForegroundColor Yellow
-    $FQDN = "DeployR.2PintLabs.com"
-    write-Host "FQDN = $FQDN" -ForegroundColor Yellow
-    $ContentLocation = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
-}
-
 #region Functions
 Function Get-FQDNFrom2PXEConfig {
     param (
@@ -84,18 +71,28 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 }
 
 # Example: Construct FQDN dynamically using computer name and domain suffix - useful when system is not domain joined
-if (!$fqdn) {
-    $fqdn = Get-FQDNFrom2PXEConfig
+
+if (Get-Module -name "DeployR.Utility"){
+    write-Host "Using DeployR.Utility Module to get FQDN" -ForegroundColor Green
+    $FQDN = ${TSEnv:FormFQDN}
+    $ContentLocation = ${TSEnv:CONTENT-CONTENT}
+    write-Host "FQDN = $(${TSEnv:FormFQDN})" -ForegroundColor Green
 }
-if (!$fqdn) {
-    $fqdn = Get-FQDNFromCertSAN
+else{
+    if (!$fqdn) {
+        $fqdn = Get-FQDNFrom2PXEConfig
+    }
+    if (!$fqdn) {
+        $fqdn = Get-FQDNFromCertSAN
+    }
+    if ($fqdn) {
+        Write-Host "Using FQDN : $fqdn"
+        $domain = ($fqdn.Split(".") | Select-Object -Skip 1) -Join "."   
+    } else {
+        Write-Host "No FQDN found"
+    }
 }
-if ($fqdn) {
-    Write-Host "Using FQDN : $fqdn"
-    $domain = ($fqdn.Split(".") | Select-Object -Skip 1) -Join "."   
-} else {
-    Write-Host "No FQDN found"
-}
+
 $match = $false
 
 # Required Settings
@@ -255,18 +252,27 @@ catch {
 
 # Determine target location
 if ($useDDrive) {
+    $targetbackuppath = 'D:\DeployRBackups'
     $targetContentLib = 'D:\DeployRContentLib'
     $targetSources = 'D:\DeployRSources'
     $driveLetter = 'D:'
 }
 else {
-    $targetContentLib = 'C:\DeployRContentLib'
+    $targetbackuppath = 'C:\DeployRBackups'
     $targetSources = 'C:\DeployRSources'
     $driveLetter = 'C:'
 }
 
 # Create the directories
 try {
+    # Create DreployRBackups
+    if (-not (Test-Path -Path $targetbackuppath)) {
+        New-Item -Path $targetbackuppath -ItemType Directory -Force | Out-Null
+        Write-Host "Created folder: $targetbackuppath" -ForegroundColor Green
+    }
+    else {
+        Write-Host "Folder already exists: $targetbackuppath" -ForegroundColor Cyan
+    } 
     # Create DeployRContentLib
     if (-not (Test-Path -Path $targetContentLib)) {
         New-Item -Path $targetContentLib -ItemType Directory -Force | Out-Null
