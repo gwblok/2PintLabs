@@ -487,7 +487,8 @@ Write-Host "DeployR installation completed with exit code $($DeployRInstall.Exit
 Set-DeployRServerConfiguration -fqdn $fqdn
 
 
-#Approve DeployR in Dashboard
+#Approve DeployR in Dashboard (DOESN"T WORK YET)
+<#
 write-Host "Approving DeployR in StifleR Dashboard..." -ForegroundColor Green
 write-host "Running commands..."
 Write-Host "$deployR = Invoke-RestMethod `"https://$($FQDN):9000/api/infrastructureService/type/11`" -UseDefaultCredentials" -ForegroundColor Green
@@ -497,7 +498,7 @@ try {
     Invoke-RestMethod "https://$($FQDN):9000/api/infrastructureService/$($deployR.id)/approve" -Method PUT -UseDefaultCredentials
 
     $username = ".\BC Bob"
-    $securePassword = ConvertTo-SecureString "********" -AsPlainText -Force
+    $securePassword = ConvertTo-SecureString "*******" -AsPlainText -Force
     $cred = New-Object System.Management.Automation.PSCredential($username, $securePassword)
 
     $deployR = Invoke-RestMethod "https://$($FQDN):9000/api/infrastructureService/type/11" -Credential $cred
@@ -505,9 +506,9 @@ try {
 
 }
 catch {
-    <#Do this if a terminating exception happens#>
+    #Do this if a terminating exception happens
 }
-
+#>
 
 <# not using yet, future enhancement or removal
 try {
