@@ -26,6 +26,7 @@ CHANGE LOG:
 25.02.28  : Added SMSTS.ini file to ExtraFiles\Windows folder
 25.12.19  : Added ability to choose StifleR 2.10 or 3.0 source folders
 25.12.20  : Added first run intelligence into the script to create folder structure if not present
+26.01.13  : Added Additional info around managing Certs
 
 .LINK
 https://2pintsoftware.com
@@ -357,6 +358,12 @@ Also check driver packs for the models you support and look through the network 
 $DriversWinPEReadme = "Place the WinRE drivers in this folder if incorporating WinRE into the WinRE build
 This will be your stardard OEM WinPE Driver Pack"
 
+$ExtraFilesReadme = "Files placed in this folder will get copied into the WinPE image during the build process and placed in the same folder structure."
+
+$CertReadme = "Your Root CA certificate placed in this folder will get copied into the WinPE image to windows\system32 and be renamed to RootCA.crt
+NOTE, only have 1 Cert in this folder, as that's all this process supports, if you have more, you'll need to load them manually via script in the TS"
+
+
 #endregion
 
 
@@ -466,6 +473,12 @@ if (!(Test-Path "$WinPEBuilderPath\StifleRSource\Readme.txt")){
 if (!(Test-Path "$WinPEBuilderPath\WiFiSupport\Readme.txt")){
     $WiFiSupportReadme | Out-File -FilePath "$WinPEBuilderPath\WiFiSupport\Readme.txt" -Encoding utf8
 }
+if (!(Test-Path "$ExtraFiles\Readme.txt")){
+    $ExtraFilesReadme | Out-File -FilePath "$ExtraFiles\Readme.txt" -Encoding utf8
+}
+if (!(Test-Path "$WinPEBuilderPath\Certs\Readme.txt")){
+    $CertReadme | Out-File -FilePath "$WinPEBuilderPath\Certs\Readme.txt" -Encoding utf8
+}   
 if (Test-Path -Path "$WinPEBuilderPath"){
     $Files = Get-ChildItem -Path "$WinPEBuilderPath" -Recurse | Where-Object {$_.Attributes -ne "Directory"}
     foreach ($File in $files){
@@ -815,7 +828,28 @@ if ($FixWinRE) {
         Write-Host "Copying default wifi profile"
         Copy-Item -Path $DefaultWifiProfile -Destination "$MountPath\Windows\System32" -Force
     }
-    
+    #Copy the Certs from the Certs folder if present to the WinPE image as RootCA.crt
+    if (Test-Path -Path $WinPEBuilderPath\Certs) {
+        $Certs = Get-ChildItem -Path "$WinPEBuilderPath\Certs" | Where-Object {$_.Extension -match ".cer|.crt"}
+        if ($Certs.Count -gt 1){
+            Write-Warning "Multiple certs found in $WinPEBuilderPath\Certs, only the first one will be used, but copying all to System32"
+            #Copy all Certs but warn user
+            Foreach ($CertItem in $Certs) {
+                Write-Host "Copying root certificate $($CertItem.Name)"
+                Copy-Item -Path $CertItem.FullName -Destination "$MountPath\Windows\System32\" -Force
+            }
+        }
+        if ($Certs.Count -eq 0){
+            Write-Warning "No certs found in $WinPEBuilderPath\Certs"
+        }
+        if ($Certs.Count -ge 1){
+            foreach ($CertItem in $Certs) {
+                Write-Host "Copying root certificate $($CertItem.Name)"
+                Copy-Item -Path $CertItem.FullName -Destination "$MountPath\Windows\System32\RootCA.crt" -Force
+            }
+        }
+    }
+
     if ($Cert) {
         Write-Host "Copying root certificate"
         Copy-Item -Path $Cert -Destination "$MountPath\Windows\System32" -Force
@@ -848,8 +882,8 @@ if ($UseWinRE){$WinPESource = $WinRESource}
 # Get the StifleR Client files from a full Windows StifleR client install (copy entire folder)
 if ($StifleR210){
     $StifleRSource = "$WinPEBuilderPath\StifleRSource210"
-    # Get the StifleR Client config file from a full Windows client 
-    $StifleRClientRules = "$StifleRSource\StifleR.ClientApp.exe.Config"
+# Get the StifleR Client config file from a full Windows client 
+$StifleRClientRules = "$StifleRSource\StifleR.ClientApp.exe.Config"
 }
 #StifleR 3.0 requires the MSI file instead & the 2psimport file
 if ($StifleR30){
@@ -956,7 +990,7 @@ If ($StifleR30 -or $StifleR210) {
     }
     Elseif ($StifleR210) {
         Write-Output "Adding StifleR 2.1.0 Client to WinPE..."
-        .\WinPEGen.exe $OSSource $OSSourceIndex $WinPEScratch $WinPEIndex /Add-StifleR /StifleRConfig:$StifleRClientRules /StifleRSource:$StifleRSource
+    .\WinPEGen.exe $OSSource $OSSourceIndex $WinPEScratch $WinPEIndex /Add-StifleR /StifleRConfig:$StifleRClientRules /StifleRSource:$StifleRSource
     }
     
 
@@ -1086,7 +1120,7 @@ if ($CU_MSU){
             $AvailableCU = $PatchPath
             Write-Host -ForegroundColor DarkGray "Applying CU $PatchPath"
             try {
-                Add-WindowsPackage -Path $MountPath -PackagePath $PatchPath -Verbose
+            Add-WindowsPackage -Path $MountPath -PackagePath $PatchPath -Verbose
             }
             catch {
                 Write-Host "Failed to add CU Package" -ForegroundColor Red
@@ -1129,7 +1163,7 @@ If (Test-Path -Path $Drivers\*){
             & DISM /Image:$MountPath /Add-Driver /Driver:$DriverPath /Recurse /ForceUnsigned /LogPath:$WinPEBuilderPath\Drivers.log
         }
     }
-    
+
     
 }
 #Verify added packages
@@ -1147,7 +1181,7 @@ if ($Add7Zip -eq $true){
     # Example: https://github.com/ip7z/7zip/releases/download/24.07/7z2407-extra.7z
     $Download7zrURL = "https://github.com/ip7z/7zip/releases/download/$Version/7zr.exe"
     $DownloadURL ="https://github.com/ip7z/7zip/releases/download/$Version/$fileName"
-    
+
     Write-Host -ForegroundColor DarkGray "Downloading $DownloadURL"
     Invoke-WebRequest -Uri $Download7zrURL -OutFile "$env:TEMP\7zr.exe" -UseBasicParsing
     Invoke-WebRequest -Uri $DownloadURL -OutFile "$env:TEMP\$FileName" -UseBasicParsing
