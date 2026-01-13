@@ -497,7 +497,7 @@ try {
     Invoke-RestMethod "https://$($FQDN):9000/api/infrastructureService/$($deployR.id)/approve" -Method PUT -UseDefaultCredentials
 
     $username = ".\BC Bob"
-    $securePassword = ConvertTo-SecureString "P@ssw0rd" -AsPlainText -Force
+    $securePassword = ConvertTo-SecureString "********" -AsPlainText -Force
     $cred = New-Object System.Management.Automation.PSCredential($username, $securePassword)
 
     $deployR = Invoke-RestMethod "https://$($FQDN):9000/api/infrastructureService/type/11" -Credential $cred
