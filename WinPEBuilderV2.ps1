@@ -828,32 +828,7 @@ if ($FixWinRE) {
         Write-Host "Copying default wifi profile"
         Copy-Item -Path $DefaultWifiProfile -Destination "$MountPath\Windows\System32" -Force
     }
-    #Copy the Certs from the Certs folder if present to the WinPE image as RootCA.crt
-    if (Test-Path -Path $WinPEBuilderPath\Certs) {
-        $Certs = Get-ChildItem -Path "$WinPEBuilderPath\Certs" | Where-Object {$_.Extension -match ".cer|.crt"}
-        if ($Certs.Count -gt 1){
-            Write-Warning "Multiple certs found in $WinPEBuilderPath\Certs, only the first one will be used, but copying all to System32"
-            #Copy all Certs but warn user
-            Foreach ($CertItem in $Certs) {
-                Write-Host "Copying root certificate $($CertItem.Name)"
-                Copy-Item -Path $CertItem.FullName -Destination "$MountPath\Windows\System32\" -Force
-            }
-        }
-        if ($Certs.Count -eq 0){
-            Write-Warning "No certs found in $WinPEBuilderPath\Certs"
-        }
-        if ($Certs.Count -ge 1){
-            foreach ($CertItem in $Certs) {
-                Write-Host "Copying root certificate $($CertItem.Name)"
-                Copy-Item -Path $CertItem.FullName -Destination "$MountPath\Windows\System32\RootCA.crt" -Force
-            }
-        }
-    }
 
-    if ($Cert) {
-        Write-Host "Copying root certificate"
-        Copy-Item -Path $Cert -Destination "$MountPath\Windows\System32" -Force
-    }
     
     #DLLs needed to support wifi
     $DLLs = Get-ChildItem -Path $WifiFolder -Filter *.dll
@@ -1006,6 +981,34 @@ Elseif ($BranchCache) {
 
 Mount-WindowsImage -ImagePath $WinPEScratch -Index $WinPEIndex -Path $MountPath
 
+#Copy the Certs from the Certs folder if present to the WinPE image as RootCA.crt
+if (Test-Path -Path $WinPEBuilderPath\Certs) {
+    $Certs = Get-ChildItem -Path "$WinPEBuilderPath\Certs" | Where-Object {$_.Extension -match ".cer|.crt"}
+    if ($Certs.Count -gt 1){
+        Write-Warning "Multiple certs found in $WinPEBuilderPath\Certs, only the first one will be used, but copying all to System32"
+        #Copy all Certs but warn user
+        Foreach ($CertItem in $Certs) {
+            Write-Host "Copying root certificate $($CertItem.Name)"
+            Copy-Item -Path $CertItem.FullName -Destination "$MountPath\Windows\System32\" -Force
+        }
+    }
+    if ($Certs.Count -eq 0){
+        Write-Warning "No certs found in $WinPEBuilderPath\Certs"
+    }
+    if ($Certs.Count -ge 1){
+        foreach ($CertItem in $Certs) {
+            Write-Host "Copying root certificate $($CertItem.Name)"
+            Copy-Item -Path $CertItem.FullName -Destination "$MountPath\Windows\System32\RootCA.crt" -Force
+        }
+    }
+}
+
+if ($Cert) {
+    Write-Host "Copying root certificate"
+    Copy-Item -Path $Cert -Destination "$MountPath\Windows\System32" -Force
+}
+
+
 #Add Optional Components
 #Configuration Manager boot image required components
 
@@ -1071,29 +1074,29 @@ else {
 }
 
 # Add Stifler Config to registry
-$TempKey = "HKLM\TempHive"
-$RegistryFilePath = "$MountPath\Windows\System32\config\SOFTWARE"
-try {
-    Write-host "Loading registry hive..."
-    reg.exe load $TempKey $RegistryFilePath
+if ($StifleR30){
+    Write-Host "Adding StifleR 3.0 Client Config to Registry"
+    $TempKey = "HKLM\TempHive"
+    $RegistryFilePath = "$MountPath\Windows\System32\config\SOFTWARE"
+    try {
+        Write-host "Loading registry hive..."
+        reg.exe load $TempKey $RegistryFilePath
+        Set-RegistryFromJson -RegistryBasePath "HKLM:\TempHive\2Pint Software\StifleR\Client" -JsonFilePath $StiflerConfigJSON
+        # Read-Host -Prompt "Press Enter to Continue"
+    }
+    catch {
+        write-error "An error occurred: $_"
+    }
+    finally {
+        Write-host "Unloading registry hive..."
+        [gc]::Collect()
+        Start-Sleep -Seconds 2
+        reg.exe unload $TempKey
+        Write-host "Registry hive processing completed." -ForegroundColor Green
+    }
+}
 
-    Set-RegistryFromJson -RegistryBasePath "HKLM:\TempHive\2Pint Software\StifleR\Client" -JsonFilePath $StiflerConfigJSON
-    # Read-Host -Prompt "Press Enter to Continue"
-}
-catch {
-    write-error "An error occurred: $_"
-}
-finally {
-    Write-host "Unloading registry hive..."
-    [gc]::Collect()
-    Start-Sleep -Seconds 2
-    reg.exe unload $TempKey
-    Write-host "Registry hive processing completed." -ForegroundColor Green
-}
 
-if ($Cert) {
-    Copy-Item -Path $Cert -Destination "$MountPath\Windows\System32" -Force 
-}
 
 
 #Apply SSU - only required for WinPE 10 19041
