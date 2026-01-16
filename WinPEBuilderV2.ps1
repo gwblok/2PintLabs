@@ -369,19 +369,17 @@ NOTE, only have 1 Cert in this folder, as that's all this process supports, if y
 
 
 # Check for elevation (admin rights)
-If ((New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
-{
+If ((New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){
     # All OK, script is running with admin rights
 }
-else
-{
+else {
     Write-Warning "This script needs to be run with admin rights..."
     Exit 1
 }
 
-#
-# Parameters region BEGIN
-#
+write-host "#######################################################"
+Write-Host "Starting WinPE Builder V2 Script..."
+write-host "#######################################################"
 
 #WinPEBuilder directory  - THIS IS WHERE EVERYTHING WILL BE BUILT.  Feel Free to customize, or it will use the folder based on where you saved the script.. which might not be the best, so plan ahead
 #AKA, create a folder c:\WinPEBuilder\ and save this script to that location, then run it.
@@ -413,9 +411,9 @@ Write-Host "$($ADKWinPEInfo.ImageName)" -ForegroundColor Green
 
 $Mappings = @(
 
-@{ Build = '10.0.26100.1'; OSName = "Windows 11 24H2 x64"}  #Not supported by OSD Module Yet
-@{ Build = '10.0.22621.1'; OSName = "Windows 11 22H2 x64"}  #Able to download via OSD Module
-@{ Build = '10.0.19045.1'; OSName = "Windows 10 22H2 x64"}  #Able to download via OSD Module
+@{ Build = '10.0.26100.1'; OSName = "Windows 11 24H2 x64"}
+@{ Build = '10.0.22621.1'; OSName = "Windows 11 22H2 x64"}
+@{ Build = '10.0.19045.1'; OSName = "Windows 10 22H2 x64"}
 
 )
 $ADKBuild = $ADKWinPEInfo.Version
@@ -450,7 +448,11 @@ try {
     [void][System.IO.Directory]::CreateDirectory("$WinPEBuilderPath\Certs") #Place Certs Here
 }
 catch {throw}
-#Build  Files
+write-host ""
+write-host "#######################################################"
+write-host "Folder Structure Created / Verified @ $WinPEBuilderPath"
+write-host "#######################################################"
+#region Build  Files
 
 if ($AddSMSTSiniFile -eq $true){
     if (!(Test-Path "$WinPEBuilderPath\ExtraFiles\Windows\smsts.ini")){
@@ -485,7 +487,7 @@ if (Test-Path -Path "$WinPEBuilderPath"){
         Unblock-File -Path $File.FullName
     }
 }
-
+#endregion
 if ($FirstRun){
     write-host "+------------------------------------------------------------------------------------------------------+" -ForegroundColor Yellow
     Write-Host "First Run detected, please review and add any needed files to the created folders and re-run the script." -ForegroundColor Yellow
@@ -504,6 +506,10 @@ if ($FirstRun){
 }
 
 #Check for Install.WIM, make sure one is already there, if not, it will try to download / build one for you
+write-host ""
+write-host "#######################################################"
+write-host "Verifying Install.wim for $OSNameNeeded"
+write-host "#######################################################"
 if (Test-Path -Path "$WinPEBuilderPath\OSSource\$OSNameNeeded\install.wim"){
     $WinInfo = Get-WindowsImage -ImagePath "$WinPEBuilderPath\OSSource\$OSNameNeeded\install.wim"
     $Index = ($WinInfo | Where-Object {$_.ImageName -eq "Windows 11 Enterprise"}).ImageIndex
@@ -902,6 +908,10 @@ $OSDToolkitPath = "$WinPEBuilderPath\OSDToolkit"
 
 
 # Validation
+Write-Host ""
+write-host "#######################################################"
+Write-Output "Validating required files and versions..."
+write-host "#######################################################"
 If (!(Test-Path $OSSource)){Write-Warning "$Windows Media missing, aborting script...";Break}
 
 If (!(Test-Path $WinPESource)){Write-Warning "$WinPESource missing, aborting script...";Break}
@@ -959,8 +969,12 @@ Set-Location "$OSDToolkitPath\x64"
 Copy-Item $WinPESource $WinPEScratch -Force -Verbose
 
 If ($StifleR30 -or $StifleR210) {
+    write-host ""
+    write-host "#######################################################"
     Write-Output "Adding BranchCache and StifleR to WinPE..."
+    write-host "#######################################################"
     if ($StifleR30){
+        write-host "Adding StifleR 3.0 Client to WinPE..."
         .\WinPEGen.exe $OSSource $OSSourceIndex $WinPEScratch $WinPEIndex /Add-StifleR /StifleRSource:$StifleRSource
     }
     Elseif ($StifleR210) {
@@ -971,7 +985,10 @@ If ($StifleR30 -or $StifleR210) {
 
 }
 Elseif ($BranchCache) {
+    write-host ""
+    write-host "#######################################################"
     Write-Output "Adding BranchCache to WinPE..."
+    write-host "#######################################################"
     .\WinPEGen.exe $OSSource $OSSourceIndex $WinPEScratch $WinPEIndex 
 }
 
@@ -981,8 +998,12 @@ Elseif ($BranchCache) {
 
 Mount-WindowsImage -ImagePath $WinPEScratch -Index $WinPEIndex -Path $MountPath
 
+
 #Copy the Certs from the Certs folder if present to the WinPE image as RootCA.crt
 if (Test-Path -Path $WinPEBuilderPath\Certs) {
+    write-host "#######################################################"
+    write-host "Adding Root Certificates to WinPE Image"
+    write-host "#######################################################"
     $Certs = Get-ChildItem -Path "$WinPEBuilderPath\Certs" | Where-Object {$_.Extension -match ".cer|.crt"}
     if ($Certs.Count -gt 1){
         Write-Warning "Multiple certs found in $WinPEBuilderPath\Certs, only the first one will be used, but copying all to System32"
@@ -1011,6 +1032,9 @@ if ($Cert) {
 
 #Add Optional Components
 #Configuration Manager boot image required components
+write-host '#######################################################'
+write-host "Adding Optional Components to WinPE Image"
+write-host '#######################################################'
 
 if ((Test-Path "$ADKPath\WinPE_OCs\WinPE-Scripting.cab") -and ($SkipOptionalComponents -ne $true)){
     #Scripting (WinPE-Scripting)
@@ -1072,10 +1096,13 @@ else {
         write-host "Option to skip the OCs was enabled"
     }
 }
-
+#######################################################
 # Add Stifler Config to registry
+#######################################################
 if ($StifleR30){
+    write-host '#######################################################'
     Write-Host "Adding StifleR 3.0 Client Config to Registry"
+    write-host '#######################################################'
     $TempKey = "HKLM\TempHive"
     $RegistryFilePath = "$MountPath\Windows\System32\config\SOFTWARE"
     try {
@@ -1107,6 +1134,9 @@ If (Test-Path -path $SSUPath) {Add-WindowsPackage -Path $MountPath -PackagePath 
 $CU_MSU = Get-ChildItem -Path "$WinPEBuilderPath\Patches\CU\$OSNameNeeded" -Filter *.msu -ErrorAction SilentlyContinue
 
 if ($CU_MSU){
+    write-host '#######################################################'
+    Write-Host "Adding CU's to WinPE Image"
+    write-host '#######################################################'
     if ($CU_MSU.count -gt 1){
         $CU_MSU = $CU_MSU | Sort-Object -Property Name #| Select-Object -Last 1
     }
@@ -1146,11 +1176,17 @@ Start-Process "C:\Program Files (x86)\Windows Kits\10\Assessment and Deployment 
 #Example: Create a directory called Windows and add smsts.ini
 #SDClean, devcon, smsts.ini, makeiPXEUSB, iPXEEFI, etc.
 If (Test-Path $ExtraFiles\*) {
+    write-host '#######################################################'
+    Write-Host "Adding Extra Files to WinPE Image"
+    write-host '#######################################################'
     Copy-Item -Path $ExtraFiles\* -Destination "$MountPath\" -Force -Recurse -Verbose
 }
 
 #Inject Drivers
 If (Test-Path -Path $Drivers\*){
+    write-host '#######################################################'
+    Write-Host "Adding Drivers to WinPE Image"
+    write-host '#######################################################'
     if (Test-Path -Path "$Drivers\WinPE"){
         $DriverPath = "$Drivers\WinPE"
         Write-Host "Injecting Drivers from $DriverPath"
@@ -1235,16 +1271,19 @@ if ($UseWinRE){
     Save-WebFile -SourceUrl 'https://github.com/okieselbach/Helpers/raw/master/WirelessConnect/WirelessConnect/bin/Release/WirelessConnect.exe' -DestinationDirectory "$MountPath\Windows" | Out-Null
 }
 # Set PowerShell Execution Policy
-Write-Host -ForegroundColor DarkGray "========================================================================="
-Write-Host -ForegroundColor Yellow "OSD Function: Set-WindowsImageExecutionPolicy"
-Set-WindowsImageExecutionPolicy -Path $MountPath -ExecutionPolicy Bypass | Out-Null
-# Enable PowerShell Gallery
-Write-Host -ForegroundColor DarkGray "========================================================================="
-Write-Host -ForegroundColor Yellow "OSD Function: Enable-PEWindowsImagePSGallery"
-Enable-PEWindowsImagePSGallery -Path $MountPath | Out-Null
+#Test if OSD module is installed
+if (Get-Module -ListAvailable -Name OSD){
+    Write-Host -ForegroundColor DarkGray "========================================================================="
+    Write-Host -ForegroundColor Yellow "OSD Function: Set-WindowsImageExecutionPolicy"
+    Set-WindowsImageExecutionPolicy -Path $MountPath -ExecutionPolicy Bypass | Out-Null
+    # Enable PowerShell Gallery
+    Write-Host -ForegroundColor DarkGray "========================================================================="
+    Write-Host -ForegroundColor Yellow "OSD Function: Enable-PEWindowsImagePSGallery"
+    Enable-PEWindowsImagePSGallery -Path $MountPath | Out-Null
+}
 #endregion
 
-
+<#
 
 #Unmount boot image
 Write-Host -ForegroundColor DarkGray "========================================================================="
@@ -1268,3 +1307,4 @@ Else {
     Export-WindowsImage -SourceImagePath $WinPEScratch -SourceIndex 1 -DestinationImagePath "$ExportPath\winpe.$($BuildNumber)_$(get-date -format "yy.MM.dd")_$($FileSuffix).wim" -Verbose
 }
 Pop-Location
+#>
