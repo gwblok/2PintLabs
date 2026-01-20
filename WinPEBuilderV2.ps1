@@ -1283,7 +1283,7 @@ if (Get-Module -ListAvailable -Name OSD){
 }
 #endregion
 
-<#
+
 
 #Unmount boot image
 Write-Host -ForegroundColor DarkGray "========================================================================="
