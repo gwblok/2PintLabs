@@ -30,7 +30,7 @@ Requires: DeployR.Utility module
 [CmdletBinding()]
 param(
 [Parameter()]
-[string]$BackupPath = "D:\DeployRBackups\DeployRBackup_20260109_140042"
+[string]$BackupPath = "D:\DeployRBackups"
 )
 
 #region Functions
@@ -304,6 +304,10 @@ Write-Host "Restore complete." -ForegroundColor Green
 Write-Host "  Imported/updated: $successCount" -ForegroundColor Green
 if ($failCount -gt 0) {
     Write-Host "  Failed: $failCount" -ForegroundColor Red
+    $faileditems = ($restoreResults | Where-Object { -not $_.Success })
+    foreach ($fail in $faileditems) {
+        Write-Host "    • $($fail.Type): $($fail.Name) - Error: $($fail.Error)" -ForegroundColor Red
+    }
 }
 
 if ($restoreResults.Count -gt 0) {
