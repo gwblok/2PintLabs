@@ -541,6 +541,9 @@ if ($extraStepDefsFromJsonCombine.Count -gt 0) {
     $selectedTypes += $contentTypes | Where-Object { $_.DisplayName -eq "Step Definitions"}
 }
 
+# Remove Duplicates from $selectedTypes
+$selectedTypes = $selectedTypes | Sort-Object DisplayName -Unique
+
 foreach ($type in $selectedTypes) {
     Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Cyan
     Write-Host "Processing: $($type.DisplayName)" -ForegroundColor Cyan
