@@ -1,8 +1,9 @@
 # Requires -Version 7.0
 # Requires -RunAsAdministrator
 
-$ImportTS = $true
+$ImportTS = $false
 $ImportSteps = $true
+$ImportAllSteps = $false #Set to true to import all steps without selection prompt
 
 #Region Declaration
 $ModulePath = 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
@@ -254,30 +255,41 @@ catch {
 #Get Steps info from the Download Path but Exclude the ReferencedContent folder 
 if (Test-Path -Path "$DownloadStepsPath\ReferencedContent") {
     Get-ChildItem -Path "$DownloadStepsPath\ReferencedContent" -Directory  | ForEach-Object {
-        $StepFolder = $_.FullName
-        Write-Host "Importing Custom Step from: $StepFolder" -ForegroundColor Cyan
-        Get-ChildItem -path $StepFolder -File | Where-Object {$_.Extension -eq ".json"} | ForEach-Object {
-            $StepFile = $_.FullName           
-            $StepJSON = Get-Content -Path $StepFile -Raw | ConvertFrom-Json
-            write-host "Checking if step definition already exists: $StepFile" -ForegroundColor Yellow
-            if (Get-DeployRContentItem -Id $StepJSON.id -ErrorAction SilentlyContinue) {
-                Write-Host "Content item already exists: $($StepJSON.name) | $($StepJSON.id)" -ForegroundColor Yellow
-                $SourcePath = Join-Path -Path $StepFolder -ChildPath (Get-ChildItem $StepFolder -Directory).Name
+        $ReferenceContentFolder = $_.FullName
+        Write-Host "Importing Referenced Content from: $ReferenceContentFolder" -ForegroundColor Cyan
+        Get-ChildItem -path $ReferenceContentFolder -File | Where-Object {$_.Extension -eq ".json"} | ForEach-Object {
+            $ReferenceContentFile = $_.FullName           
+            $ReferenceContentJSON = Get-Content -Path $ReferenceContentFile -Raw | ConvertFrom-Json
+            write-host "Checking Content already exists: $ReferenceContentFile" -ForegroundColor Yellow
+            if (Get-DeployRContentItem -Id $ReferenceContentJSON.id -ErrorAction SilentlyContinue) {
+                Write-Host "Content item already exists: $($ReferenceContentJSON.name) | $($ReferenceContentJSON.id)" -ForegroundColor Yellow
+                $SourcePath = Join-Path -Path $ReferenceContentFolder -ChildPath (Get-ChildItem $ReferenceContentFolder -Directory).Name
                 $ContentVersions = Get-ChildItem -Path $SourcePath -Directory
                 foreach ($version in $ContentVersions) {
                     Write-Host "Updating content item version: $($version.Name)" -ForegroundColor Cyan
-                    Update-DeployRContentItemContent -ContentId $StepJSON.id -SourceFolder $version.FullName -ContentVersion $version.Name
+                    Update-DeployRContentItemContent -ContentId $ReferenceContentJSON.id -SourceFolder $version.FullName -ContentVersion $version.Name
                 }
             } else {
-                Write-Host "Importing step definition from file: $StepFile" -ForegroundColor Yellow
-                Import-DeployRContentItem -SourceFile $StepFile
+                Write-Host "Importing content item from file: $ReferenceContentFile" -ForegroundColor Yellow
+                Import-DeployRContentItem -SourceFile $ReferenceContentFile
             }
         }
     }
 }
 
+
 #Import Steps
-Get-ChildItem -Path $DownloadStepsPath -Directory | Where-Object {$_.Name -ne "ReferencedContent"} | ForEach-Object {
+$AvailableStepDefs = Get-ChildItem -Path $DownloadStepsPath -Directory | Where-Object {$_.Name -ne "ReferencedContent"}
+#Have User Select Steps to Import
+write-host "==========================================" -ForegroundColor darkgray
+write-host "Importing Custom Steps from: $DownloadStepsPath" -ForegroundColor Magenta
+write-host ""
+if ($ImportAllSteps) {
+    $SelectedStepDefs = $AvailableStepDefs
+} else {
+    $SelectedStepDefs = $AvailableStepDefs | Out-GridView -Title "Select Custom Steps to Import into DeployR (Hold Ctrl to select multiple)" -PassThru
+}
+$SelectedStepDefs | ForEach-Object {
     $StepFolder = $_.FullName
     Write-Host "Importing Custom Step from: $StepFolder" -ForegroundColor Cyan
     Get-ChildItem -path $StepFolder -File | Where-Object {$_.Extension -eq ".json"} | ForEach-Object {
