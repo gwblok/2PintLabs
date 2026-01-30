@@ -1,6 +1,7 @@
 <#
 .SYNOPSIS
 Look up a computer name by MAC from MACLookup.json (or built-in map if file missing).
+If Running in DeployR Task Sequence, sets the ComputerName variable based on the lookup.
 
 .DESCRIPTION
 `Get-ComputerByMac` normalizes the provided MAC and attempts to load a JSON map named
@@ -100,7 +101,7 @@ function Get-ComputerByMac {
 #If DeployR Task Sequence, take the return and set the TS Computer Name Variable
 
 try {
-    Import-Module DeployR.Utility
+    Import-Module DeployR.Utility -ErrorAction SilentlyContinue
 }
 catch {}
 
@@ -123,6 +124,6 @@ if ($tsCompName) {
     }
 }
 else {
-    Write-Host "No computer name found for MAC address: $($env:DEPLOYR_MACADDRESS)" -ForegroundColor Red
+    Write-Host "No computer name found for MAC address: $MACAddress" -ForegroundColor Red
 }
 
