@@ -106,7 +106,7 @@ try {
 catch {}
 
 if (Get-Module -name "DeployR.Utility"){
-    $MACAddress = ${TSEnv:MacAddress}
+    $MACAddress = ${TSEnv:MacAddress001}
 }
 else{
     Write-Host "Running outside of DeployR, using Gather to get MAC Address for Testing" -ForegroundColor Yellow
