@@ -10,7 +10,7 @@ This script well enable functions to:
     Find-DellDriverPacks will provide a list of supported devices
     Find-DellDriverPacks -Import will import all found driver packs into DeployR Content Items
 
-
+You'll want to update this variable: $ArchiveSourceFolder to a place you want the driver packs to be downloaded and extracted to before being imported into DeployR
 #>
 
 
