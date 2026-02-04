@@ -9,8 +9,9 @@ This script well enable functions to:
 - Import SELECTED driver packs from Dell
     Find-DellDriverPacks will provide a list of supported devices
     Find-DellDriverPacks -Import will import all found driver packs into DeployR Content Items
+    Find-DellDriverPacks -Import -SourceFolder "D:\MySourceFolder" to specify a different source folder for downloaded/extracted driver packs
 
-You'll want to update this variable: $ArchiveSourceFolder to a place you want the driver packs to be downloaded and extracted to before being imported into DeployR
+You'll want to update this variable: $ArchiveSourceFolder to a place you want the driver packs to be downloaded and extracted to before being imported into DeployR or use the -SourceFolder parameter when calling the functions.
 #>
 
 
