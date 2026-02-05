@@ -14,7 +14,7 @@ function Test-UrlExists {
 # Function to get the latest .NET 8 version by checking URLs starting from 8.0.19
 function Get-LatestDotNet8Version {
     $baseUrl = "https://builds.dotnet.microsoft.com/dotnet/Runtime/{0}/dotnet-runtime-{0}-win-x64.exe"
-    $baseVersion = "8.0.19"  # Starting point
+    $baseVersion = "8.0.21"  # Starting point
     $latestVersion = $baseVersion
     $maxAttempts = 100  # Limit to avoid infinite loop
 
