@@ -8,8 +8,12 @@ This script well enable functions to:
 
 - Import SELECTED driver packs from Dell
     Find-DellDriverPacks will provide a list of supported devices
-    Find-DellDriverPacks -Import will import all found driver packs into DeployR Content Items
-    Find-DellDriverPacks -Import -SourceFolder "D:\MySourceFolder" to specify a different source folder for downloaded/extracted driver packs
+    Find-DellDriverPacks -ImportBySKU (or -ImportByModel) will import all found driver packs into DeployR Content Items
+
+    Find-DellDriverPacks -ImportBySKU will import the Device and leverage the SKU as the identifier (Great for HP, or Dell when a SKU matches several Model Names)
+    Find-DellDriverPacks -ImportByName will import the Device and leverage the Model Name as the identifier (Great for Dell when a Model Name matches several SKUs)
+
+    Find-DellDriverPacks -ImportBySKU (or -ImportByName) -SourceFolder "D:\MySourceFolder" to specify a different source folder for downloaded/extracted driver packs
 
 You'll want to update this variable: $ArchiveSourceFolder to a place you want the driver packs to be downloaded and extracted to before being imported into DeployR or use the -SourceFolder parameter when calling the functions.
 #>
@@ -20,6 +24,7 @@ function Import-DriverPack {
     [parameter(Mandatory=$true)]
     [string]$MakeAlias,
     [parameter(Mandatory=$true)]
+    [switch]$ImportByName,
     [string]$ModelAlias,
     [string]$FriendlyModel, # e.g., 'Latitude 5580' vs '07A8' ModelAlias
     [string]$OSVer,  # e.g., 'Win10' or 'Win11'
@@ -129,7 +134,13 @@ function Import-DriverPack {
         
         $NewCI = New-DeployRContentItem -Name "Driver Pack - $MakeAlias - $FolderModelAlias - $OSVer" -Type Folder -Purpose DriverPack -Description "File: $DriverPackFileName"
         $ContentId = $NewCI.id
-        $NewVersion = New-DeployRContentItemVersion -ContentItemId $ContentId -Description "Source: $DriverPackSourcePath" -DriverManufacturer $MakeAlias -DriverModel $ModelAlias -SourceFolder "$DriverPackSourcePath\Extracted"
+        if ($ImportByName){
+            $NewVersion = New-DeployRContentItemVersion -ContentItemId $ContentId -Description "Source: $DriverPackSourcePath" -DriverManufacturer $MakeAlias -DriverModel $FriendlyModel -SourceFolder "$DriverPackSourcePath\Extracted"
+        }
+        else {
+            $NewVersion = New-DeployRContentItemVersion -ContentItemId $ContentId -Description "Source: $DriverPackSourcePath" -DriverManufacturer $MakeAlias -DriverModel $ModelAlias -SourceFolder "$DriverPackSourcePath\Extracted"    
+        }
+        
         $ContentVersion = $NewVersion.versionNo
         #Upload the extracted driver pack to the DeployR Content Item
         write-Host "  Uploading extracted Driver Pack to DeployR Content Item"
@@ -401,7 +412,8 @@ function Import-DellDriverPackBySKU {
 Function Find-DellDriverPacks {
     [CmdletBinding()]
     param (
-        [switch]$Import,
+        [switch]$ImportByModel,
+        [switch]$ImportBySKU,
         [string]$SourceFolder = "D:\DeployRContentItems\Source\DriverPacks",
         [string]$DeployRModulePath ='C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
     )
@@ -432,7 +444,7 @@ Function Find-DellDriverPacks {
     }
     $DPSelect = $DriverPacksOBject | Out-GridView -PassThru -Title "Select the Dell Driver Packs to Import"
     
-    if ($Import) {
+    if ($ImportBySKU) {
         foreach ($DP in $DPSelect) {
             $SystemIDs = $DP.SystemID.Split(" ")
             foreach ($SystemID in $SystemIDs) {
@@ -442,6 +454,16 @@ Function Find-DellDriverPacks {
                 $URL = $DP.URL
                 Import-DriverPack -MakeAlias "Dell" -FriendlyModel $FriendlyModel -ModelAlias $ModelAlias -OSVer $OSVer -URL $URL -ArchiveSourceFolder $SourceFolder -DeployRModulePath $DeployRModulePath
             }
+        }
+    }
+    elseif ($ImportByModel) {
+        foreach ($DP in $DPSelect) {
+                $FriendlyModel = $DP.Model -replace '[\/:*?"<>|]', '_'  # Sanitize for folder name
+                $ModelAlias = $DP.SystemID
+
+                $OSVer = if ($DP.OSSupported -match 'Windows11') {'Win11'} else {'Win10'}
+                $URL = $DP.URL
+                Import-DriverPack -MakeAlias "Dell" -FriendlyModel $FriendlyModel -ModelAlias $ModelAlias -OSVer $OSVer -URL $URL -ArchiveSourceFolder $SourceFolder -DeployRModulePath $DeployRModulePath -ImportByName
         }
     }
     else {
