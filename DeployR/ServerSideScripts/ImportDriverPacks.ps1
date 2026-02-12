@@ -1,19 +1,24 @@
 <#
-This script well enable functions to:
-- Import ALL Panasonic Driver Packs from their online JSON catalog into DeployR Content Items
-    Import-PanasonicDriverPacks
-    
-    TODO: Add ability to import SELECTED driver packs from Panasonic
 
+This Script creates several functions, the 3 Main functions are
+Import-PanasonicDriverPacks (I still plan to modify this more in the future)
+Find-DellDriverPacks
+Find-HPDriverPacks
 
-- Import SELECTED driver packs from Dell
-    Find-DellDriverPacks will provide a list of supported devices
-    Find-DellDriverPacks -ImportBySKU (or -ImportByModel) will import all found driver packs into DeployR Content Items
+Using those, it will automatically create the DeployR Content Items and load up the Driver Packs.  You might want to look over some of the paths used in the script and update if needed.
 
-    Find-DellDriverPacks -ImportBySKU will import the Device and leverage the SKU as the identifier (Great for HP, or Dell when a SKU matches several Model Names)
-    Find-DellDriverPacks -ImportByName will import the Device and leverage the Model Name as the identifier (Great for Dell when a Model Name matches several SKUs)
+Examples 
 
-    Find-DellDriverPacks -ImportBySKU (or -ImportByName) -SourceFolder "D:\MySourceFolder" to specify a different source folder for downloaded/extracted driver packs
+## Dell ##
+Find-DellDriverPacks will provide a list of supported devices
+Find-DellDriverPacks -ImportBySKU (or -ImportByModel) will import all found driver packs into DeployR Content Items
+Find-DellDriverPacks -ImportBySKU will import the Device and leverage the SKU as the identifier (Great for HP, or Dell when a SKU matches several Model Names)
+Find-DellDriverPacks -ImportByName will import the Device and leverage the Model Name as the identifier (Great for Dell when a Model Name matches several SKUs)
+Find-DellDriverPacks -ImportBySKU (or -ImportByName) -SourceFolder "D:\MySourceFolder" to specify a different source folder for downloaded/extracted driver packs
+
+## HP ##
+Find-HPDriverPacks will provide a list of supported HP devices
+Find-HPDriverPacks  -SourceFolder "D:\MySourceFolder" to specify a different source folder for downloaded/extracted driver packs
 
 You'll want to update this variable: $ArchiveSourceFolder to a place you want the driver packs to be downloaded and extracted to before being imported into DeployR or use the -SourceFolder parameter when calling the functions.
 #>
@@ -65,10 +70,10 @@ function Import-DriverPack {
             
             #Drop Extension
             $DriverPackFileName = [System.IO.Path]::GetFileNameWithoutExtension($DriverPackFileName)
-
+            
         }
     }
-
+    
     if (-not $FriendlyModel) {
         $FriendlyModel = $ModelAlias
         $FolderModelAlias = $ModelAlias
@@ -107,20 +112,32 @@ function Import-DriverPack {
                 Expand-Archive -Path "$DriverPackSourcePath\$DriverPackFileFullName" -DestinationPath "$DriverPackSourcePath\Extracted" -Force
             }
             if ($DriverPackFileNameExt -eq "cab"){
-
+                
                 Write-Host -Verbose "Expanding CAB Driver Pack to $DriverPackSourcePath\Extracted"
                 Expand -R "$DriverPackSourcePath\$DriverPackFileFullName" -F:* "$DriverPackSourcePath\Extracted" | Out-Null
             }
             if ($DriverPackFileNameExt -eq "exe") {
-                Write-Host "  Executing EXE Driver Pack to extract contents to $DriverPackSourcePath\Extracted"
+                Write-Host "  Starting Extraction of EXE Driver Pack...."
                 $DriverPack = Get-Item -Path "$DriverPackSourcePath\$DriverPackFileFullName"
-                if ($DriverPack.VersionInfo.FileDescription -match 'Dell') {
+                if ($DriverPack) {
                     #Some EXE driver packs support silent extraction, others may not. This may need to be customized per manufacturer.
-                try {
-                    Start-Process -FilePath $DriverPack.FullName -ArgumentList "/s /e=`"$DriverPackSourcePath\Extracted`"" -Wait
-                } catch {
-                    Write-Error "Failed to extract Dell driver pack: $DriverPack"
-                }
+                    try {
+                        if ($MakeAlias -eq "Dell"){
+                            Write-Host "  Executing DELL EXE Driver Pack to extract contents to $DriverPackSourcePath\Extracted"
+                            Start-Process -FilePath $DriverPack.FullName -ArgumentList "/s /e=`"$DriverPackSourcePath\Extracted`"" -Wait
+                        }
+                        elseif ($MakeAlias -eq "HP"){
+                            Write-Host "  Executing HP EXE Driver Pack to extract contents to $DriverPackSourcePath\Extracted"
+                            Start-Process -FilePath $DriverPack.FullName -ArgumentList "/s /e /f `"$DriverPackSourcePath\Extracted`"" -Wait
+                        }
+                        else{
+                            Write-Host "This is not Dell or HP EXE file"
+                        }
+                    } catch {
+                        Write-Error "Failed to extract driver pack: $DriverPack"
+                        write-host "Failed to extract driver pack: $DriverPack" -ForegroundColor Red
+                        return
+                    }
                 }
             }
         }
@@ -246,10 +263,10 @@ function Get-DellSupportedModels {
 function Get-DellDeviceDetails {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$False)]
-        [ValidateLength(4,4)]    
-        [string]$SystemSKUNumber,
-        [string]$ModelLike
+    [Parameter(Mandatory=$False)]
+    [ValidateLength(4,4)]    
+    [string]$SystemSKUNumber,
+    [string]$ModelLike
     )
     
     $Manufacturer = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufacturer
@@ -261,10 +278,10 @@ function Get-DellDeviceDetails {
     }
     <#
     if (!($ModelLike)){
-        $DellSKU = Get-DellSupportedModels | Where-Object {$_.systemID -match $SystemSKUNumber} | Select-Object -First 1
+    $DellSKU = Get-DellSupportedModels | Where-Object {$_.systemID -match $SystemSKUNumber} | Select-Object -First 1
     }
     else {
-        $DellSKU = Get-DellSupportedModels | Where-Object { $_.Model -match $ModelLike}
+    $DellSKU = Get-DellSupportedModels | Where-Object { $_.Model -match $ModelLike}
     }
     
     return $DellSKU | Select-Object -Property SystemID,Model
@@ -378,7 +395,7 @@ function Import-DellDriverPackBySKU {
     
     #region functions
     
-
+    
     #endregion functions
     Write-Host "Importing Dell Driver Packs" -ForegroundColor Green
     #Ensure Source Folder exists
@@ -406,18 +423,18 @@ function Import-DellDriverPackBySKU {
     $OSVer = if ($DriverPackInfo.OSSupported -match 'Windows11') {'Win11'} else {'Win10'}
     $URL = $DriverPackInfo.URL
     Import-DriverPack -MakeAlias $MakeAlias -FriendlyModel $FriendlyModel -ModelAlias $ModelAlias -OSVer $OSVer -URL $URL -ArchiveSourceFolder $SourceFolder -DeployRModulePath $DeployRModulePath
-    }
+}
 
 
 Function Find-DellDriverPacks {
     [CmdletBinding()]
     param (
-        [switch]$ImportByModel,
-        [switch]$ImportBySKU,
-        [string]$SourceFolder = "D:\DeployRContentItems\Source\DriverPacks",
-        [string]$DeployRModulePath ='C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
+    [switch]$ImportByModel,
+    [switch]$ImportBySKU,
+    [string]$SourceFolder = "D:\DeployRContentItems\Source\DriverPacks",
+    [string]$DeployRModulePath ='C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
     )
-
+    
     $Data = Get-DellDriverPackXML
     $DriverPacks = $Data.DriverPackManifest.DriverPackage
     $DriverPacks = $DriverPacks | Where-Object {$_.SupportedOperatingSystems.OperatingSystem.osCode -match 'Windows10|Windows11'}
@@ -458,19 +475,265 @@ Function Find-DellDriverPacks {
     }
     elseif ($ImportByModel) {
         foreach ($DP in $DPSelect) {
-                $FriendlyModel = $DP.Model -replace '[\/:*?"<>|]', '_'  # Sanitize for folder name
-                $ModelAlias = $DP.SystemID
-
-                $OSVer = if ($DP.OSSupported -match 'Windows11') {'Win11'} else {'Win10'}
-                $URL = $DP.URL
-                Import-DriverPack -MakeAlias "Dell" -FriendlyModel $FriendlyModel -ModelAlias $ModelAlias -OSVer $OSVer -URL $URL -ArchiveSourceFolder $SourceFolder -DeployRModulePath $DeployRModulePath -ImportByName
+            $FriendlyModel = $DP.Model -replace '[\/:*?"<>|]', '_'  # Sanitize for folder name
+            $ModelAlias = $DP.SystemID
+            
+            $OSVer = if ($DP.OSSupported -match 'Windows11') {'Win11'} else {'Win10'}
+            $URL = $DP.URL
+            Import-DriverPack -MakeAlias "Dell" -FriendlyModel $FriendlyModel -ModelAlias $ModelAlias -OSVer $OSVer -URL $URL -ArchiveSourceFolder $SourceFolder -DeployRModulePath $DeployRModulePath -ImportByName
         }
     }
     else {
         return $DPSelect
     }
-
+    
 }
 #endregion Dell Driver Packs Import
 
+#region HP Driver Pack
+function Get-HPOSSupport {
+    [CmdletBinding()]
+    param(
+    [Parameter(Position=0,mandatory=$false)]
+    [string]$Platform,
+    [switch]$Latest,
+    [switch]$MaxOS,
+    [switch]$MaxOSVer,
+    [switch]$MaxOSNum
+    )
+    $CabPath = "$env:TEMP\platformList.cab"
+    $XMLPath = "$env:TEMP\platformList.xml"
+    if ($Platform){$MachinePlatform = $platform}
+    else {$MachinePlatform = (Get-CimInstance -Namespace root/cimv2 -ClassName Win32_BaseBoard).Product}
+    $PlatformListCabURL = "https://hpia.hpcloud.hp.com/ref/platformList.cab"
+    Invoke-WebRequest -Uri $PlatformListCabURL -OutFile $CabPath -UseBasicParsing
+    $Expand = expand $CabPath $XMLPath
+    [xml]$XML = Get-Content $XMLPath
+    $XMLPlatforms = $XML.ImagePal.Platform
+    $OSList = ($XMLPlatforms | Where-Object {$_.SystemID -match $MachinePlatform}).OS | Select-Object -Property OSReleaseIdDisplay, OSBuildId, OSDescription
+    
+    if ($Latest){
+        [String]$MaxOSSupported = ($OSList.OSDescription | Where-Object {$_ -notmatch "LTSB"}| Select-Object -Unique| Measure-Object -Maximum).Maximum
+        [String]$MaxOSVerion = (($OSList | Where-Object {$_.OSDescription -eq "$MaxOSSupported"}).OSReleaseIdDisplay | Measure-Object -Maximum).Maximum
+        return "$MaxOSSupported $MaxOSVerion"
+        break
+    }
+    if ($MaxOS){
+        [String]$MaxOSSupported = ($OSList.OSDescription | Where-Object {$_ -notmatch "LTSB"}| Select-Object -Unique| Measure-Object -Maximum).Maximum
+        if ($MaxOSSupported -Match "11"){[String]$MaxOSName = "Win11"}
+        else {[String]$MaxOSName = "Win10"}
+        return "$MaxOSName"
+        break
+    }
+    if ($MaxOSVer){
+        [String]$MaxOSSupported = ($OSList.OSDescription | Where-Object {$_ -notmatch "LTSB"}| Select-Object -Unique| Measure-Object -Maximum).Maximum
+        [String]$MaxOSVersion = (($OSList | Where-Object {$_.OSDescription -eq "$MaxOSSupported"}).OSReleaseIdDisplay | Measure-Object -Maximum).Maximum
+        return "$MaxOSVersion"
+        break
+    }
+    if ($MaxOSNum){
+        [String]$MaxOSSupported = ($OSList.OSDescription | Where-Object {$_ -notmatch "LTSB"}| Select-Object -Unique| Measure-Object -Maximum).Maximum
+        if ($MaxOSSupported -Match "11"){[String]$MaxOSNumber = "11.0"}
+        else {[String]$MaxOSNumber = "10.0"}
+        return "$MaxOSNumber"
+        break
+    }
+    return $OSList
+}
+function Get-HPSoftPaqItems {
+    [CmdletBinding()]
+    param(
+    [Parameter(Position=0,mandatory=$false)]
+    [string] $Platform,
+    [Parameter(Position=1,mandatory=$true)]
+    [string] $osver,
+    [Parameter(Position=2,mandatory=$true)]
+    [ValidateSet("10.0","11.0")]
+    [string] $os
+    )
+    
+    
+    
+    if ($env:PROCESSOR_ARCHITECTURE -eq "AMD64"){$Arch = '64'}
+    $CabPath = "$env:TEMP\HPIA.cab"
+    $XMLPath = "$env:TEMP\HPIA.xml"
+    if ($Platform){$MachinePlatform = $platform}
+    else {$MachinePlatform = (Get-CimInstance -Namespace root/cimv2 -ClassName Win32_BaseBoard).Product}
+    
+    #Test Passed Parameters
+    $OSList = Get-HPOSSupport -Platform $MachinePlatform
+    if ($OS -eq "11.0"){
+        $OK = $OSList | Where-Object {$_.OSDescription -match "Windows 11"}
+        if ($null -eq $OK){
+            Write-Error "Your option of OS: $OS is not valid, This platform does not support Windows 11"
+            break
+        }
+    }
+    if ($OS -eq "10.0"){
+        $OK = $OSList | Where-Object {$_.OSDescription -match "Windows 10"}
+        if ($null -eq $OK){
+            Write-Error "Your option of OS: $OS is not valid, This platform does not support Windows 10"
+            break
+        }
+    }
+    $SupportedOSVers = $OSList.OSReleaseIdDisplay
+    if ($osver -notin $SupportedOSVers){
+        Write-Host -ForegroundColor red "Selected Release $OSVer is not supported by this Platform: $MachinePlatform"
+        Write-Error " Use Get-HPOSSupport to find list of options"
+        break
+    }
+    $BaseURL = ("https://hpia.hpcloud.hp.com/ref/$($MachinePlatform)/$($MachinePlatform)_$($Arch)_$($os).$($osver).cab").ToLower()
+    Write-Verbose "Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing"
+    Invoke-WebRequest -Uri $BaseURL -OutFile $CabPath -UseBasicParsing
+    $Expand = expand $CabPath $XMLPath
+    [xml]$XML = Get-Content $XMLPath
+    $SoftpaqList = $XML.ImagePal.Solutions.UpdateInfo
+    
+    return $SoftpaqList
+    
+}
+function Get-HPDriverPackLatest {
+    [CmdletBinding()]
+    param(
+    [Parameter(Position=0,mandatory=$false)]
+    [string]$Platform,
+    [switch]$URL,
+    [switch]$download
+    )
+    if ($Platform){$MachinePlatform = $platform}
+    else {$MachinePlatform = (Get-CimInstance -Namespace root/cimv2 -ClassName Win32_BaseBoard).Product}
+    $OSList = Get-HPOSSupport -Platform $MachinePlatform
+    if (($OSList.OSDescription) -contains "Microsoft Windows 11"){
+        $OS = "11.0"
+        #Get the supported Builds for Windows 11 so we can loop through them
+        $SupportedWinXXBuilds = ($OSList| Where-Object {$_.OSDescription -match "11"}).OSReleaseIdDisplay | Sort-Object -Descending
+        if ($SupportedWinXXBuilds){
+            write-Verbose "Checking for Win $OS Driver Pack"
+            [int]$Loop_Index = 0
+            do {
+                Write-Verbose "Checking for Driver Pack for $OS $($SupportedWinXXBuilds[$loop_index])"
+                try {
+                    $DriverPack = Get-HPSoftPaqItems -osver $($SupportedWinXXBuilds[$loop_index]) -os $OS -Platform $MachinePlatform -ErrorAction SilentlyContinue | Where-Object {$_.Category -match "Driver Pack"}
+                    #$DriverPack = Get-SoftpaqList -Category Driverpack -OsVer $($SupportedWinXXBuilds[$loop_index]) -Os "Win11" -ErrorAction SilentlyContinue
+                }
+                catch {
+                    <#Do this if a terminating exception happens#>
+                }
+                if (!($DriverPack)){$Loop_Index++;}
+                if ($DriverPack){
+                    Write-Verbose "Windows 11 $($SupportedWinXXBuilds[$loop_index]) Driver Pack Found"
+                }
+            }
+            while ($null -eq $DriverPack -and $loop_index -lt $SupportedWinXXBuilds.Count)
+        }
+    }
+    
+    if (!($DriverPack)){ #If no Win11 Driver Pack found, check for Win10 Driver Pack
+        if (($OSList.OSDescription) -contains "Microsoft Windows 10"){
+            $OS = "10.0"
+            #Get the supported Builds for Windows 10 so we can loop through them
+            $SupportedWinXXBuilds = ($OSList| Where-Object {$_.OSDescription -match "10"}).OSReleaseIdDisplay | Sort-Object -Descending
+            if ($SupportedWinXXBuilds){
+                write-Verbose "Checking for Win $OS Driver Pack"
+                [int]$Loop_Index = 0
+                do {
+                    Write-Verbose "Checking for Driver Pack for $OS $($SupportedWinXXBuilds[$loop_index])"
+                    try {
+                        $DriverPack = Get-HPSoftPaqItems -osver $($SupportedWinXXBuilds[$loop_index]) -os $OS -Platform $MachinePlatform -ErrorAction SilentlyContinue | Where-Object {$_.Category -match "Driver Pack"}
+                        #$DriverPack = Get-SoftpaqList -Category Driverpack -OsVer $($SupportedWinXXBuilds[$loop_index]) -Os "Win10" -ErrorAction SilentlyContinue
+                    }
+                    catch {
+                        <#Do this if a terminating exception happens#>
+                    }
+                    if (!($DriverPack)){$Loop_Index++;}
+                    if ($DriverPack){
+                        Write-Verbose "Windows 10 $($SupportedWinXXBuilds[$loop_index]) Driver Pack Found"
+                    }
+                }
+                while ($null-eq $DriverPack  -and $loop_index -lt $SupportedWinXXBuilds.Count)
+            }
+        }
+    }
+    if ($DriverPack){
+        Write-Verbose "Driver Pack Found: $($DriverPack.Name) for Platform: $Platform"
+        if($PSBoundParameters.ContainsKey('Download')){
+            Save-WebFile -SourceUrl "https://$($DriverPack.URL)" -DestinationName "$($DriverPack.id).exe" -DestinationDirectory "C:\Drivers"
+        }
+        else{
+            if($PSBoundParameters.ContainsKey('URL')){
+                return "https://$($DriverPack.URL)"
+            }
+            else {
+                return $DriverPack
+            }
+        }
+    }
+    else {
+        Write-Verbose "No Driver Pack Found for Platform: $Platform"
+        return $false
+    }
+}
+function Get-HPPlatforms{
+    
+    $CabPath = "$env:TEMP\platformList.cab"
+    $XMLPath = "$env:TEMP\platformList.xml"
+    $PlatformListCabURL = "https://hpia.hpcloud.hp.com/ref/platformList.cab"
+    if (!(Test-Path $CabPath)){
+        Invoke-WebRequest -Uri $PlatformListCabURL -OutFile $CabPath -UseBasicParsing
+    }
+    if (!(Test-Path $XMLPath)){
+        $Expand = expand $CabPath $XMLPath
+    }
+    [xml]$XML = Get-Content $XMLPath
+    
+    $Platforms = $XML.ImagePal.Platform
+    $Platforms = $Platforms | Where-Object {$_.ProductName.DPBCompliant -eq 'true'}
+    
+    #Create PSObject of the Platforms, it will include the SystemID and the ProductName.#Text (model name)
+    #Expand each ProductName into its own row
+    $ExpandedPlatforms = @()
+    foreach ($Platform in $Platforms) {
+        $ProductNames = $Platform.ProductName.'#text'
+        
+        # Handle both single and multiple ProductNames
+        if ($ProductNames -is [array]) {
+            foreach ($ProductName in $ProductNames) {
+                $ExpandedPlatforms += [PSCustomObject]@{
+                    SystemID = $Platform.SystemID.ToUpper()
+                    ProductName = $ProductName
+                }
+            }
+        }
+        else {
+            $ExpandedPlatforms += [PSCustomObject]@{
+                SystemID = $Platform.SystemID.ToUpper()
+                ProductName = $ProductNames
+            }
+        }
+    }
+    
+    return $ExpandedPlatforms
+}
 
+function Find-HPDriverPacks {
+    [CmdletBinding()]
+    param (
+    [switch]$ImportByModel,
+    [switch]$ImportBySKU,
+    [string]$SourceFolder = "D:\DeployRContentItems\Source\DriverPacks",
+    [string]$DeployRModulePath ='C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
+    )
+    $AvailableModels = Get-HPPlatforms
+    $DPSelect = $AvailableModels | sort-object ProductName | Out-GridView -PassThru -Title "Select the HP Models you'd like to Generate DriverPacks for:"
+    
+    Foreach ($DP in $DPSelect){
+        $DPDetails = Get-HPDriverPackLatest -Platform $DP.SystemID | select-object -First 1
+        
+        $FriendlyModel = $DP.ProductName -replace '[\/:*?"<>|]', '_'  # Sanitize for folder name
+        $ModelAlias = $DP.SystemID
+        $OSVer = if ($DPDetails.Name -match 'Windows 11') {'Win11'} else {'Win10'}
+        $URL = "https://$($DPDetails.URL)"
+        Import-DriverPack -MakeAlias "HP" -FriendlyModel $FriendlyModel -ModelAlias $ModelAlias -OSVer $OSVer -URL $URL -ArchiveSourceFolder $SourceFolder -DeployRModulePath $DeployRModulePath -ImportByName
+        
+    }
+}
