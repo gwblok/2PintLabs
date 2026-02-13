@@ -224,8 +224,7 @@ $Status = Get-DellBIOSUpdates -Check -Verbose
 if ($Status -eq $false){
     Write-Host "Dell BIOS update available. Flashing now..."
     Get-DellBIOSUpdates -Flash
-    Write-Host "Dell BIOS update complete, rebooting now..."
-    exit 3010
+    Write-Host "Dell BIOS update complete, will update upon reboot..."
 }
 else {
     Write-Host "No Dell BIOS updates available."
