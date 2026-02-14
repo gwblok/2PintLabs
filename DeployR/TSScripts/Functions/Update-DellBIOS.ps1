@@ -225,6 +225,7 @@ if ($Status -eq $false){
     Write-Host "Dell BIOS update available. Flashing now..."
     Get-DellBIOSUpdates -Flash
     Write-Host "Dell BIOS update complete, will update upon reboot..."
+    $tsenv:SMSTSRebootRequested = "true"
 }
 else {
     Write-Host "No Dell BIOS updates available."
