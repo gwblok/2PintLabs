@@ -1,6 +1,28 @@
-#So far, just created Function, but will integrate into Task Sequence for Backup.
-
 <#
+Ok, so this should backup the user profiles on the machine and upload to the DeployR Server.
+I have to do some testing yet, but I just wrote this tonight... and haven't tried.
+
+But... seems like it should work.
+
+So... this would run in the Full OS of a reimage scenario, and backup the user profiles to a folder on the local machine, then upload that folder to the DeployR Server as an App. 
+It would then reboot into WinPE, Format the driver, install the OS, etc.. and download the backup file
+
+#>
+try {
+    Import-Module DeployR.Utility -ErrorAction SilentlyContinue
+}
+catch {}
+
+$CIName = $env:COMPUTERNAME
+$CIDescription = "Backup and restore Windows user profiles, including browser data for Chrome, Edge, and Firefox."
+#$CIVDescription = "Version description for the content item."
+$CISourceFolder = "$env:SystemDrive\UserBackup\"
+
+#region functions
+
+
+function Invoke-MigrateData {
+    <#
 .SYNOPSIS
     Performs backup and restore operations for Windows user profiles, including browser data for Chrome, Edge, and Firefox.
 
@@ -34,7 +56,6 @@
 .EXAMPLE
     Invoke-MigrateData -Mode 'Paste' -SourceProfile 'john.doe' -RepositoryPath 'C:\ProfileBackups' -DestinationProfile 'jane.smith'
 #>
-function Invoke-MigrateData {
     param(
         [Parameter(Mandatory=$true)]
         [ValidateSet('Copy', 'Paste')]
@@ -376,3 +397,32 @@ function Invoke-MigrateData {
         }
     }
 }
+Function New-DeployRContentItemOther {
+    Param (
+        [string]$CIName,
+        [string]$CISourceFolder,
+        [string]$CIDescription = "No Description Provided",
+        [string]$CIVDescription = "No Version Description Provided"
+    )
+
+    $NewDRCI = New-DeployRContentItem -Type Folder -Name $CIName -Description $CIDescription -Purpose 'Other'
+    New-DeployRContentItemVersion -ContentItemId $NewDRCI.id -SourceFolder $CISourceFolder -Description $CIVDescription
+}
+
+########## Execute the function to create the DeployR Content Item with the specified parameters ##########
+Invoke-MigrateData -Mode 'Copy' -RepositoryPath $CISourceFolder -Force $true
+
+#List the Folders that were backed up for logging purposes
+$FolderBackups = Get-ChildItem -Path $CISourceFolder | Where-Object { $_.Attributes -eq 'Directory' } 
+$FolderBackups | ForEach-Object {
+    Write-Host "Backed up item: $($_.FullName)"
+}
+
+#Create List of Folder seperated by a comma for the version description
+$FolderList = $FolderBackups | Select-Object -ExpandProperty Name -ErrorAction SilentlyContinue | Sort-Object
+$FolderListString = $FolderList -join ", "
+$CIVDescription = "Backed up user(s): $FolderListString"
+
+New-DeployRContentItemOther -CIName $CIName -CISourceFolder $CISourceFolder -CIDescription $CIDescription -CIVDescription $CIVDescription
+
+#endregion functions
