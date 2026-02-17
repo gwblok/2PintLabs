@@ -62,7 +62,7 @@ Function Get-InputFormData {
     $JSONFallbackConfigURL = 'https://raw.githubusercontent.com/gwblok/2PintLabs/main/DeployR/FrontEnd/FrontEndJSONDriven/FrontEndConfig.json'
     $JSONConfig = $null
     try {
-        $configPath = Join-Path -Path $scriptDir -ChildPath 'FrontEndConfig.json'
+        $configPath = Join-Path -Path $scriptDir -ChildPath 'FrontEndConfig.json' -ErrorAction SilentlyContinue
         if (Test-Path -Path $configPath) {
             Write-Host "Found FrontEndConfig.json at $configPath" -ForegroundColor Green
             $JSONConfig = Get-Content -Path $configPath -Raw | ConvertFrom-Json -ErrorAction Stop
@@ -1671,11 +1671,21 @@ if ($TSEnv){
 # Set Variables in DeployR TS Environment if DeployR.Utility is available and no existing installation
 if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"))) {
     $DEPLOYRCLIENTPASSCODE = ${TSEnv:DEPLOYRCLIENTPASSCODE}
-    ${TSEnv:NamingStrategy} = $FormResults.NamingStrategy
-    ${TSEnv:ComputerName} = $FormResults.GeneratedComputerName
-    ${TSEnv:DomainSuffix} = $FormResults.DomainSuffix
-    ${TSEnv:HardwareIdType} = $FormResults.HardwareIdType
-    ${TSEnv:WorkplaceJoin} = $FormResults.WorkplaceJoin
+    if ($FormResults.NamingStrategy){
+        ${TSEnv:NamingStrategy} = $FormResults.NamingStrategy
+    }
+    if ($FormResults.GeneratedComputerName){
+        ${TSEnv:ComputerName} = $FormResults.GeneratedComputerName
+    }
+    if ($FormResults.DomainSuffix){
+        ${TSEnv:DomainSuffix} = $FormResults.DomainSuffix
+    }
+    if ($FormResults.HardwareIdType){
+        ${TSEnv:HardwareIdType} = $FormResults.HardwareIdType
+    }
+    if ($FormResults.WorkplaceJoin){
+        ${TSEnv:WorkplaceJoin} = $FormResults.WorkplaceJoin
+    }
     if ($FormResults.EntraIDUserUPN) {
         ${TSEnv:EntraIDUserUPN} = $FormResults.EntraIDUserUPN
         ${TSEnv:ENTRAUPN} = $FormResults.EntraIDUserUPN
