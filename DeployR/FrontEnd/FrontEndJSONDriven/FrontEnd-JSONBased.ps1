@@ -159,6 +159,7 @@ Function Get-InputFormData {
                     $SoftwareOptions += [PSCustomObject]@{
                         DisplayName = $app.Name
                         Id = $app.Name -replace '\s+', ''  # Remove all spaces for Id
+                        AppID = $app.Id
                     }
                 }
             }
@@ -1703,10 +1704,12 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
             ${TSEnv:AutopilotGroupTag} = $FormResults.AutopilotGroupTag
         }
     }
-    
-    ${TSEnv:SelectedUserRole} = $FormResults.SelectedUserRole
-    ${TSEnv:SelectedSoftwareCsv} = $FormResults.SelectedSoftwareCsv
-    
+    if ($FormResults.SelectedUserRole){
+        ${TSEnv:SelectedUserRole} = $FormResults.SelectedUserRole
+    }
+    if ($FormResults.SelectedSoftwareCsv){
+        ${TSEnv:SelectedSoftwareCsv} = $FormResults.SelectedSoftwareCsv
+    }
     
     Write-CMTraceLog -Message  "Set DeployR TS Environment Variables:" -Type "Info" -Component "Main"
     Write-CMTraceLog -Message "NamingStrategy = $(${TSEnv:NamingStrategy})" -Type "Info" -Component "Main"
