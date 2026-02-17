@@ -59,6 +59,7 @@ Function Get-InputFormData {
 
 
     # Load FrontEndConfig.json from the script directory into $JSONConfig
+    $JSONFallbackConfigURL = 'https://raw.githubusercontent.com/gwblok/2PintLabs/main/DeployR/FrontEnd/FrontEndJSONDriven/FrontEndConfig.json'
     $JSONConfig = $null
     try {
         $configPath = Join-Path -Path $scriptDir -ChildPath 'FrontEndConfig.json'
@@ -70,7 +71,26 @@ Function Get-InputFormData {
         else {
             Write-Verbose "FrontEndConfig.json not found at $configPath"
             try { Write-CMTraceLog -Message "FrontEndConfig.json not found at $configPath" -Type "Warning" -Component "Config" } catch {}
+            # Attempt to load JSON config from fallback URL. Use Invoke-RestMethod first
+            # (it returns a parsed object). If that fails, fetch raw content and
+            # ConvertFrom-Json explicitly.
+            try {
+                Write-Host "Attempting to load FrontEndConfig.json from fallback URL: $JSONFallbackConfigURL" -ForegroundColor Cyan
+                try {
+                    $JSONConfig = Invoke-RestMethod -Uri $JSONFallbackConfigURL -ErrorAction Stop
+                } catch {
+                    # Fallback to raw content parsing
+                    $content = (Invoke-WebRequest -Uri $JSONFallbackConfigURL -ErrorAction Stop).Content
+                    $JSONConfig = $content | ConvertFrom-Json -ErrorAction Stop
+                }
+                Write-Host "Successfully loaded FrontEndConfig.json from fallback URL" -ForegroundColor Green
+                try { Write-CMTraceLog -Message "Loaded FrontEndConfig.json from fallback URL: $JSONFallbackConfigURL" -Type "Info" -Component "Config" } catch {}
+            } catch {
+                Write-Warning "Failed to load FrontEndConfig.json from fallback URL: $_"
+                try { Write-CMTraceLog -Message "Failed to load FrontEndConfig.json from fallback URL: $_" -Type "Warning" -Component "Config" } catch {}
+            }
         }
+
     }
     catch {
         Write-Warning "Failed to load or parse FrontEndConfig.json: $_"
@@ -120,6 +140,7 @@ Function Get-InputFormData {
     # Software options - try to pull dynamically from DeployR, fall back to static list if unavailable
     # Try to get apps dynamically from DeployR
     $UseDeployRSoftwareList = $JSONConfig.SoftwareFromDeployR
+    $SoftwareTagForDeployR = $JSONConfig.SoftwareFromDeployRTag
     $SoftwareOptions = $null
     $DeployRRetrievalFailed = $false
     
@@ -128,7 +149,7 @@ Function Get-InputFormData {
         Write-Host "Attempting to retrieve software list from DeployR..." -ForegroundColor Cyan
         try {
             # Call the function that's defined later in this script
-            $DeployRApps = Get-DeployRFrontEndApps -ErrorAction Stop
+            $DeployRApps = Get-DeployRFrontEndApps -Tag $SoftwareTagForDeployR -ErrorAction Stop
             
             if ($DeployRApps -and $DeployRApps.Count -gt 0) {
                 Write-Host "Successfully retrieved $($DeployRApps.Count) apps from DeployR" -ForegroundColor Green
@@ -1483,6 +1504,11 @@ function Write-CMTraceLog {
 } 
 
 function Get-DeployRFrontEndApps {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Tag
+    )
     #This will connect with the DeployR Server and pull a list of Apps that are specified to show in the front end
     
     try {
@@ -1517,7 +1543,7 @@ function Get-DeployRFrontEndApps {
         }
     }
     $Apps = Get-DeployRApplication
-    $FrontEndApps = $apps | Where-Object {$_.description -match "Frontend = TRUE"}
+    $FrontEndApps = $apps | Where-Object {$_.tags -match $Tag}
     return $FrontEndApps
 }
 #

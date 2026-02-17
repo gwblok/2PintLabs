@@ -3,7 +3,7 @@
   "//Description": "This file controls the System Configuration Input Form (New-InputForm-JSONDriven.ps1)",
 
   "//Usage": "ConfigMgr or 2Pint DeployR",
-  "Usage": "ConfigMgr",
+  "Usage": "DeployR",
 
   "//DomainSuffix": "Default domain suffix displayed in the computer naming preview (optional)",
   "DomainSuffix": "2p.garytown.com",
@@ -12,7 +12,8 @@
   "LogoFileName": "Logo.png",
   
   "//SoftwareFromDeployR": "Set to 'True' to retrieve software list dynamically from DeployR API, 'False' to use static Software list below",
-  "SoftwareFromDeployR": "False",
+  "SoftwareFromDeployR": "True",
+  "SoftwareFromDeployRTag": "FrontEnd",
   
   "//OUs": "List of Organizational Units available for domain join operations",
   "OUs": [
