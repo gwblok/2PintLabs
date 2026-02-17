@@ -1764,6 +1764,7 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
             Write-Host "Adding application to TSENV list: $($AppDetail.Name) with Version Number $($LatestVersion.versionNo)" -ForegroundColor Green
             $tsenvlist:Applications += "$($AppDetail.Id):$($LatestVersion.versionNo)"
             Write-CMTraceLog -Message "Added application to TSENV list: $($AppDetail.Name) with Version Number $($LatestVersion.versionNo)" -Type "Info" -Component "Main"
+            Write-CMTraceLog -Message "$tsenvlist:Applications += $($AppDetail.Id):$($LatestVersion.versionNo)" -Type "Info" -Component "Main"
         }
         else {
             #Write-Warning "No versions found for application $($AppDetail.Name), skipping TSENV list addition."
