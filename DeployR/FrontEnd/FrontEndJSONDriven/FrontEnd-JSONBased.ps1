@@ -1761,6 +1761,7 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     foreach ($AppDetail in $DeployRAppDetails){
         $LatestVersion = $AppDetail.Versions | Sort-Object -Property VersionNumber -Descending | Select-Object -First 1
         if ($LatestVersion) {
+            Write-Host "Adding application to TSENV list: $($AppDetail.Name) with Version Number $($LatestVersion.versionNo)" -ForegroundColor Green
             $tsenvlist:Applications += "$($AppDetail.Id):$($LatestVersion.versionNo)"
             Write-CMTraceLog -Message "Added application to TSENV list: $($AppDetail.Name) with Version Number $($LatestVersion.versionNo)" -Type "Info" -Component "Main"
         }
