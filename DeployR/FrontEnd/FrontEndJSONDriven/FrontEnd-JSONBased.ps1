@@ -149,13 +149,13 @@ Function Get-InputFormData {
         Write-Host "Attempting to retrieve software list from DeployR..." -ForegroundColor Cyan
         try {
             # Call the function that's defined later in this script
-            $DeployRApps = Get-DeployRFrontEndApps -Tag $SoftwareTagForDeployR -ErrorAction Stop
+            $script:DeployRApps = Get-DeployRFrontEndApps -Tag $SoftwareTagForDeployR -ErrorAction Stop
             
-            if ($DeployRApps -and $DeployRApps.Count -gt 0) {
-                Write-Host "Successfully retrieved $($DeployRApps.Count) apps from DeployR" -ForegroundColor Green
+            if ($script:DeployRApps -and $script:DeployRApps.Count -gt 0) {
+                Write-Host "Successfully retrieved $($script:DeployRApps.Count) apps from DeployR" -ForegroundColor Green
                 # Build PSObject array with DisplayName and Id (Id = name without spaces)
                 $SoftwareOptions = @()
-                foreach ($app in $DeployRApps) {
+                foreach ($app in $script:DeployRApps) {
                     $SoftwareOptions += [PSCustomObject]@{
                         DisplayName = $app.Name
                         Id = $app.Name -replace '\s+', ''  # Remove all spaces for Id
@@ -1743,7 +1743,31 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     } catch {
         Write-Warning "Failed to export individual software TS variables: $_"
     }
-    
+    #Create the Variable List for Dynamic App Installs, needs to look like
+    <#
+    https://documentation.2pintsoftware.com/deployr/reference/step-definitions/install-multiple-applications
+    $tsenvlist:Applications = @("d7775b33-9cfe-4fcd-b3a2-dc129cfc769e:1","c2032a9a-d15a-4275-97a2-e317a84f3437:1","2ae9d965-e89f-4e10-89e1-e55caeda997b:1","ebe17300-286a-4bf2-a172-aa8a4d64b186:1")
+    #>
+    $DeployRAppDetails = @()
+    if ($FormResults.SelectedSoftware -and $FormResults.SelectedSoftware.Count -gt 0){
+        foreach ($App in $FormResults.SelectedSoftware){
+            #Get Details about App from DeployR Server
+            $script:DeployRApps | where-object { $_.Name -eq $App } | ForEach-Object {
+                $DeployRAppDetails += $_
+            }
+        }
+    }
+    #Grab the Latest Version of the Apps Available to use
+    foreach ($AppDetail in $DeployRAppDetails){
+        $LatestVersion = $AppDetail.Versions | Sort-Object -Property VersionNumber -Descending | Select-Object -First 1
+        if ($LatestVersion) {
+            $tsenvlist:Applications += "$($AppDetail.Id):$($LatestVersion.versionNo)"
+            Write-CMTraceLog -Message "Added application to TSENV list: $($AppDetail.Name) with Version Number $($LatestVersion.versionNo)" -Type "Info" -Component "Main"
+        }
+        else {
+            #Write-Warning "No versions found for application $($AppDetail.Name), skipping TSENV list addition."
+        }
+    }
 }
 else{
     $env:NamingStrategy = $FormResults.NamingStrategy
