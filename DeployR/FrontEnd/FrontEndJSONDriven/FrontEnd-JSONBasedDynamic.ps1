@@ -1590,6 +1590,10 @@ function Get-DeployRFrontEndApps {
     #>
     write-host "Retrieving DeployR Applications with tag '$Tag'..." -ForegroundColor Cyan
     $Apps = Get-DeployRApplication
+    if ($Apps.count -eq 0) {
+        Write-Host "No applications found on DeployR Server." -ForegroundColor Yellow
+        return @()
+    }
     $FrontEndApps = $apps | Where-Object {$_.tags -match $Tag}
     return $FrontEndApps
 }
