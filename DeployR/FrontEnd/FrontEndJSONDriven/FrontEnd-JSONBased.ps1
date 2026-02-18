@@ -158,7 +158,7 @@ Function Get-InputFormData {
                 foreach ($app in $script:DeployRApps) {
                     $SoftwareOptions += [PSCustomObject]@{
                         DisplayName = $app.Name
-                        Id = $app.Name -replace '\s+', ''  # Remove all spaces for Id
+                        Id = $app.Id  
                         AppID = $app.Id
                     }
                 }
@@ -1263,17 +1263,23 @@ Function Get-InputFormData {
             }
         }
         # Capture software selections from dynamic 'Software' tab
-        # Build a map of Id -> bool and a list of selected Ids
+        # Build a map of DisplayName -> bool and a list of selected software objects
         $script:SelectedSoftware = @()
         $script:SelectedSoftwareMap = [ordered]@{}
         foreach ($child in $spSoftwareList.Children) {
             try {
                 if ($child) {
                     $id = [string]$child.Tag
+                    $DisplayName = [string]$child.Content
                     if (-not $id) { $id = ([string]$child.Content).Replace(' ', '').ToLower() }
                     $isChecked = [bool]$child.IsChecked
-                    $script:SelectedSoftwareMap[$id] = $isChecked
-                    if ($isChecked) { $script:SelectedSoftware += $id }
+                    $script:SelectedSoftwareMap[$DisplayName] = $isChecked
+                    if ($isChecked) {
+                        $script:SelectedSoftware += [PSCustomObject]@{
+                            Id = $id
+                            DisplayName = $DisplayName
+                        }
+                    }
                 }
             } catch {}
         }
@@ -1752,7 +1758,7 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     if ($FormResults.SelectedSoftware -and $FormResults.SelectedSoftware.Count -gt 0){
         foreach ($App in $FormResults.SelectedSoftware){
             #Get Details about App from DeployR Server
-            $script:DeployRApps | where-object { $_.Name -eq $App } | ForEach-Object {
+            $script:DeployRApps | where-object { $_.Id -eq $App.id } | ForEach-Object {
                 $DeployRAppDetails += $_
             }
         }
