@@ -68,6 +68,7 @@ Function Get-InputFormData {
     try {
         if ($scriptDir) {
             Write-Host "Attempting to load FrontEndConfig.json from script directory: $scriptDir" -ForegroundColor Cyan
+            $configPath = Join-Path -Path $scriptDir -ChildPath 'FrontEndConfig.json'
             if (Test-Path -Path $configPath) {
                 Write-Host "Found FrontEndConfig.json at $configPath" -ForegroundColor Green
                 $JSONConfig = Get-Content -Path $configPath -Raw | ConvertFrom-Json -ErrorAction Stop
