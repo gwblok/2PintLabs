@@ -58,8 +58,8 @@ Function Get-InputFormData {
             else { $scriptDir = (Get-Location).Path }
         }
         catch{}
-
     }
+    if (-not $scriptDir){ $scriptDir = (Get-Location).Path }
 
 
     # Load FrontEndConfig.json from the script directory into $JSONConfig
