@@ -1,5 +1,5 @@
 
-$ScriptVersion = '26.2.17.21.11'
+$ScriptVersion = '26.2.17.21.12'
 
 
 #Region Functions
@@ -848,11 +848,27 @@ Function Get-InputFormData {
     # Load Logo from file path
     if (!$logoLoaded -and ![string]::IsNullOrWhiteSpace($LogoPath) -and (Test-Path $LogoPath)) {
         try {
-            $imgLogo.Source = $LogoPath
+            # Use FileStream + BitmapImage with explicit stream to avoid WindowsBase assembly
+            # issues in WinPE where WindowsBase v8.0.0.0 may not be present.
+            $stream = [System.IO.File]::OpenRead($LogoPath)
+            $bitmap = New-Object System.Windows.Media.Imaging.BitmapImage
+            $bitmap.BeginInit()
+            $bitmap.StreamSource = $stream
+            $bitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
+            $bitmap.EndInit()
+            $bitmap.Freeze()
+            $stream.Close()
+            $stream.Dispose()
+            $imgLogo.Source = $bitmap
             $logoLoaded = $true
         }
         catch {
-            Write-Warning "Failed to load logo from file: $LogoPath"
+            Write-Warning "Failed to load logo from file: $LogoPath - $_"
+            # Last resort: try direct assignment
+            try {
+                $imgLogo.Source = $LogoPath
+                $logoLoaded = $true
+            } catch {}
         }
     }
     
@@ -1539,10 +1555,12 @@ function Write-CMTraceLog {
         # Swallow this to avoid breaking the UI flow
     }
     # Roll log file over at size threshold
-    if ((Get-Item $Global:LogFilePath).Length / 1KB -gt $Global:LogFileSize) {
-        $log = $Global:LogFilePath
-        Remove-Item ($log.Replace(".log", ".lo_"))
-        Rename-Item $Global:LogFilePath ($log.Replace(".log", ".lo_")) -Force
+    if ($Global:LogFilePath -and (Test-Path -Path $Global:LogFilePath)) {
+        if ((Get-Item $Global:LogFilePath).Length / 1KB -gt $Global:LogFileSize) {
+            $log = $Global:LogFilePath
+            Remove-Item ($log.Replace(".log", ".lo_")) -ErrorAction SilentlyContinue
+            Rename-Item $Global:LogFilePath ($log.Replace(".log", ".lo_")) -Force
+        }
     }
 } 
 
@@ -1654,10 +1672,14 @@ if (!($Global:LogFolderPath)) {
 }
 # Start a PowerShell transcription to capture verbose output in a separate file
 try {
-    if (!(Test-Path -Path $Global:LogFolderPath)) { New-Item -ItemType Directory -Path $Global:LogFolderPath -Force | Out-Null }
-    $transcriptPath = "$Global:LogFolderPath\FrontendTranscription.log"
-    Start-Transcript -Path $transcriptPath -Force -ErrorAction SilentlyContinue
-    Write-CMTraceLog -Message "Started PowerShell transcription to $transcriptPath" -Type "Info" -Component "Main"
+    if ($Global:LogFolderPath) {
+        if (!(Test-Path -Path $Global:LogFolderPath)) { New-Item -ItemType Directory -Path $Global:LogFolderPath -Force | Out-Null }
+        $transcriptPath = "$Global:LogFolderPath\FrontendTranscription.log"
+        Start-Transcript -Path $transcriptPath -Force -ErrorAction SilentlyContinue
+        Write-CMTraceLog -Message "Started PowerShell transcription to $transcriptPath" -Type "Info" -Component "Main"
+    } else {
+        Write-Warning "Transcript not started: LogFolderPath is not set."
+    }
 } catch {
     Write-Warning "Failed to start transcript: $_"
 }
