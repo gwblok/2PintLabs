@@ -123,6 +123,7 @@ Function Get-InputFormData {
 
     #Logo File Name
     $LogoFileName = $JSONConfig.LogoFileName
+    write-host "Logo file name from JSON config: $LogoFileName" -ForegroundColor Cyan
     try {
         if ((-not $LogoPath) -and (Test-Path $scriptDir)) {
             $possibleLogo = Join-Path -Path $scriptDir -ChildPath $LogoFileName
@@ -1911,7 +1912,7 @@ Stop-Transcript
 
 '@
 Import-Module DeployR.Utility -ErrorAction SilentlyContinue
-$WorkingDir = ${TSEnv:WorkingDir}
+$WorkingDir = ${TSEnv:CONTENT-CONTENT}
 Write-Host "Working Dir for form script: $WorkingDir" -ForegroundColor Cyan
 $FORM | Out-File $WorkingDir\DeployR_TestInputForm.ps1 -Encoding UTF8 -Force
 # Execute the generated form script
