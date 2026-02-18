@@ -1758,11 +1758,12 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
         }
     }
     #Grab the Latest Version of the Apps Available to use
+    $AppList = @()
     foreach ($AppDetail in $DeployRAppDetails){
         $LatestVersion = $AppDetail.Versions | Sort-Object -Property VersionNumber -Descending | Select-Object -First 1
         if ($LatestVersion) {
             Write-Host "Adding application to TSENV list: $($AppDetail.Name) with Version Number $($LatestVersion.versionNo)" -ForegroundColor Green
-            $tsenvlist:Applications += "$($AppDetail.Id):$($LatestVersion.versionNo)"
+            $AppList += "$($AppDetail.Id):$($LatestVersion.versionNo)"
             Write-CMTraceLog -Message "Added application to TSENV list: $($AppDetail.Name) with Version Number $($LatestVersion.versionNo)" -Type "Info" -Component "Main"
             Write-CMTraceLog -Message "$tsenvlist:Applications += $($AppDetail.Id):$($LatestVersion.versionNo)" -Type "Info" -Component "Main"
         }
@@ -1770,6 +1771,10 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
             #Write-Warning "No versions found for application $($AppDetail.Name), skipping TSENV list addition."
         }
     }
+    if ($AppList.Count -gt 0){
+        $tsenvlist:Applications = $AppList
+        Write-CMTraceLog -Message "Final TSENV list of applications to install: $($tsenvlist:Applications -join ', ')" -Type "Info" -Component "Main"
+    }   
 }
 else{
     $env:NamingStrategy = $FormResults.NamingStrategy
