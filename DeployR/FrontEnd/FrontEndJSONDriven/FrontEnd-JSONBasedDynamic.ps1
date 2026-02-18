@@ -59,9 +59,10 @@ Function Get-InputFormData {
 
 
     # Load FrontEndConfig.json from the script directory into $JSONConfig
+    $JSONFallbackConfigURL = 'https://raw.githubusercontent.com/gwblok/2PintLabs/main/DeployR/FrontEnd/FrontEndJSONDriven/FrontEndConfig.json'
     $JSONConfig = $null
     try {
-        $configPath = Join-Path -Path $scriptDir -ChildPath 'FrontEndConfig.json'
+        $configPath = Join-Path -Path $scriptDir -ChildPath 'FrontEndConfig.json' -ErrorAction SilentlyContinue
         if (Test-Path -Path $configPath) {
             Write-Host "Found FrontEndConfig.json at $configPath" -ForegroundColor Green
             $JSONConfig = Get-Content -Path $configPath -Raw | ConvertFrom-Json -ErrorAction Stop
@@ -70,7 +71,26 @@ Function Get-InputFormData {
         else {
             Write-Verbose "FrontEndConfig.json not found at $configPath"
             try { Write-CMTraceLog -Message "FrontEndConfig.json not found at $configPath" -Type "Warning" -Component "Config" } catch {}
+            # Attempt to load JSON config from fallback URL. Use Invoke-RestMethod first
+            # (it returns a parsed object). If that fails, fetch raw content and
+            # ConvertFrom-Json explicitly.
+            try {
+                Write-Host "Attempting to load FrontEndConfig.json from fallback URL: $JSONFallbackConfigURL" -ForegroundColor Cyan
+                try {
+                    $JSONConfig = Invoke-RestMethod -Uri $JSONFallbackConfigURL -ErrorAction Stop
+                } catch {
+                    # Fallback to raw content parsing
+                    $content = (Invoke-WebRequest -Uri $JSONFallbackConfigURL -ErrorAction Stop).Content
+                    $JSONConfig = $content | ConvertFrom-Json -ErrorAction Stop
+                }
+                Write-Host "Successfully loaded FrontEndConfig.json from fallback URL" -ForegroundColor Green
+                try { Write-CMTraceLog -Message "Loaded FrontEndConfig.json from fallback URL: $JSONFallbackConfigURL" -Type "Info" -Component "Config" } catch {}
+            } catch {
+                Write-Warning "Failed to load FrontEndConfig.json from fallback URL: $_"
+                try { Write-CMTraceLog -Message "Failed to load FrontEndConfig.json from fallback URL: $_" -Type "Warning" -Component "Config" } catch {}
+            }
         }
+
     }
     catch {
         Write-Warning "Failed to load or parse FrontEndConfig.json: $_"
@@ -84,16 +104,44 @@ Function Get-InputFormData {
     $Usage = $JSONConfig.Usage
     if (-not $Usage) { $Usage = "DeployR" }  # Default to DeployR if not specified
 
+    ###########################################
+    #Build Data from JSON
+    ##########################################
+
+    #Usage (DeployR or ConfigMgr)
+    $Usage = $JSONConfig.Usage
+    if (-not $Usage) { $Usage = "DeployR" }  # Default to DeployR if not specified
+
     #Logo File Name
     $LogoFileName = $JSONConfig.LogoFileName
-        try {
-        if (-not $LogoPath) {
+    try {
+        if ((-not $LogoPath) -and (Test-Path $scriptDir)) {
             $possibleLogo = Join-Path -Path $scriptDir -ChildPath $LogoFileName
             if (Test-Path -Path $possibleLogo) { 
                 $LogoPath = $possibleLogo 
                 Write-Host "Using logo image at $LogoPath" -ForegroundColor Green
             }
         }
+        else {
+            #Download Default Logo from GitHub and save to temp path
+            $2PintLogoDefaultURL = 'https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/FrontEnd/FrontEndJSONDriven/Logo.png'
+            $tempLogoPath = Join-Path -Path $env:TEMP -ChildPath $LogoFileName
+            Write-Host "Downloading default logo from $2PintLogoDefaultURL to $tempLogoPath" -ForegroundColor Cyan
+            try {
+                Invoke-WebRequest -Uri $2PintLogoDefaultURL -OutFile $tempLogoPath -ErrorAction Stop
+                if (Test-Path -Path $tempLogoPath) {
+                    $LogoPath = $tempLogoPath
+                    Write-Host "Successfully downloaded default logo to $LogoPath" -ForegroundColor Green
+                }
+                else {
+                    Write-Warning "Failed to download default logo to $tempLogoPath"
+                }
+            }
+            catch {
+                Write-Warning "Error downloading default logo $_"
+            }
+        }
+    
     } catch {}
 
     #Default Domain Suffix
@@ -120,6 +168,7 @@ Function Get-InputFormData {
     # Software options - try to pull dynamically from DeployR, fall back to static list if unavailable
     # Try to get apps dynamically from DeployR
     $UseDeployRSoftwareList = $JSONConfig.SoftwareFromDeployR
+    $SoftwareTagForDeployR = $JSONConfig.SoftwareFromDeployRTag
     $SoftwareOptions = $null
     $DeployRRetrievalFailed = $false
     
@@ -128,16 +177,17 @@ Function Get-InputFormData {
         Write-Host "Attempting to retrieve software list from DeployR..." -ForegroundColor Cyan
         try {
             # Call the function that's defined later in this script
-            $DeployRApps = Get-DeployRFrontEndApps -ErrorAction Stop
+            $script:DeployRApps = Get-DeployRFrontEndApps -Tag $SoftwareTagForDeployR -ErrorAction Stop
             
-            if ($DeployRApps -and $DeployRApps.Count -gt 0) {
-                Write-Host "Successfully retrieved $($DeployRApps.Count) apps from DeployR" -ForegroundColor Green
+            if ($script:DeployRApps -and $script:DeployRApps.Count -gt 0) {
+                Write-Host "Successfully retrieved $($script:DeployRApps.Count) apps from DeployR" -ForegroundColor Green
                 # Build PSObject array with DisplayName and Id (Id = name without spaces)
                 $SoftwareOptions = @()
-                foreach ($app in $DeployRApps) {
+                foreach ($app in $script:DeployRApps) {
                     $SoftwareOptions += [PSCustomObject]@{
                         DisplayName = $app.Name
-                        Id = $app.Name -replace '\s+', ''  # Remove all spaces for Id
+                        Id = $app.Id  
+                        AppID = $app.Id
                     }
                 }
             }
@@ -1241,17 +1291,23 @@ Function Get-InputFormData {
             }
         }
         # Capture software selections from dynamic 'Software' tab
-        # Build a map of Id -> bool and a list of selected Ids
+        # Build a map of DisplayName -> bool and a list of selected software objects
         $script:SelectedSoftware = @()
         $script:SelectedSoftwareMap = [ordered]@{}
         foreach ($child in $spSoftwareList.Children) {
             try {
                 if ($child) {
                     $id = [string]$child.Tag
+                    $DisplayName = [string]$child.Content
                     if (-not $id) { $id = ([string]$child.Content).Replace(' ', '').ToLower() }
                     $isChecked = [bool]$child.IsChecked
-                    $script:SelectedSoftwareMap[$id] = $isChecked
-                    if ($isChecked) { $script:SelectedSoftware += $id }
+                    $script:SelectedSoftwareMap[$DisplayName] = $isChecked
+                    if ($isChecked) {
+                        $script:SelectedSoftware += [PSCustomObject]@{
+                            Id = $id
+                            DisplayName = $DisplayName
+                        }
+                    }
                 }
             } catch {}
         }
@@ -1483,6 +1539,11 @@ function Write-CMTraceLog {
 } 
 
 function Get-DeployRFrontEndApps {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$Tag
+    )
     #This will connect with the DeployR Server and pull a list of Apps that are specified to show in the front end
     
     try {
@@ -1517,7 +1578,7 @@ function Get-DeployRFrontEndApps {
         }
     }
     $Apps = Get-DeployRApplication
-    $FrontEndApps = $apps | Where-Object {$_.description -match "Frontend = TRUE"}
+    $FrontEndApps = $apps | Where-Object {$_.tags -match $Tag}
     return $FrontEndApps
 }
 #
@@ -1645,11 +1706,21 @@ if ($TSEnv){
 # Set Variables in DeployR TS Environment if DeployR.Utility is available and no existing installation
 if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"))) {
     $DEPLOYRCLIENTPASSCODE = ${TSEnv:DEPLOYRCLIENTPASSCODE}
-    ${TSEnv:NamingStrategy} = $FormResults.NamingStrategy
-    ${TSEnv:ComputerName} = $FormResults.GeneratedComputerName
-    ${TSEnv:DomainSuffix} = $FormResults.DomainSuffix
-    ${TSEnv:HardwareIdType} = $FormResults.HardwareIdType
-    ${TSEnv:WorkplaceJoin} = $FormResults.WorkplaceJoin
+    if ($FormResults.NamingStrategy){
+        ${TSEnv:NamingStrategy} = $FormResults.NamingStrategy
+    }
+    if ($FormResults.GeneratedComputerName){
+        ${TSEnv:ComputerName} = $FormResults.GeneratedComputerName
+    }
+    if ($FormResults.DomainSuffix){
+        ${TSEnv:DomainSuffix} = $FormResults.DomainSuffix
+    }
+    if ($FormResults.HardwareIdType){
+        ${TSEnv:HardwareIdType} = $FormResults.HardwareIdType
+    }
+    if ($FormResults.WorkplaceJoin){
+        ${TSEnv:WorkplaceJoin} = $FormResults.WorkplaceJoin
+    }
     if ($FormResults.EntraIDUserUPN) {
         ${TSEnv:EntraIDUserUPN} = $FormResults.EntraIDUserUPN
         ${TSEnv:ENTRAUPN} = $FormResults.EntraIDUserUPN
@@ -1667,10 +1738,12 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
             ${TSEnv:AutopilotGroupTag} = $FormResults.AutopilotGroupTag
         }
     }
-    
-    ${TSEnv:SelectedUserRole} = $FormResults.SelectedUserRole
-    ${TSEnv:SelectedSoftwareCsv} = $FormResults.SelectedSoftwareCsv
-    
+    if ($FormResults.SelectedUserRole){
+        ${TSEnv:SelectedUserRole} = $FormResults.SelectedUserRole
+    }
+    if ($FormResults.SelectedSoftwareCsv){
+        ${TSEnv:SelectedSoftwareCsv} = $FormResults.SelectedSoftwareCsv
+    }
     
     Write-CMTraceLog -Message  "Set DeployR TS Environment Variables:" -Type "Info" -Component "Main"
     Write-CMTraceLog -Message "NamingStrategy = $(${TSEnv:NamingStrategy})" -Type "Info" -Component "Main"
@@ -1704,7 +1777,38 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     } catch {
         Write-Warning "Failed to export individual software TS variables: $_"
     }
-    
+    #Create the Variable List for Dynamic App Installs, needs to look like
+    <#
+    https://documentation.2pintsoftware.com/deployr/reference/step-definitions/install-multiple-applications
+    $tsenvlist:Applications = @("d7775b33-9cfe-4fcd-b3a2-dc129cfc769e:1","c2032a9a-d15a-4275-97a2-e317a84f3437:1","2ae9d965-e89f-4e10-89e1-e55caeda997b:1","ebe17300-286a-4bf2-a172-aa8a4d64b186:1")
+    #>
+    $DeployRAppDetails = @()
+    if ($FormResults.SelectedSoftware -and $FormResults.SelectedSoftware.Count -gt 0){
+        foreach ($App in $FormResults.SelectedSoftware){
+            #Get Details about App from DeployR Server
+            $script:DeployRApps | where-object { $_.Id -eq $App.id } | ForEach-Object {
+                $DeployRAppDetails += $_
+            }
+        }
+    }
+    #Grab the Latest Version of the Apps Available to use
+    $AppList = @()
+    foreach ($AppDetail in $DeployRAppDetails){
+        $LatestVersion = $AppDetail.Versions | Sort-Object -Property VersionNumber -Descending | Select-Object -First 1
+        if ($LatestVersion) {
+            Write-Host "Adding application to TSENV list: $($AppDetail.Name) with Version Number $($LatestVersion.versionNo)" -ForegroundColor Green
+            $AppList += "$($AppDetail.Id):$($LatestVersion.versionNo)"
+            Write-CMTraceLog -Message "Added application to TSENV list: $($AppDetail.Name) with Version Number $($LatestVersion.versionNo)" -Type "Info" -Component "Main"
+            Write-CMTraceLog -Message "$tsenvlist:Applications += $($AppDetail.Id):$($LatestVersion.versionNo)" -Type "Info" -Component "Main"
+        }
+        else {
+            #Write-Warning "No versions found for application $($AppDetail.Name), skipping TSENV list addition."
+        }
+    }
+    if ($AppList.Count -gt 0){
+        $tsenvlist:Applications = $AppList
+        Write-CMTraceLog -Message "Final TSENV list of applications to install: $($tsenvlist:Applications -join ', ')" -Type "Info" -Component "Main"
+    }
 }
 else{
     $env:NamingStrategy = $FormResults.NamingStrategy
