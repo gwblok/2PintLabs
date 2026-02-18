@@ -51,10 +51,14 @@ Function Get-InputFormData {
     $scriptDir = $null
     try { $scriptDir = $PSScriptRoot } catch {}
     if (-not $scriptDir) {
-        if ($PSCommandPath) { $scriptDir = Split-Path -Parent $PSCommandPath }
-        elseif ($MyInvocation -and $MyInvocation.MyCommand -and $MyInvocation.MyCommand.Definition) { $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition }
-        elseif ($MyInvocation -and $MyInvocation.MyCommand -and $MyInvocation.MyCommand.Path) { $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
-        else { $scriptDir = (Get-Location).Path }
+        try {
+            if ($PSCommandPath) { $scriptDir = Split-Path -Parent $PSCommandPath }
+            elseif ($MyInvocation -and $MyInvocation.MyCommand -and $MyInvocation.MyCommand.Definition) { $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition }
+            elseif ($MyInvocation -and $MyInvocation.MyCommand -and $MyInvocation.MyCommand.Path) { $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
+            else { $scriptDir = (Get-Location).Path }
+        }
+        catch{}
+
     }
 
 
@@ -62,13 +66,17 @@ Function Get-InputFormData {
     $JSONFallbackConfigURL = 'https://raw.githubusercontent.com/gwblok/2PintLabs/main/DeployR/FrontEnd/FrontEndJSONDriven/FrontEndConfig.json'
     $JSONConfig = $null
     try {
-        $configPath = Join-Path -Path $scriptDir -ChildPath 'FrontEndConfig.json' -ErrorAction SilentlyContinue
-        if (Test-Path -Path $configPath) {
-            Write-Host "Found FrontEndConfig.json at $configPath" -ForegroundColor Green
-            $JSONConfig = Get-Content -Path $configPath -Raw | ConvertFrom-Json -ErrorAction Stop
-            try { Write-CMTraceLog -Message "Loaded FrontEndConfig.json from $configPath" -Type "Info" -Component "Config" } catch {}
+        if ($scriptDir) {
+            Write-Host "Attempting to load FrontEndConfig.json from script directory: $scriptDir" -ForegroundColor Cyan
+            if (Test-Path -Path $configPath) {
+                Write-Host "Found FrontEndConfig.json at $configPath" -ForegroundColor Green
+                $JSONConfig = Get-Content -Path $configPath -Raw | ConvertFrom-Json -ErrorAction Stop
+                try { Write-CMTraceLog -Message "Loaded FrontEndConfig.json from $configPath" -Type "Info" -Component "Config" } catch {}
+            }
         }
-        else {
+        $configPath = Join-Path -Path $scriptDir -ChildPath 'FrontEndConfig.json' -ErrorAction SilentlyContinue
+
+        if (-not $JSONConfig) {
             Write-Verbose "FrontEndConfig.json not found at $configPath"
             try { Write-CMTraceLog -Message "FrontEndConfig.json not found at $configPath" -Type "Warning" -Component "Config" } catch {}
             # Attempt to load JSON config from fallback URL. Use Invoke-RestMethod first
@@ -90,7 +98,6 @@ Function Get-InputFormData {
                 try { Write-CMTraceLog -Message "Failed to load FrontEndConfig.json from fallback URL: $_" -Type "Warning" -Component "Config" } catch {}
             }
         }
-
     }
     catch {
         Write-Warning "Failed to load or parse FrontEndConfig.json: $_"
