@@ -1642,16 +1642,16 @@ try {
 } catch {
     Write-Warning "Failed to start transcript: $_"
 }
-
+Start-CMTraceLog -Path $Global:LogFilePath
+Write-CMTraceLog -Message "=====================================================" -Type "Info" -Component "Main"
+Write-CMTraceLog -Message "Starting Script..." -Type "Info" -Component "Main"
+Write-CMTraceLog -Message "=====================================================" -Type "Info" -Component "Main"
 $FormResults = Get-InputFormData
 
 $Global:LogFilePath = "$($Global:LogFolderPath)\FrontEnd.log"
 $Global:LogFileSize   = "40"
 
-Start-CMTraceLog -Path $Global:LogFilePath
-Write-CMTraceLog -Message "=====================================================" -Type "Info" -Component "Main"
-Write-CMTraceLog -Message "Starting Script..." -Type "Info" -Component "Main"
-Write-CMTraceLog -Message "=====================================================" -Type "Info" -Component "Main"
+
 write-host "========================================" -ForegroundColor DarkGray
 
 
