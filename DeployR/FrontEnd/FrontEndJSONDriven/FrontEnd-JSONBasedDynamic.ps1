@@ -1551,6 +1551,7 @@ function Get-DeployRFrontEndApps {
             Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility' -ErrorAction SilentlyContinue
         }
         if (!(Get-Module -Name DeployR.Utility)) {
+            Write-Host "Importing DeployR.Utility module from default PSModule path"
             Import-Module DeployR.Utility -ErrorAction SilentlyContinue
         }
     }
@@ -1579,6 +1580,7 @@ function Get-DeployRFrontEndApps {
         }
     }
     #>
+    write-host "Retrieving DeployR Applications with tag '$Tag'..." -ForegroundColor Cyan
     $Apps = Get-DeployRApplication
     $FrontEndApps = $apps | Where-Object {$_.tags -match $Tag}
     return $FrontEndApps
@@ -1642,14 +1644,16 @@ try {
 } catch {
     Write-Warning "Failed to start transcript: $_"
 }
+
+$Global:LogFilePath = "$($Global:LogFolderPath)\FrontEnd.log"
+$Global:LogFileSize   = "40"
 Start-CMTraceLog -Path $Global:LogFilePath
 Write-CMTraceLog -Message "=====================================================" -Type "Info" -Component "Main"
 Write-CMTraceLog -Message "Starting Script..." -Type "Info" -Component "Main"
 Write-CMTraceLog -Message "=====================================================" -Type "Info" -Component "Main"
 $FormResults = Get-InputFormData
 
-$Global:LogFilePath = "$($Global:LogFolderPath)\FrontEnd.log"
-$Global:LogFileSize   = "40"
+
 
 
 write-host "========================================" -ForegroundColor DarkGray
@@ -1747,25 +1751,25 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
         ${TSEnv:SelectedSoftwareCsv} = $FormResults.SelectedSoftwareCsv
     }
     
-    Write-CMTraceLog -Message  "Set DeployR TS Environment Variables:" -Type "Info" -Component "Main"
-    Write-CMTraceLog -Message "NamingStrategy = $(${TSEnv:NamingStrategy})" -Type "Info" -Component "Main"
-    Write-CMTraceLog -Message "ComputerName = $(${TSEnv:ComputerName})" -Type "Info" -Component "Main"
-    Write-CMTraceLog -Message "DomainSuffix = $(${TSEnv:DomainSuffix})" -Type "Info" -Component "Main"
-    Write-CMTraceLog -Message "HardwareIdType = $(${TSEnv:HardwareIdType})" -Type "Info" -Component "Main"
-    Write-CMTraceLog -Message "WorkplaceJoin = $(${TSEnv:WorkplaceJoin})" -Type "Info" -Component "Main"
+    try { Write-CMTraceLog -Message  "Set DeployR TS Environment Variables:" -Type "Info" -Component "Main" } catch {}
+    try { Write-CMTraceLog -Message "NamingStrategy = $(${TSEnv:NamingStrategy})" -Type "Info" -Component "Main" } catch {}
+    try { Write-CMTraceLog -Message "ComputerName = $(${TSEnv:ComputerName})" -Type "Info" -Component "Main" } catch {}
+    try { Write-CMTraceLog -Message "DomainSuffix = $(${TSEnv:DomainSuffix})" -Type "Info" -Component "Main" } catch {}
+    try { Write-CMTraceLog -Message "HardwareIdType = $(${TSEnv:HardwareIdType})" -Type "Info" -Component "Main" } catch {}
+    try { Write-CMTraceLog -Message "WorkplaceJoin = $(${TSEnv:WorkplaceJoin})" -Type "Info" -Component "Main" } catch {}
     if ($FormResults.EntraIDUserUPN){
-        Write-CMTraceLog -Message "EntraIDUserUPN = $(${TSEnv:EntraIDUserUPN})" -Type "Info" -Component "Main"
+        try { Write-CMTraceLog -Message "EntraIDUserUPN = $(${TSEnv:EntraIDUserUPN})" -Type "Info" -Component "Main" } catch {}
     }
     if ($FormResults.AutopilotGroupTag){
-        Write-CMTraceLog -Message "AutopilotGroupTag = $(${TSEnv:AutopilotGroupTag})" -Type "Info" -Component "Main"
+        try { Write-CMTraceLog -Message "AutopilotGroupTag = $(${TSEnv:AutopilotGroupTag})" -Type "Info" -Component "Main" } catch {}
     }
     if ($FormResults.DomainJoinOU){
-        Write-CMTraceLog -Message "DomainJoinOU = $(${TSEnv:DomainJoinOU})" -Type "Info" -Component "Main"
+        try { Write-CMTraceLog -Message "DomainJoinOU = $(${TSEnv:DomainJoinOU})" -Type "Info" -Component "Main" } catch {}
     }
     if ($FormResults.AssetTag -and $FormResults.AssetTag -ne 'NA'){
-        Write-CMTraceLog -Message "AssetTag = $(${TSEnv:AssetTag})" -Type "Info" -Component "Main"
+        try { Write-CMTraceLog -Message "AssetTag = $(${TSEnv:AssetTag})" -Type "Info" -Component "Main" } catch {}
     }
-    Write-CMTraceLog -Message "SelectedUserRole = $(${TSEnv:SelectedUserRole})" -Type "Info" -Component "Main"
+    try { Write-CMTraceLog -Message "SelectedUserRole = $(${TSEnv:SelectedUserRole})" -Type "Info" -Component "Main" } catch {}
     
     # Export individual software selections as Install_<id> = 'True'/'False'
     try {
@@ -1774,7 +1778,7 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
             $val = if ($kv.Value) { 'True' } else { 'False' }
             $varName = "Install_$($key)"
             Set-Item -Path "TSENV:$VarName" -Value $val
-            Write-CMTraceLog -Message "$varName = $val" -Type "Info" -Component "Main"
+            try { Write-CMTraceLog -Message "$varName = $val" -Type "Info" -Component "Main" } catch {}
         }
     } catch {
         Write-Warning "Failed to export individual software TS variables: $_"
@@ -1800,8 +1804,8 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
         if ($LatestVersion) {
             Write-Host "Adding application to TSENV list: $($AppDetail.Name) with Version Number $($LatestVersion.versionNo)" -ForegroundColor Green
             $AppList += "$($AppDetail.Id):$($LatestVersion.versionNo)"
-            Write-CMTraceLog -Message "Added application to TSENV list: $($AppDetail.Name) with Version Number $($LatestVersion.versionNo)" -Type "Info" -Component "Main"
-            Write-CMTraceLog -Message "$tsenvlist:Applications += $($AppDetail.Id):$($LatestVersion.versionNo)" -Type "Info" -Component "Main"
+            try { Write-CMTraceLog -Message "Added application to TSENV list: $($AppDetail.Name) with Version Number $($LatestVersion.versionNo)" -Type "Info" -Component "Main" } catch {}
+            try { Write-CMTraceLog -Message "$tsenvlist:Applications += $($AppDetail.Id):$($LatestVersion.versionNo)" -Type "Info" -Component "Main" } catch {}
         }
         else {
             #Write-Warning "No versions found for application $($AppDetail.Name), skipping TSENV list addition."
@@ -1809,7 +1813,7 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     }
     if ($AppList.Count -gt 0){
         $tsenvlist:Applications = $AppList
-        Write-CMTraceLog -Message "Final TSENV list of applications to install: $($tsenvlist:Applications -join ', ')" -Type "Info" -Component "Main"
+        try { Write-CMTraceLog -Message "Final TSENV list of applications to install: $($tsenvlist:Applications -join ', ')" -Type "Info" -Component "Main" } catch {}
     }
 }
 else{
