@@ -1,5 +1,5 @@
 
-
+$ScriptVersion = '26.2.17.21.11'
 
 
 #Region Functions
@@ -1668,12 +1668,15 @@ Start-CMTraceLog -Path $Global:LogFilePath
 Write-CMTraceLog -Message "=====================================================" -Type "Info" -Component "Main"
 Write-CMTraceLog -Message "Starting Script..." -Type "Info" -Component "Main"
 Write-CMTraceLog -Message "=====================================================" -Type "Info" -Component "Main"
+write-host "=====================================================" -ForegroundColor DarkGray
+Write-Host "Starting Script version $ScriptVersion" -ForegroundColor Green
+write-host "=====================================================" -ForegroundColor DarkGray
 $FormResults = Get-InputFormData
 
 
 
 
-write-host "========================================" -ForegroundColor DarkGray
+
 
 
 if ($TSEnv){
