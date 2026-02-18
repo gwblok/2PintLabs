@@ -1528,26 +1528,52 @@ function Get-DeployRFrontEndApps {
 # SCRIPT Execution
 #######################################################
 
+# Try to import DeployR utility module early
 try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
-    $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
 }
 catch {
 }
-#Logic to support ConfigMgr TS Environment Variables
+
+# Initialize log folder path early, before any logging attempts
+$Global:LogFolderPath = $null
+
+# Try to get from DeployR environment variable
 try {
-    $tsenv = new-object -comobject Microsoft.SMS.TSEnvironment
+    $deployRLogs = ${TSEnv:_DEPLOYRLOGS}
+    if ($deployRLogs) {
+        $Global:LogFolderPath = $deployRLogs
+    }
 }
-catch{}
-if ($TSEnv){
-    $Global:LogFolderPath = $TSEnv.value("_SMSTSLogPath")
-    Write-Output "ConfigMgr TS Environment detected. Log Path set to $Global:LogFolderPath"
-    #Close the Progress UI to not cover Frontend
-    (new-object -ComObject Microsoft.SMS.TsProgressUI).CloseProgressDialog()
+catch {
 }
 
-# Start up the logs paths for DeployR / ConfigMgr or Local Testing
-if (!($Global:LogFolderPath)) {
+# Try ConfigMgr TS Environment Variables
+$tsenv = $null
+try {
+    $tsenv = New-Object -ComObject Microsoft.SMS.TSEnvironment
+}
+catch {}
+
+if ($tsenv) {
+    try {
+        $smsLogPath = $tsenv.value("_SMSTSLogPath")
+        if ($smsLogPath) {
+            $Global:LogFolderPath = $smsLogPath
+            Write-Output "ConfigMgr TS Environment detected. Log Path set to $Global:LogFolderPath"
+        }
+    }
+    catch {}
+    
+    # Close the Progress UI to not cover Frontend
+    try {
+        (New-Object -ComObject Microsoft.SMS.TsProgressUI).CloseProgressDialog() | Out-Null
+    }
+    catch {}
+}
+
+# Fallback log path logic if not set by ConfigMgr/DeployR
+if (!$Global:LogFolderPath) {
     if ($env:SystemDrive -eq "X:") {
         if (!(Test-Path -Path "$env:SystemDrive\_2P")) {
             $Global:LogFolderPath = "$env:temp\Logs"
@@ -1568,24 +1594,53 @@ if (!($Global:LogFolderPath)) {
             $Global:LogFolderPath = 'C:\Windows\Temp\DeployRLogs'
             Write-Output "Using Windows Temp folder for logs: $Global:LogFolderPath"
         }
+        else {
+            # Last resort fallback
+            $Global:LogFolderPath = $env:USERPROFILE
+            Write-Output "Using user profile for logs: $Global:LogFolderPath"
+        }
     }
 }
+
+# Ensure log folder exists
+if ($Global:LogFolderPath) {
+    try {
+        if (!(Test-Path -Path $Global:LogFolderPath)) {
+            New-Item -ItemType Directory -Path $Global:LogFolderPath -Force -ErrorAction Stop | Out-Null
+        }
+    }
+    catch {
+        Write-Warning "Failed to create log folder at $Global:LogFolderPath : $_"
+    }
+}
+
 # Start a PowerShell transcription to capture verbose output in a separate file
-try {
-    if (!(Test-Path -Path $Global:LogFolderPath)) { New-Item -ItemType Directory -Path $Global:LogFolderPath -Force | Out-Null }
-    $transcriptPath = "$Global:LogFolderPath\FrontendTranscription.log"
-    Start-Transcript -Path $transcriptPath -Force -ErrorAction SilentlyContinue
-    Write-CMTraceLog -Message "Started PowerShell transcription to $transcriptPath" -Type "Info" -Component "Main"
-} catch {
-    Write-Warning "Failed to start transcript: $_"
+if ($Global:LogFolderPath) {
+    try {
+        $transcriptPath = Join-Path -Path $Global:LogFolderPath -ChildPath 'FrontendTranscription.log'
+        Start-Transcript -Path $transcriptPath -Force -ErrorAction SilentlyContinue
+        Write-CMTraceLog -Message "Started PowerShell transcription to $transcriptPath" -Type "Info" -Component "Main"
+    }
+    catch {
+        Write-Warning "Failed to start transcript: $_"
+    }
 }
 
 $FormResults = Get-InputFormData
 
-$Global:LogFilePath = "$($Global:LogFolderPath)\FrontEnd.log"
-$Global:LogFileSize   = "40"
+# Initialize log file paths after form data is loaded
+if (!$Global:LogFilePath -and $Global:LogFolderPath) {
+    $Global:LogFilePath = Join-Path -Path $Global:LogFolderPath -ChildPath 'FrontEnd.log'
+}
+if (!$Global:LogFileSize) {
+    $Global:LogFileSize = "40"
+}
 
-Start-CMTraceLog -Path $Global:LogFilePath
+# Create log file and start CMTrace logging
+if ($Global:LogFilePath) {
+    Start-CMTraceLog -Path $Global:LogFilePath
+}
+
 Write-CMTraceLog -Message "=====================================================" -Type "Info" -Component "Main"
 Write-CMTraceLog -Message "Starting Script..." -Type "Info" -Component "Main"
 Write-CMTraceLog -Message "=====================================================" -Type "Info" -Component "Main"
