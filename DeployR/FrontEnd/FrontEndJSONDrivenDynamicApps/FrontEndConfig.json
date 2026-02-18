@@ -12,7 +12,7 @@
   "LogoFileName": "Logo.png",
   
   "//SoftwareFromDeployR": "Set to 'True' to retrieve software list dynamically from DeployR API, 'False' to use static Software list below",
-  "SoftwareFromDeployR": "False",
+  "SoftwareFromDeployR": "True",
   "SoftwareFromDeployRTag": "FrontEnd",
   
   "//OUs": "List of Organizational Units available for domain join operations",
