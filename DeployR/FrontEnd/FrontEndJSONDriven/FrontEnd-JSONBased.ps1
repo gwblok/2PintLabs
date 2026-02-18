@@ -104,16 +104,44 @@ Function Get-InputFormData {
     $Usage = $JSONConfig.Usage
     if (-not $Usage) { $Usage = "DeployR" }  # Default to DeployR if not specified
 
+    ###########################################
+    #Build Data from JSON
+    ##########################################
+
+    #Usage (DeployR or ConfigMgr)
+    $Usage = $JSONConfig.Usage
+    if (-not $Usage) { $Usage = "DeployR" }  # Default to DeployR if not specified
+
     #Logo File Name
     $LogoFileName = $JSONConfig.LogoFileName
-        try {
-        if (-not $LogoPath) {
+    try {
+        if ((-not $LogoPath) -and (Test-Path $scriptDir)) {
             $possibleLogo = Join-Path -Path $scriptDir -ChildPath $LogoFileName
             if (Test-Path -Path $possibleLogo) { 
                 $LogoPath = $possibleLogo 
                 Write-Host "Using logo image at $LogoPath" -ForegroundColor Green
             }
         }
+        else {
+            #Download Default Logo from GitHub and save to temp path
+            $2PintLogoDefaultURL = 'https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/FrontEnd/FrontEndJSONDriven/Logo.png'
+            $tempLogoPath = Join-Path -Path $env:TEMP -ChildPath $LogoFileName
+            Write-Host "Downloading default logo from $2PintLogoDefaultURL to $tempLogoPath" -ForegroundColor Cyan
+            try {
+                Invoke-WebRequest -Uri $2PintLogoDefaultURL -OutFile $tempLogoPath -ErrorAction Stop
+                if (Test-Path -Path $tempLogoPath) {
+                    $LogoPath = $tempLogoPath
+                    Write-Host "Successfully downloaded default logo to $LogoPath" -ForegroundColor Green
+                }
+                else {
+                    Write-Warning "Failed to download default logo to $tempLogoPath"
+                }
+            }
+            catch {
+                Write-Warning "Error downloading default logo $_"
+            }
+        }
+    
     } catch {}
 
     #Default Domain Suffix
@@ -1780,7 +1808,7 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     if ($AppList.Count -gt 0){
         $tsenvlist:Applications = $AppList
         Write-CMTraceLog -Message "Final TSENV list of applications to install: $($tsenvlist:Applications -join ', ')" -Type "Info" -Component "Main"
-    }   
+    }
 }
 else{
     $env:NamingStrategy = $FormResults.NamingStrategy
