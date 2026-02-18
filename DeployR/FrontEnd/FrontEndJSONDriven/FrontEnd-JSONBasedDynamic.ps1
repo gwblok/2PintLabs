@@ -642,6 +642,7 @@ Function Get-InputFormData {
                                 <StackPanel Name="spSoftwareList" Margin="6,4,0,0" />
                                 <!-- Warning displayed when dynamic retrieval fails and static list is used -->
                                 <TextBlock Name="txtSoftwareFallback" Text="" FontSize="11" Foreground="OrangeRed" Visibility="Collapsed" Margin="6,8,0,0" TextWrapping="Wrap"/>
+                                <TextBlock Name="txtSoftwareTagInfo" Text="" FontSize="11" Foreground="Gray" Margin="6,10,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -775,6 +776,7 @@ Function Get-InputFormData {
     $btnCancel = $Window.FindName("btnCancel")
     $spSoftwareList = $Window.FindName("spSoftwareList")
     $txtSoftwareFallback = $Window.FindName("txtSoftwareFallback")
+    $txtSoftwareTagInfo = $Window.FindName("txtSoftwareTagInfo")
     
     # Hardware tab controls
     $txtHwMake = $Window.FindName("txtHwMake")
@@ -928,6 +930,12 @@ Function Get-InputFormData {
             }
         }
     }
+
+    # Show which DeployR tag is used for dynamic software query
+    try {
+        $displayTag = if ([string]::IsNullOrWhiteSpace([string]$SoftwareTagForDeployR)) { "(not set)" } else { [string]$SoftwareTagForDeployR }
+        $txtSoftwareTagInfo.Text = "Apps dynamically queried from DeployR based on the tag '$displayTag'"
+    } catch {}
 
     # Only show warning if DeployR was supposed to be used (SoftwareFromDeployR = True) but failed
     try {
