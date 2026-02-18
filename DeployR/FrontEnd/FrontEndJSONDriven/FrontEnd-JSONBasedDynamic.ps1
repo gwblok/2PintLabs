@@ -1,3 +1,4 @@
+$FORM = @'
 
 $ScriptVersion = '26.2.17.21.12'
 
@@ -1907,3 +1908,21 @@ else{
     write-Host "SelectedSoftwareCsv = $($env:SelectedSoftwareCsv)" -ForegroundColor Green
 }
 Stop-Transcript
+
+'@
+Import-Module DeployR.Utility -ErrorAction SilentlyContinue
+$WorkingDir = ${TSEnv:WorkingDir}
+Write-Host "Working Dir for form script: $WorkingDir" -ForegroundColor Cyan
+$FORM | Out-File $WorkingDir\DeployR_TestInputForm.ps1 -Encoding UTF8 -Force
+# Execute the generated form script
+Start-Process pwsh.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$WorkingDir\DeployR_TestInputForm.ps1`"" -Wait -NoNewWindow -PassThru
+
+# Stop the PowerShell transcription we started earlier (if any)
+try {
+    if (Get-Command -Name Stop-Transcript -ErrorAction SilentlyContinue) {
+        Stop-Transcript -ErrorAction SilentlyContinue
+        Write-CMTraceLog -Message "Stopped PowerShell transcription (Invoke-InputForm)" -Type "Info" -Component "Main"
+    }
+} catch {
+    Write-Warning "Failed to stop transcript: $_"
+}
