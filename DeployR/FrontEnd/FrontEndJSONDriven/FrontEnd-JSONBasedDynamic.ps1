@@ -64,7 +64,7 @@ Function Get-InputFormData {
 
 
     # Load FrontEndConfig.json from the script directory into $JSONConfig
-    $JSONFallbackConfigURL = 'https://raw.githubusercontent.com/gwblok/2PintLabs/main/DeployR/FrontEnd/FrontEndJSONDriven/FrontEndConfig.json'
+    $JSONFallbackConfigURL = 'https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/FrontEnd/FrontEndJSONDrivenDynamicApps/FrontEndConfig.json'
     $JSONConfig = $null
     try {
         if ($scriptDir) {
