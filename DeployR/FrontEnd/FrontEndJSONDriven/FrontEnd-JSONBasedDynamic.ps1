@@ -1555,6 +1555,7 @@ function Get-DeployRFrontEndApps {
         }
     }
     catch {}
+   <#
     if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"))) {
     IF ($null -ne ${TSEnv:DEPLOYRCLIENTPASSCODE}){
             Write-Host "Using DeployR Client Passcode from TS Environment Variable"
@@ -1577,6 +1578,7 @@ function Get-DeployRFrontEndApps {
             throw "Cannot find DeployR Client Passcode in registry or D:\DeployRPasscode.txt"
         }
     }
+    #>
     $Apps = Get-DeployRApplication
     $FrontEndApps = $apps | Where-Object {$_.tags -match $Tag}
     return $FrontEndApps
