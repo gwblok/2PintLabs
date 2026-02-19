@@ -45,8 +45,13 @@ The Frontend you just call the PowerShell script: (After you made a content item
 
 Then later in the Task Sequence you call the step to install the apps:
 
-![DFE05](./media/DFE06.png)
+![DFE06](./media/DFE06.png)
 
 There you have it.
+Now in the Task Sequence:
+
+![DFE07](./media/DFE07.png)
+
+
 
 If you have questions, post them on Reddit in the 2Pint DeployR area, or find me on Discord WinAdmins

@@ -1,4 +1,3 @@
-$FORM = @'
 
 $ScriptVersion = '26.2.17.21.12'
 
@@ -50,19 +49,25 @@ Function Get-InputFormData {
     # in the same directory as this script.
     # Resolve script directory robustly to support dot-sourcing and different PowerShell hosts
     $scriptDir = $null
-    try { $scriptDir = $PSScriptRoot } catch {}
-    if (-not $scriptDir) {
-        try {
-            if ($PSCommandPath) { $scriptDir = Split-Path -Parent $PSCommandPath }
-            elseif ($MyInvocation -and $MyInvocation.MyCommand -and $MyInvocation.MyCommand.Definition) { $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition }
-            elseif ($MyInvocation -and $MyInvocation.MyCommand -and $MyInvocation.MyCommand.Path) { $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
-            else { $scriptDir = (Get-Location).Path }
-        }
-        catch{}
+    if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"))) {
+        $scriptDir = ${TSEnv:CONTENT-CONTENT}
+        Write-Host "Resolved script directory via TS Var CONTENT-CONTENT: $scriptDir" -ForegroundColor Cyan
     }
-    if (-not $scriptDir){ $scriptDir = (Get-Location).Path }
-
-
+    if (-not $scriptDir){
+        try { $scriptDir = $PSScriptRoot } catch {}
+        if (-not $scriptDir) {
+            try {
+                if ($PSCommandPath) { $scriptDir = Split-Path -Parent $PSCommandPath }
+                elseif ($MyInvocation -and $MyInvocation.MyCommand -and $MyInvocation.MyCommand.Definition) { $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition }
+                elseif ($MyInvocation -and $MyInvocation.MyCommand -and $MyInvocation.MyCommand.Path) { $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path }
+                else { $scriptDir = (Get-Location).Path }
+            }
+            catch{}
+        }
+        if (-not $scriptDir){ $scriptDir = (Get-Location).Path }
+        Write-Host "Resolved script directory via fallback methods: $scriptDir" -ForegroundColor Cyan
+    }
+    
     # Load FrontEndConfig.json from the script directory into $JSONConfig
     $JSONFallbackConfigURL = 'https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/FrontEnd/FrontEndJSONDrivenDynamicApps/FrontEndConfig.json'
     $JSONConfig = $null
@@ -1918,20 +1923,3 @@ else{
 }
 Stop-Transcript
 
-'@
-Import-Module DeployR.Utility -ErrorAction SilentlyContinue
-$WorkingDir = ${TSEnv:CONTENT-CONTENT}
-Write-Host "Working Dir for form script: $WorkingDir" -ForegroundColor Cyan
-$FORM | Out-File $WorkingDir\DeployR_TestInputForm.ps1 -Encoding UTF8 -Force
-# Execute the generated form script
-Start-Process pwsh.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$WorkingDir\DeployR_TestInputForm.ps1`"" -Wait -NoNewWindow -PassThru
-
-# Stop the PowerShell transcription we started earlier (if any)
-try {
-    if (Get-Command -Name Stop-Transcript -ErrorAction SilentlyContinue) {
-        Stop-Transcript -ErrorAction SilentlyContinue
-        Write-CMTraceLog -Message "Stopped PowerShell transcription (Invoke-InputForm)" -Type "Info" -Component "Main"
-    }
-} catch {
-    Write-Warning "Failed to stop transcript: $_"
-}
