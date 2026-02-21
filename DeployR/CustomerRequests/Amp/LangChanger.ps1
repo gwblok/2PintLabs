@@ -5,8 +5,12 @@ Param(
 [int]$externalRun
 )
 
-function Get-RegionInfo($Name='*')
-{
+function Get-RegionInfo {
+[CmdletBinding()]
+param(
+    [string]$Name='*'
+)
+
     $cultures = [System.Globalization.CultureInfo]::GetCultures('InstalledWin32Cultures')
     
     foreach($culture in $cultures)
@@ -158,19 +162,19 @@ if ($env:SYSTEMDRIVE -ne "X:") {
         $langMismatch = $false
         
         Write-Host "Language configuration attempt #$attempt"
-        Write-Host "Running Set-WinSystemLocale - SystemLocale $WantedLang"
+        Write-Host "Running Set-WinSystemLocale -SystemLocale $WantedLang"
         Set-WinSystemLocale -SystemLocale $WantedLang
-        Write-Host "Running Set-WinUILanguageOverride - Language $WantedLang"
+        Write-Host "Running Set-WinUILanguageOverride -Language $WantedLang"
         Set-WinUILanguageOverride -Language $WantedLang
-        Write-Host "Running Set-WinUserLanguageList - LanguageList $WantedLang"
+        Write-Host "Running Set-WinUserLanguageList -LanguageList $WantedLang"
         Set-WinUserLanguageList -LanguageList $WantedLang -Force
-        Write-Host "Running Set-Culture - Culture $WantedLang"
+        Write-Host "Running Set-Culture -Culture $WantedLang"
         Set-Culture "$WantedLang"
-        Write-Host "Running Set-SystemLanguage - Language $WantedLang"
+        Write-Host "Running Set-SystemLanguage -Language $WantedLang"
         Set-SystemLanguage -Language $WantedLang
-        Write-Host "Running Set-SystemPreferredUILanguage - Language $WantedLang"
+        Write-Host "Running Set-SystemPreferredUILanguage -Language $WantedLang"
         Set-SystemPreferredUILanguage -Language $WantedLang -ErrorAction SilentlyContinue
-        Write-Host "Running Set-WinHomeLocation - GeoId $($AllLangInfo.GeoId)"
+        Write-Host "Running Set-WinHomeLocation -GeoId $($AllLangInfo.GeoId)"
         Set-WinHomeLocation -GeoId $AllLangInfo.GeoId
         Write-Host "Running  Copy-UserInternationalSettingsToSystem -WelcomeScreen $True -NewUser $True"
         Copy-UserInternationalSettingsToSystem -WelcomeScreen $True -NewUser $True
