@@ -19,6 +19,47 @@ function Show-TSLauncher {
     iex (irm "https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/FrontEnd/New-InputFormDeployR.ps1")
 }
 
+write-host "Function: Connect-ToDeployR" -ForegroundColor Green
+function Connect-ToDeployR {
+    try {
+        # Check if module is available
+        if (Test-Path 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility') {
+            Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility' -ErrorAction Stop
+        }
+        elseif (Get-Module -ListAvailable -Name DeployR.Utility) {
+            Import-Module DeployR.Utility -ErrorAction Stop
+        }
+        else {
+            throw "DeployR.Utility module not found. Please ensure DeployR Client is installed."
+        }
+        
+        Write-Host "Connecting to DeployR..." -ForegroundColor Cyan
+        Import-Module 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
+        #Set-DeployRHost "http://localhost:7282"
+        
+        if (Test-Path "HKLM:\software\2Pint Software\DeployR\GeneralSettings") {
+            $DeployRReg = Get-Item -Path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"
+            $ClientPasscode = $DeployRReg.GetValue("ClientPasscode")
+            Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+        }
+        elseif (Test-Path "D:\DeployRPasscode.txt") {
+            $ClientPasscode = (Get-Content "D:\DeployRPasscode.txt" -Raw)
+            Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+        }
+        else {
+            throw "Cannot find DeployR Client Passcode in registry or D:\DeployRPasscode.txt"
+            Connect-DeployR
+        }
+        
+        Write-Host "Connected to DeployR" -ForegroundColor Green
+        return $true
+    }
+    catch {
+        Write-Error "Failed to connect to DeployR: $_"
+        return $false
+    }
+}
+
 write-host "===================================================================="
 write-Host "DeployR Pre-Reqs Functions" -ForegroundColor Green
 write-Host ""
