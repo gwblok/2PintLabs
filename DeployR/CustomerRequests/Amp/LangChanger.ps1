@@ -29,7 +29,7 @@ function Get-RegionInfo {
 
 Import-Module DeployR.Utility
 
-$WantedLang = ${TSEnv:WantedLang}
+[string]$WantedLang = ${TSEnv:WantedLang}
 
 #Fetch OSDisk
 $OSDriveLetter = ${TSEnv:OSDTARGETSYSTEMDRIVE}
