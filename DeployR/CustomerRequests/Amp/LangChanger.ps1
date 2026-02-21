@@ -6,11 +6,11 @@ Param(
 )
 
 function Get-RegionInfo {
-[CmdletBinding()]
-param(
+    [CmdletBinding()]
+    param(
     [string]$Name='*'
-)
-
+    )
+    
     $cultures = [System.Globalization.CultureInfo]::GetCultures('InstalledWin32Cultures')
     
     foreach($culture in $cultures)
@@ -162,22 +162,63 @@ if ($env:SYSTEMDRIVE -ne "X:") {
         $langMismatch = $false
         
         Write-Host "Language configuration attempt #$attempt"
-        Write-Host "Running Set-WinSystemLocale -SystemLocale $WantedLang"
-        Set-WinSystemLocale -SystemLocale $WantedLang
-        Write-Host "Running Set-WinUILanguageOverride -Language $WantedLang"
-        Set-WinUILanguageOverride -Language $WantedLang
-        Write-Host "Running Set-WinUserLanguageList -LanguageList $WantedLang"
-        Set-WinUserLanguageList -LanguageList $WantedLang -Force
-        Write-Host "Running Set-Culture -Culture $WantedLang"
-        Set-Culture "$WantedLang"
-        Write-Host "Running Set-SystemLanguage -Language $WantedLang"
-        Set-SystemLanguage -Language $WantedLang
-        Write-Host "Running Set-SystemPreferredUILanguage -Language $WantedLang"
-        Set-SystemPreferredUILanguage -Language $WantedLang -ErrorAction SilentlyContinue
-        Write-Host "Running Set-WinHomeLocation -GeoId $($AllLangInfo.GeoId)"
-        Set-WinHomeLocation -GeoId $AllLangInfo.GeoId
-        Write-Host "Running  Copy-UserInternationalSettingsToSystem -WelcomeScreen $True -NewUser $True"
-        Copy-UserInternationalSettingsToSystem -WelcomeScreen $True -NewUser $True
+        try {
+            Write-Host "Running Set-WinSystemLocale -SystemLocale $WantedLang"
+            Set-WinSystemLocale -SystemLocale $WantedLang            
+        }
+        catch {
+            Write-Host "Failed to run command Set-WinSystemLocale. Error: $_"
+        }
+        try {
+            Write-Host "Running Set-WinUILanguageOverride -Language $WantedLang"
+            Set-WinUILanguageOverride -Language $WantedLang        
+        }
+        catch {
+            Write-Host "Failed to run command Set-WinUILanguageOverride. Error: $_"
+        }
+        try {
+            Write-Host "Running Set-WinUserLanguageList -LanguageList $WantedLang"
+            Set-WinUserLanguageList -LanguageList $WantedLang -Force
+        }
+        catch {
+            Write-Host "Failed to run command Set-WinUserLanguageList. Error: $_"
+        }
+        try {
+            Write-Host "Running Set-Culture -Culture $WantedLang"
+            Set-Culture "$WantedLang"           
+        }
+        catch {
+            Write-Host "Failed to run command Set-Culture. Error: $_"
+        }
+        try {
+            Write-Host "Running Set-SystemLanguage -Language $WantedLang"
+            Set-SystemLanguage -Language $WantedLang    
+        }
+        catch {
+            Write-Host "Failed to run command Set-SystemLanguage. Error: $_"
+        }
+        try {
+            Write-Host "Running Set-SystemPreferredUILanguage -Language $WantedLang"
+            Set-SystemPreferredUILanguage -Language $WantedLang -ErrorAction SilentlyContinue           
+        }
+        catch {
+            Write-Host "Failed to run command Set-SystemPreferredUILanguage. Error: $_"
+        }
+        try {
+            Write-Host "Running Set-WinHomeLocation -GeoId $($AllLangInfo.GeoId)"
+            Set-WinHomeLocation -GeoId $AllLangInfo.GeoId   
+        }
+        catch {
+            Write-Host "Failed to run command Set-WinHomeLocation. Error: $_"
+        }
+        try {
+            Write-Host "Running  Copy-UserInternationalSettingsToSystem -WelcomeScreen $True -NewUser $True"
+            Copy-UserInternationalSettingsToSystem -WelcomeScreen $True -NewUser $True            
+        }
+        catch {
+            Write-Host "Failed to run command Copy-UserInternationalSettingsToSystem. Error: $_"
+        }
+        
         
         # Launch a new PowerShell session to rerun this script
         if (-not $IsSecondRun) {
