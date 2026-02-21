@@ -29,8 +29,10 @@ $WantedLang = ${TSEnv:WantedLang}
 
 #Fetch OSDisk
 $OSDriveLetter = ${TSEnv:OSTARGETSYSTEMDRIVE}
+Write-Host "OS Drive Letter is $OSDriveLetter"
 
-$CABsDownloaded = Get-ChildItem -Path "C:\WINDOWS\TEMP\LangPacks" -Filter *.cab -Recurse
+
+$CABsDownloaded = Get-ChildItem -Path "$OSDriveLetter\WINDOWS\TEMP\LangPacks" -Filter *.cab -Recurse
 
 <#
 if (!($ApplyAfterReboot)) {
@@ -63,7 +65,6 @@ if (!($CABsDownloaded)){
 
             if ($AllOtherLanguageStuffs) {try {New-Item -Name "OtherLanguageStuffs" -Path "$($OSDriveLetter)\WINDOWS\TEMP\LangPacks\" -ItemType Directory} catch{}}
 
-            Show-PSDActionProgress -Message "Downloading main language pack for language: $($WantedLang)" -Step "1" -MaxStep "1"
             Write-Host "Downloading $LanguagePackFileName to Win TEMP "
 
             $MainLanguagePackDownloaded = Get-ChildItem -Path "$($OSDriveLetter)\WINDOWS\TEMP\LangPacks" -Filter $LanguagePackFileName -Recurse
@@ -73,13 +74,12 @@ if (!($CABsDownloaded)){
             }
 
 
-            $Step = 0
             [UInt32]$Steps = $AllOtherLanguageStuffs.count
 
             Write-Host "Found a total of $Steps extra language packs "
 
             foreach ($OtherLanguageThing in $AllOtherLanguageStuffs) {
-                $Step++
+
 
                 $OtherLanguageThingFileName = $OtherLanguageThing | Split-Path -Leaf
                 Write-Host "Checking for  $OtherLanguageThingFileName in Win TEMP "
