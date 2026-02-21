@@ -1,26 +1,26 @@
 # Parameters
 Param(
-    [switch]$ApplyAfterReboot,
-    [switch]$IsSecondRun,
-    [int]$externalRun
+[switch]$ApplyAfterReboot,
+[switch]$IsSecondRun,
+[int]$externalRun
 )
 
 function Get-RegionInfo($Name='*')
 {
     $cultures = [System.Globalization.CultureInfo]::GetCultures('InstalledWin32Cultures')
-
-	foreach($culture in $cultures)
-	{
-   		try{
-       		$region = [System.Globalization.RegionInfo]$culture.Name
-
+    
+    foreach($culture in $cultures)
+    {
+        try{
+            $region = [System.Globalization.RegionInfo]$culture.Name
+            
             if($region.Name -like $Name)
             {
                 $region
             }
-   		}
-   		catch {}
-     }
+        }
+        catch {}
+    }
 }
 
 Import-Module DeployR.Utility
@@ -36,51 +36,51 @@ $CABsDownloaded = Get-ChildItem -Path "$OSDriveLetter\WINDOWS\TEMP\LangPacks" -F
 
 <#
 if (!($ApplyAfterReboot)) {
-    Write-Host "Searching for language package(s)"
+Write-Host "Searching for language package(s)"
 }
 #>
 
 if (!($CABsDownloaded)){
-
+    
     Write-Host "Searching for language package(s) for language $WantedLang"
-
+    
     #Setup language pack path
     $WorkingDir = ${TSEnv:Content-Content}
     #$BaseLanguagePath = $WorkingDir
     $SourceLanguagePackagePath = $WorkingDir
-
-
+    
+    
     if(Test-Path -Path $SourceLanguagePackagePath){
         if (!($ApplyAfterReboot) -or !($CABsDownloaded)) {
-
+            
             try {New-Item -Name "LangPacks" -Path "$($OSDriveLetter)\WINDOWS\TEMP\" -ItemType Directory} catch{}
-
+            
             Write-Host "Found language pack under $SourceLanguagePackagePath "
             Write-Host "Lets download all language packs for $WantedLang from $SourceLanguagePackagePath "
-    
+            
             $MainLanguagePack = Get-ChildItem -Path $SourceLanguagePackagePath | where-object { $_.Name -match $WantedLang -and $_.Name -match "x64" -and ($_.Name -match "Language-Pack" )}
             $LanguagePackFileName = $MainLanguagePack | Split-Path -Leaf
-
+            
             $AllOtherLanguageStuffs = Get-ChildItem -Path $SourceLanguagePackagePath | Where-Object { $_.Name -match $WantedLang -and ($_.Name -match "LanguageFeatures" -or $_.Name -match "MSPaint" -or $_.Name -match "Notepad" -or $_.Name -match "SnippingTool" -or $_.Name -match "WirelessDisplay" -or $_.Name -match "WordPad") }# | Select-Object Name
-
+            
             if ($AllOtherLanguageStuffs) {try {New-Item -Name "OtherLanguageStuffs" -Path "$($OSDriveLetter)\WINDOWS\TEMP\LangPacks\" -ItemType Directory} catch{}}
-
+            
             Write-Host "Downloading $LanguagePackFileName to Win TEMP "
-
+            
             $MainLanguagePackDownloaded = Get-ChildItem -Path "$($OSDriveLetter)\WINDOWS\TEMP\LangPacks" -Filter $LanguagePackFileName -Recurse
             if (!($MainLanguagePackDownloaded)) {
                 Write-Host "Copying $LanguagePackFileName to Win TEMP "
                 Copy-Item -Path $MainLanguagePack.FullName -Destination "$($OSDriveLetter)\WINDOWS\TEMP\LangPacks" -Force
             }
-
-
+            
+            
             [UInt32]$Steps = $AllOtherLanguageStuffs.count
-
+            
             Write-Host "Found a total of $Steps extra language packs "
-
+            
             foreach ($OtherLanguageThing in $AllOtherLanguageStuffs) {
-
-
+                
+                
                 $OtherLanguageThingFileName = $OtherLanguageThing | Split-Path -Leaf
                 Write-Host "Checking for  $OtherLanguageThingFileName in Win TEMP "
                 $OtherLanguageThingDownloaded = Get-ChildItem -Path "$($OSDriveLetter)\WINDOWS\TEMP\LangPacks" -Filter $OtherLanguageThingFileName -Recurse
@@ -88,7 +88,7 @@ if (!($CABsDownloaded)){
                     Write-Host "Copying $OtherLanguageThingFileName to Win TEMP "
                     copy-item -path $OtherLanguageThing.FullName -Destination "$($OSDriveLetter)\WINDOWS\TEMP\LangPacks\OtherLanguageStuffs" -Force
                 }
-
+                
             }
         } #end if (!($ApplyAfterReboot) -or !($CABsDownloaded))
     } #end if((Test-PSDContent -content $BaseLanguagePath ))
@@ -104,35 +104,35 @@ else {
 
 
 if ($env:SYSTEMDRIVE -eq "X:") {
-            
+    
     if (!($LanguagePackFileName)) {
         $MainLanguagePack = Get-ChildItem -Path $SourceLanguagePackagePath | where-object { $_.Name -match $WantedLang -and $_.Name -match "x64" -and ($_.Name -match "Language-Pack" )}
         $LanguagePackFileName = $MainLanguagePack | Split-Path -Leaf
     }
-
+    
     Write-Host "Installing $LanguagePackFileName to offline full OS "
     Add-WindowsPackage -Path "$($OSDriveLetter)\" -PackagePath "$($OSDriveLetter)\WINDOWS\TEMP\LangPacks\$LanguagePackFileName" -LogPath "$($OSDriveLetter)\WINDOWS\TEMP\LangPacks\$($LanguagePackFileName).log"
     #dism.exe /image:$($OSDriveLetter)\ /add-package /packagePath:"$($OSDriveLetter)\WINDOWS\TEMP\LangPacks\$LanguagePackFileName" /scratchdir:$($OSDriveLetter)\Windows\temp
-
+    
     Write-Host "Installing all other lang packs to offline full OS "
     Add-WindowsPackage -Path "$($OSDriveLetter)\" -PackagePath "$($OSDriveLetter)\WINDOWS\TEMP\LangPacks\OtherLanguageStuffs" -IgnoreCheck -LogPath "$($OSDriveLetter)\WINDOWS\TEMP\LangPacks\OtherLanguageThings.log"
 } #end if ($env:SYSTEMDRIVE -eq "X:")
 else {
-     
+    
     $AllInstalledPacks = Get-WindowsPackage -Online 
     $MainPackAlreadyInstalled = $AllInstalledPacks | Where-Object { $_.PackageName -match $WantedLang -and $_.PackageName -match "LanguagePack-Package"}
-
+    
     if (!($MainPackAlreadyInstalled)) {
-
+        
         if (!($LanguagePackFileName)) {
             $MainLanguagePack = Get-ChildItem -Path $SourceLanguagePackagePath | where-object { $_.Name -match $WantedLang -and $_.Name -match "x64" -and ($_.Name -match "Language-Pack" )}
             $LanguagePackFileName = $MainLanguagePack | Split-Path -Leaf
         }
-
+        
         Write-Host "Installing $LanguagePackFileName to online full OS "
         Add-WindowsPackage -Online -PackagePath "$($OSDriveLetter)\WINDOWS\TEMP\LangPacks\$LanguagePackFileName" -LogPath "$($OSDriveLetter)\WINDOWS\TEMP\LangPacks\$($LanguagePackFileName).log"
     }
-
+    
     if (!($ApplyAfterReboot) -and !($MainPackAlreadyInstalled)) { 
         # Assuming all other language packs also got installed if main one was a success.
         Write-Host "Installing all other lang packs to online full OS "
@@ -144,31 +144,37 @@ else {
 if ($ApplyAfterReboot -and (-not $IsSecondRun)) {
     Write-Host "Languages installed, lets apply them to the OS. "
 }
-    
-if ($env:SYSTEMDRIVE -ne "X:") {
 
+if ($env:SYSTEMDRIVE -ne "X:") {
+    
     $attempt = if (-not $externalRun -or $externalRun -lt 1) {0} else { $externalRun }
     $maxAttempts = 3
     $langMismatch = $true
-
+    
     $AllLangInfo = Get-RegionInfo -Name $WantedLang
-
+    
     do {
         if ($attempt -is [int]) { $attempt++ }
         $langMismatch = $false
-
+        
         Write-Host "Language configuration attempt #$attempt"
-
+        Write-Host "Running Set-WinSystemLocale - SystemLocale $WantedLang"
         Set-WinSystemLocale -SystemLocale $WantedLang
+        Write-Host "Running Set-WinUILanguageOverride - Language $WantedLang"
         Set-WinUILanguageOverride -Language $WantedLang
+        Write-Host "Running Set-WinUserLanguageList - LanguageList $WantedLang"
         Set-WinUserLanguageList -LanguageList $WantedLang -Force
+        Write-Host "Running Set-Culture - Culture $WantedLang"
         Set-Culture "$WantedLang"
+        Write-Host "Running Set-SystemLanguage - Language $WantedLang"
         Set-SystemLanguage -Language $WantedLang
+        Write-Host "Running Set-SystemPreferredUILanguage - Language $WantedLang"
         Set-SystemPreferredUILanguage -Language $WantedLang -ErrorAction SilentlyContinue
+        Write-Host "Running Set-WinHomeLocation - GeoId $($AllLangInfo.GeoId)"
         Set-WinHomeLocation -GeoId $AllLangInfo.GeoId
-
+        Write-Host "Running  Copy-UserInternationalSettingsToSystem -WelcomeScreen $True -NewUser $True"
         Copy-UserInternationalSettingsToSystem -WelcomeScreen $True -NewUser $True
-
+        
         # Launch a new PowerShell session to rerun this script
         if (-not $IsSecondRun) {
             Write-Host "Launching new session to verify changes..."
@@ -176,17 +182,17 @@ if ($env:SYSTEMDRIVE -ne "X:") {
             Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -IsSecondRun -ApplyAfterReboot -externalRun $attempt" -WindowStyle Hidden -Wait
             break
         }
-
+        
         $WantedBaseLang = $WantedLang.Split("-")[0].ToLowerInvariant()
-
+        
         $values = @(
-            @{ Name = "WinSystemLocale"; Value = (Get-WinSystemLocale).Name },
-            @{ Name = "WinUILanguageOverride"; Value = (Get-WinUILanguageOverride).Name },
-            @{ Name = "Culture"; Value = (Get-Culture).Name },
-            @{ Name = "SystemLanguage"; Value = (Get-SystemLanguage) },
-            @{ Name = "SystemPreferredUILanguage"; Value = (Get-SystemPreferredUILanguage) }
+        @{ Name = "WinSystemLocale"; Value = (Get-WinSystemLocale).Name },
+        @{ Name = "WinUILanguageOverride"; Value = (Get-WinUILanguageOverride).Name },
+        @{ Name = "Culture"; Value = (Get-Culture).Name },
+        @{ Name = "SystemLanguage"; Value = (Get-SystemLanguage) },
+        @{ Name = "SystemPreferredUILanguage"; Value = (Get-SystemPreferredUILanguage) }
         )
-
+        
         foreach ($item in $values) {
             $lang = $item.Value.ToString().ToLowerInvariant()
             if ($lang -ne $WantedLang -and $lang -ne $WantedBaseLang) {
@@ -194,19 +200,19 @@ if ($env:SYSTEMDRIVE -ne "X:") {
                 $langMismatch = $true
             }
         }
-
+        
         $userLangs = Get-WinUserLanguageList
         if (-not ($userLangs.LanguageTag | Where-Object { $_.ToLowerInvariant().StartsWith($WantedBaseLang) })) {
             Write-Host "User language list still missing [$WantedLang] or [$WantedBaseLang]."
             $langMismatch = $true
         }
-
+        
         if (-not $langMismatch) {
             Write-Host "All language settings now match $WantedLang. Great stuff!"
         }
-
+        
     } while ($langMismatch -and $attempt -lt $maxAttempts)
-
+    
     if ($langMismatch) {
         Write-Host "Language settings did not fully apply after $maxAttempts attempts. Falling back to try and download and install language pack from internet."
         Install-Language $WantedLang
