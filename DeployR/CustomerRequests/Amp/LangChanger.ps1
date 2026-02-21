@@ -28,7 +28,7 @@ Import-Module DeployR.Utility
 $WantedLang = ${TSEnv:WantedLang}
 
 #Fetch OSDisk
-$OSDriveLetter = ${TSEnv:OSTARGETSYSTEMDRIVE}
+$OSDriveLetter = ${TSEnv:OSDTARGETSYSTEMDRIVE}
 Write-Host "OS Drive Letter is $OSDriveLetter"
 
 
