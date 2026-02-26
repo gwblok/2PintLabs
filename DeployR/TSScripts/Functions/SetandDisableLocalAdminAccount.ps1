@@ -122,9 +122,16 @@ try {
         }
     }
     else {
-        # fallback using net user (older systems)
-        $adminName = (wmic useraccount where "sid like '%-500'" get name | Select-Object -Skip 1).Trim()
-        if (-not $adminName) { throw "Built-in Administrator account not found via WMI." }
+        # fallback for older systems without LocalAccounts module
+        if (Get-Command Get-CimInstance -ErrorAction SilentlyContinue) {
+            $adminAccount = Get-CimInstance -ClassName Win32_UserAccount -Filter "LocalAccount=True AND SID LIKE '%-500'" -ErrorAction Stop | Select-Object -First 1
+        }
+        else {
+            $adminAccount = Get-WmiObject -Class Win32_UserAccount -Filter "LocalAccount=True AND SID LIKE '%-500'" -ErrorAction Stop | Select-Object -First 1
+        }
+
+        $adminName = $adminAccount.Name
+        if (-not $adminName) { throw "Built-in Administrator account not found via CIM/WMI." }
 
         net user "$adminName" "$Password" /Y | Out-Null
         Write-Host "✓ Password set for account: $adminName" -ForegroundColor Green
