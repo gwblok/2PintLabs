@@ -118,10 +118,6 @@ function Install-LenovoVantage {
         return
     }
 
-    # Extract Addon File to same location
-    Write-Host -ForegroundColor Cyan " Extracting $ExpandFileAddon to $tempExtractPath"
-    Expand-Archive -Path $ExpandFileAddon -Destination $tempExtractPath -Force -Verbose
-
     #Lenovo Vantage Service
     #Write-Host -ForegroundColor Cyan " Installing Lenovo Vantage Service..."
     #Write-Host "Launching $tempExtractPath\VantageService\Install-VantageService.ps1"
