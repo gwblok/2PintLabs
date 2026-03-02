@@ -129,6 +129,7 @@ function Install-LenovoVantage {
     if (Test-Path -path $ExpandFileService) {
         Write-Host "Starting Install of: $ExpandFileService" -ForegroundColor Green
         $InstallProcess = Start-Process -FilePath $ExpandFileService -ArgumentList "/VERYSILENT /NORESTART" -Wait -PassThru
+        $RegistryPath = "HKLM:\SOFTWARE\Policies\Lenovo\Commercial Vantage"
         New-Item -Path $RegistryPath -ItemType Directory -Force |Out-Null
         New-ItemProperty -Path $RegistryPath -Name "AcceptEULAAutomatically" -Value 1 -PropertyType dword -Force | Out-Null
         New-ItemProperty -Path $RegistryPath -Name "wmi.warranty" -Value 1 -PropertyType dword -Force | Out-Null
