@@ -46,9 +46,6 @@ function Install-LenovoVantage {
     $url = 'https://download.lenovo.com/pccbbs/thinkvantage_en/metroapps/Vantage/LenovoCommercialVantage_20.2506.39.0_v17.zip'
     $urladdon = 'https://download.lenovo.com/cdrt/support/VantageInstaller%201.0.172.0.zip'
 
-    #January 23, 2026 Release
-    $url = 'https://download.lenovo.com/pccbbs/thinkvantage_en/metroapps/Vantage/LenovoCommercialVantage_20.2511.24.0.20251217075118.zip'
-    $urlservice = 'https://filedownload.csw.lenovo.com/enm/vantage30/service/LenovoVantageServiceSetup.exe'
     #$tempFilePath = "C:\Windows\Temp\lenovo_vantage.zip"
     $tempExtractPath = "C:\Windows\Temp\LCV\Extract"
     $tempDownloadPath = "C:\Windows\Temp\LCV\Download"
@@ -76,23 +73,22 @@ function Install-LenovoVantage {
     if (Test-Path -path $ExpandFile) {
         Write-Host "Downloaded Content to: $ExpandFile" -ForegroundColor Green
     }
-
-    #URL Service
+    #$urladdon
     try {
-        $destFileService = Request-DeployRCustomContent -ContentName "LCVService" -ContentFriendlyName $NAME -URL $urlservice -DestinationPath $tempDownloadPath -ErrorAction SilentlyContinue
-        $GetItemOutFileService = Get-Item $destFileService
-        $ExpandFileService = $GetItemOutFileService.FullName 
+        $destFileAddon = Request-DeployRCustomContent -ContentName "LCVAddon" -ContentFriendlyName $NAME -URL $urladdon -DestinationPath $tempDownloadPath -ErrorAction SilentlyContinue
+        $GetItemOutFileAddon = Get-Item $destFileAddon
+        $ExpandFileAddon = $GetItemOutFileAddon.FullName 
     }
     catch {
-        Write-Host "Failed to download Content: LCVService" -ForegroundColor red
+        Write-Host "Failed to download Content: LCVAddon" -ForegroundColor red
         Write-Host "Going to try again with Invoke-WebRequest" -ForegroundColor Yellow
-        $ExpandFileService = Join-Path -Path $tempDownloadPath -ChildPath "LenovoVantageServiceSetup.exe"
-        Invoke-WebRequest -Uri $urlservice -OutFile $ExpandFileService -UseBasicParsing
-    }
-    if (Test-Path -path $ExpandFileService) {
-        Write-Host "Downloaded Content to: $ExpandFileService" -ForegroundColor Green
+        $ExpandFileAddon = Join-Path -Path $tempDownloadPath -ChildPath "LCVAddon.zip"
+        Invoke-WebRequest -Uri $urladdon -OutFile $ExpandFileAddon -UseBasicParsing
     }
 
+    if (Test-Path -path $ExpandFileAddon) {
+        Write-Host "Downloaded Content to: $ExpandFileAddon" -ForegroundColor Green
+    }
     <# switched to process above.  Will leave this here for reference for now
 
         # Create a new BITS transfer job
@@ -117,7 +113,6 @@ function Install-LenovoVantage {
         Write-Host "Failed to download the file."
         return
     }
-
     # Extract Addon File to same location
     Write-Host -ForegroundColor Cyan " Extracting $ExpandFileAddon to $tempExtractPath"
     Expand-Archive -Path $ExpandFileAddon -Destination $tempExtractPath -Force -Verbose
@@ -127,18 +122,10 @@ function Install-LenovoVantage {
     #Write-Host "Launching $tempExtractPath\VantageService\Install-VantageService.ps1"
     #Invoke-Expression -command "$tempExtractPath\VantageService\Install-VantageService.ps1"
     
+    #July Version - Having issues with during OSD, reverting back
     write-host "Launching $tempExtractPath\VantageInstaller.exe Install -Vantage"
     Invoke-Expression -command "$tempExtractPath\VantageInstaller.exe Install -Vantage"
     
-    if (Test-Path -path $ExpandFileService) {
-        Write-Host "Starting Install of: $ExpandFileService" -ForegroundColor Green
-        $InstallProcess = Start-Process -FilePath $ExpandFileService -ArgumentList "/VERYSILENT /NORESTART" -Wait -PassThru
-        New-Item -Path $RegistryPath -ItemType Directory -Force |Out-Null
-        New-ItemProperty -Path $RegistryPath -Name "AcceptEULAAutomatically" -Value 1 -PropertyType dword -Force | Out-Null
-        New-ItemProperty -Path $RegistryPath -Name "wmi.warranty" -Value 1 -PropertyType dword -Force | Out-Null
-    }
-
-    <#  - These Scripts are no longer included in the Lenovo Vantage installer
     #Lenovo Vantage Batch File
     write-host -ForegroundColor Cyan " Installing Lenovo Vantage...batch file..."
     $ArgumentList = "/c $($tempExtractPath)\setup-commercial-vantage.bat"
@@ -165,9 +152,6 @@ function Install-LenovoVantage {
     }
     
     Set-Location -Path $CurrentPath
-    #>
-
-
 
     if ($IncludeSUHelper){
         $InstallProcess = Start-Process -FilePath $tempExtractPath\SystemUpdate\SUHelperSetup.exe -ArgumentList "/VERYSILENT /NORESTART" -Wait -PassThru
