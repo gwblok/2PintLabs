@@ -1,22 +1,32 @@
-try {
-    Import-Module DeployR.Utility -ErrorAction SilentlyContinue
-}
-catch {
-    Write-Warning "DeployR.Utility module not found. Environment variables will be set in the standard environment."
-}
 
-if (Get-Module -name "DeployR.Utility"){
-    write-Host "Using DeployR.Utility Module to get FQDN" -ForegroundColor Green
-    $FQDN = ${TSEnv:FormFQDN}
-    write-Host "FQDN = $(${TSEnv:FormFQDN})" -ForegroundColor Green
-}
-else{
-    Write-Host "Using Test Values for FQDN" -ForegroundColor Yellow
-    $FQDN = "DeployR.2PintLabs.com"
-    write-Host "FQDN = $FQDN" -ForegroundColor Yellow
-}
 
 #region Functions
+Function Get-ActiveNetworkDomainSuffix {
+    [CmdletBinding()]
+    param()
+
+    try {
+        # Prefer an interface that has an IPv4 address and a default gateway (likely the active network)
+        $ipConfig = Get-NetIPConfiguration -ErrorAction SilentlyContinue | Where-Object {
+            ($_.IPv4Address -ne $null) -and ($_.IPv4DefaultGateway -ne $null)
+        } | Select-Object -First 1
+
+        if ($ipConfig -and $ipConfig.DnsSuffix -and $ipConfig.DnsSuffix.Trim() -ne '') {
+            return $ipConfig.DnsSuffix
+        }
+
+        # Fall back to connection-specific suffix from Get-DnsClient
+        $suffix = Get-DnsClient -ErrorAction SilentlyContinue | Where-Object { $_.ConnectionSpecificSuffix -and $_.ConnectionSpecificSuffix.Trim() -ne '' } | Select-Object -ExpandProperty ConnectionSpecificSuffix -First 1
+        if ($suffix) { return $suffix }
+
+        # Last-resort: try WMI/CIM property
+        $wmiSuffix = Get-CimInstance -ClassName Win32_NetworkAdapterConfiguration -Filter "IPEnabled = 1" -ErrorAction SilentlyContinue | Where-Object { $_.DNSSuffix -and $_.DNSSuffix.Trim() -ne '' } | Select-Object -ExpandProperty DNSSuffix -First 1
+        return $wmiSuffix
+    }
+    catch {
+        return $null
+    }
+}
 Function Get-FQDNFrom2PXEConfig {
     param (
     [string]$configFilePath = "C:\Program Files\2Pint Software\2PXE\2Pint.2PXE.Service.exe.config"
@@ -463,5 +473,33 @@ Function Create-FQDN2PXECert {
 }
 
 #endregion
+try {
+    Import-Module DeployR.Utility -ErrorAction SilentlyContinue
+}
+catch {
+    Write-Warning "DeployR.Utility module not found. Environment variables will be set in the standard environment."
+}
 
+
+if (Get-Module -name "DeployR.Utility"){
+    write-Host "Using DeployR.Utility Module to get FQDN and Install2PXE values" -ForegroundColor Green
+    $FQDN = ${TSEnv:FormFQDN}
+    $Install2PXE = ${TSEnv:FormInstall2PXE}
+    write-Host "FQDN = $(${TSEnv:FormFQDN})" -ForegroundColor Green
+    write-Host "Install2PXE = $Install2PXE" -ForegroundColor Green
+}
+else{
+    Write-Host "Using Test Values for FQDN and Install2PXE" -ForegroundColor Yellow
+    $Hostname = $env:COMPUTERNAME
+    $DomainSuffix = Get-ActiveNetworkDomainSuffix
+    if (!$DomainSuffix) {
+        Write-Host "No domain suffix found. Please provide a domain name."
+        #prompt user for domain name
+        $DomainSuffix = Read-Host "Enter the domain name to use for FQDN (e.g., example.com)"
+    }
+    $FQDN = "$Hostname.$DomainSuffix"
+    $Install2PXE = $true
+    write-Host "FQDN = $FQDN" -ForegroundColor Yellow
+    write-Host "Install2PXE = $Install2PXE" -ForegroundColor Yellow
+}
 Create-FQDN2PXECert -fqdn $FQDN

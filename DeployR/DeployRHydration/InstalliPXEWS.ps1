@@ -1,3 +1,6 @@
+
+#region Functions
+
 Function Get-ContentFromGitHub {<#
 .SYNOPSIS
     Downloads DeployR CustomSteps from GitHub repository and imports them into DeployR
@@ -429,8 +432,44 @@ catch {
 Write-Host "Script completed."
 }
 
+#endregion Functions
+
+
+$sourceFolder = "$env:USERPROFILE\Downloads\DeployRSuite\Extracted"
+
 $WorkingDir = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent
-$MSIFiles = Get-ChildItem -Path $WorkingDir -Filter *.msi | Select-Object -First 1
+if ($WorkingDir){
+    if (!(Test-Path -Path $WorkingDir)) {
+        Write-Host "Script directory not found: $WorkingDir"
+    }
+    $MSIFiles = Get-ChildItem -Path $WorkingDir -Filter *.msi
+}
+
+
+if (!$MSIFiles) {
+    Write-Host "No MSI files found in script directory: $WorkingDir"
+    write-Host "Falling back to target folder: $sourceFolder if it exists." -ForegroundColor Yellow
+    if (Test-Path -Path $sourceFolder) {
+        $MSIFiles = Get-ChildItem -Path $sourceFolder -Filter *.msi
+        if (!$MSIFiles) {
+            Write-Host "No MSI files found in target folder: $sourceFolder"
+            exit 1
+        } else {
+            Write-Host "Found MSI files in target folder: $sourceFolder" -ForegroundColor Green
+        }
+    } else {
+        Write-Host "Target folder not found: $sourceFolder"
+        exit 1
+    }
+}
+
 $iPXE = $MSIFiles | Where-Object { $_.Name -like "*iPXE*.msi" } | Select-Object -First 1
+
+if (!$iPXE) {
+    Write-Host "No MSI file matching *iPXE*.msi found in script directory or target folder."
+    exit 1
+} else {
+    Write-Host "Found iPXE MSI: $($iPXE.FullName)" -ForegroundColor Green
+}
 
 Install-iPXEWS -msifile $iPXE.FullName
