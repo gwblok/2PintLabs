@@ -18,13 +18,20 @@ Get-ChildItem -Path $sourceFolder -Filter *.zip | Unblock-File
 #Extract each zip file to the target folder, creating a subfolder for each zip file based on its name
 Get-ChildItem -Path $sourceFolder -Filter *.zip | ForEach-Object {
     $zipFile = $_.FullName
+    $fileName = $_.Name
     $destination = Join-Path -Path $targetFolder -ChildPath $_.BaseName
     Expand-Archive -Path $zipFile -DestinationPath $destination -Force
-    Write-Host "Extracted: $zipFile to $destination"
+    Write-Host "Extracted: $fileName to $destination" -ForegroundColor DarkGray
+    #Confirm it Extracted Successfully by checking for the presence of the extracted folder
+    if (Test-Path -Path $destination) {
+        Write-Host "Successfully extracted: $fileName" -ForegroundColor Green
+    } else {
+        Write-Host "Failed to extract: $fileName" -ForegroundColor Red
+    }
 }
 
 #Dig into the StifleR folder and extract all of the additional zip files found there to the target folder, creating subfolders for each zip file based on their names
-$stifleRFolder = Get-ChildItem -Path $targetFolder -Directory | Where-Object { $_.Name -like "StifleR*" } | Select-Object -First 1
+$stifleRFolder = (Get-ChildItem -Path $targetFolder -Directory | Where-Object { $_.Name -like "StifleR*" } | Select-Object -First 1).FullName
 if (Test-Path -Path $stifleRFolder) {
     Get-ChildItem -Path $stifleRFolder -Filter *.zip | ForEach-Object {
         $zipFile = $_.FullName
