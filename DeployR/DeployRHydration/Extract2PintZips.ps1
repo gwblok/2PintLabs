@@ -42,7 +42,7 @@ Get-ChildItem -Path $targetFolder -Directory | ForEach-Object {
     Remove-Item -Path $subFolder -Recurse -Force
     Write-Host "Moved contents of: $subFolder to $targetFolder and removed $subFolder"
 }
-#Delete all .wixpdf files from the target folder
+#Delete all .wixpdb files from the target folder
 Get-ChildItem -Path $targetFolder -Filter *.wixpdb | Remove-Item
 
 #Cleanup all empty folders from the target folder
