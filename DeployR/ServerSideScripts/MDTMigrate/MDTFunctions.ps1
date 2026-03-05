@@ -10,10 +10,10 @@ The function is resilient: it searches each application folder for any XML files
 
 
 # Enumerate apps from a local deployment share folder
-Get-MDTApplications -DeploymentSharePath 'E:\AmplifonPSD\psd' | Format-Table -AutoSize
+Get-MDTApplications -DeploymentSharePath 'E:\psd' | Format-Table -AutoSize
 
 # Save the applications to CSV
-Get-MDTApplications -DeploymentSharePath 'E:\AmplifonPSD\psd' | Export-Csv apps.csv -NoTypeInformation
+Get-MDTApplications -DeploymentSharePath 'E:\psd' | Export-Csv apps.csv -NoTypeInformation
 #>
 
 function Get-MDTDeploymentShare {
@@ -415,7 +415,7 @@ Function New-DeployRApp {
 }
 
 
-$MDTApps = Get-MDTApplications -DeploymentSharePath 'E:\AmplifonPSD\psd' -EnabledOnly
+$MDTApps = Get-MDTApplications -DeploymentSharePath 'E:\psd' -EnabledOnly
 #$MDTAppsTest = $MDTApps | Where-Object {$_.Name -match ".Net"}
 $AllDeployRApps = Get-DeployRApplication
 $existingApp = $null
