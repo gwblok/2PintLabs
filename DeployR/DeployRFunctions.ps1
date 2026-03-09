@@ -151,12 +151,12 @@ function Invoke-DeployRTS{
     }
     if (($ServerName) -and (-not $TSID)) {
         Write-Host "ServerName: $ServerName" -ForegroundColor Yellow
-        iex (irm "https://$($ServerName):7281/Content/Boot/DeployR.ps1")
+        iex (irm "https://$($ServerName):7281/v1/Service/Bootstrap")
     }
     if (($ServerName) -and ($TSID)) {
         Write-Host "ServerName: $ServerName" -ForegroundColor Yellow
         Write-Host "TSID: $TSID" -ForegroundColor Yellow
-        iex (irm "https://$($ServerName):7281/Content/Boot/DeployR.ps1?tsid=$($TSID):1")
+        iex (irm "https://$($ServerName):7281/v1/Service/Bootstrap?tsid=$($TSID):1")
     }
     # Add logic here to use $ServerName and $TSID as needed
 }
