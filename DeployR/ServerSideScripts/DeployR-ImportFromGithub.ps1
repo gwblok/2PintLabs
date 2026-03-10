@@ -279,38 +279,42 @@ if (Test-Path -Path "$DownloadStepsPath\ReferencedContent") {
 
 
 #Import Steps
-$AvailableStepDefs = Get-ChildItem -Path $DownloadStepsPath -Directory | Where-Object {$_.Name -ne "ReferencedContent"}
-#Have User Select Steps to Import
-write-host "==========================================" -ForegroundColor darkgray
-write-host "Importing Custom Steps from: $DownloadStepsPath" -ForegroundColor Magenta
-write-host ""
-if ($ImportAllSteps) {
-    $SelectedStepDefs = $AvailableStepDefs
-} else {
-    $SelectedStepDefs = $AvailableStepDefs | Out-GridView -Title "Select Custom Steps to Import into DeployR (Hold Ctrl to select multiple)" -PassThru
-}
-$SelectedStepDefs | ForEach-Object {
-    $StepFolder = $_.FullName
-    Write-Host "Importing Custom Step from: $StepFolder" -ForegroundColor Cyan
-    Get-ChildItem -path $StepFolder -File | Where-Object {$_.Extension -eq ".json"} | ForEach-Object {
-        $StepFile = $_.FullName
-        $StepJSON = Get-Content -Path $StepFile -Raw | ConvertFrom-Json
-        Write-Host "Importing step definition from file: $StepFile" -ForegroundColor Yellow
-        Import-DeployRStepDefinition -SourceFile $StepFile -Force | Out-Null
+if ($ImportSteps){
+    $AvailableStepDefs = Get-ChildItem -Path $DownloadStepsPath -Directory | Where-Object {$_.Name -ne "ReferencedContent"}
+    #Have User Select Steps to Import
+    write-host "==========================================" -ForegroundColor darkgray
+    write-host "Importing Custom Steps from: $DownloadStepsPath" -ForegroundColor Magenta
+    write-host ""
+    if ($ImportAllSteps) {
+        $SelectedStepDefs = $AvailableStepDefs
+    } else {
+        $SelectedStepDefs = $AvailableStepDefs | Out-GridView -Title "Select Custom Steps to Import into DeployR (Hold Ctrl to select multiple)" -PassThru
+    }
+    $SelectedStepDefs | ForEach-Object {
+        $StepFolder = $_.FullName
+        Write-Host "Importing Custom Step from: $StepFolder" -ForegroundColor Cyan
+        Get-ChildItem -path $StepFolder -File | Where-Object {$_.Extension -eq ".json"} | ForEach-Object {
+            $StepFile = $_.FullName
+            $StepJSON = Get-Content -Path $StepFile -Raw | ConvertFrom-Json
+            Write-Host "Importing step definition from file: $StepFile" -ForegroundColor Yellow
+            Import-DeployRStepDefinition -SourceFile $StepFile -Force | Out-Null
+        }
     }
 }
 
 #Import Task Sequences
-write-host "==========================================" -ForegroundColor darkgray
-write-host "Importing Task Sequences from: $DownloadTSModulesPath" -ForegroundColor Magenta
-write-host ""
-Get-ChildItem -Path $DownloadTSModulesPath -Directory | ForEach-Object {
-    $TSFolder = $_.FullName
-    Write-Host "Importing Task Sequence from: $TSFolder" -ForegroundColor Cyan
-    Get-ChildItem -path $TSFolder -File | Where-Object {$_.Extension -eq ".json"} | ForEach-Object {
-        $TSFile = $_.FullName
-        $TSJSON = Get-Content -Path $TSFile -Raw | ConvertFrom-Json
-        Write-Host "Importing task sequence from file: $TSFile" -ForegroundColor Yellow
-        Import-DeployRTaskSequence -SourceFile $TSFile -Force | Out-Null
+if ($ImportTS) {
+    write-host "==========================================" -ForegroundColor darkgray
+    write-host "Importing Task Sequences from: $DownloadTSModulesPath" -ForegroundColor Magenta
+    write-host ""
+    Get-ChildItem -Path $DownloadTSModulesPath -Directory | ForEach-Object {
+        $TSFolder = $_.FullName
+        Write-Host "Importing Task Sequence from: $TSFolder" -ForegroundColor Cyan
+        Get-ChildItem -path $TSFolder -File | Where-Object {$_.Extension -eq ".json"} | ForEach-Object {
+            $TSFile = $_.FullName
+            $TSJSON = Get-Content -Path $TSFile -Raw | ConvertFrom-Json
+            Write-Host "Importing task sequence from file: $TSFile" -ForegroundColor Yellow
+            Import-DeployRTaskSequence -SourceFile $TSFile -Force | Out-Null
+        }
     }
 }

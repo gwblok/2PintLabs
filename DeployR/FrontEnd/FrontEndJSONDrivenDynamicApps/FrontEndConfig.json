@@ -24,6 +24,7 @@
   
   "//AutopilotGroupTags": "Available Autopilot group tags for device registration",
   "AutopilotGroupTags": [
+    "APLab",
     "Enterprise",
     "Hub Self Deploy"
   ],
