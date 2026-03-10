@@ -61,6 +61,6 @@ else {
     Write-Host "iPXE file $iPXEExtraFilePath not found." -ForegroundColor Red
     #If Nothing Set, Set Lang to it-IT as default for testing
     ${TSEnv:LANGUAGECODE} = "it-it"
-    ${TSEnv:DOMAIN} = "D00"
-    ${TSEnv:GroupName} = "D00 - IT/SHOPS"
+    ${TSEnv:DOMAIN} = "DOMAIN"
+    ${TSEnv:GroupName} = "DOMAIN - IT"
 }
