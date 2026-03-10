@@ -20,7 +20,15 @@ if ($CSVFile.Count -eq 0) {
 else {
     Write-Host "Found CSV file(s) in $WorkingDir. Gathering language information from the first one." -ForegroundColor Green
     $AllCompinfo = Import-csv -Path $CSVFile[0].FullName
-
     $CurrentCompInfo = $AllCompinfo | Where-Object { $_.uuid -eq $compactUuid }
-    $TSEnv:COMPUTERNAME = $CurrentCompInfo.computerName
+    if ($CurrentCompInfo) {
+        Write-Host "Found matching computer information for UUID $compactUuid." -ForegroundColor Green
+        Write-Host "Setting Computer Name to $($CurrentCompInfo.computerName)" -ForegroundColor Cyan
+        $TSEnv:COMPUTERNAME = $CurrentCompInfo.computerName
+    }
+    else {
+        Write-Host "No matching computer information found for UUID $compactUuid in the CSV file." -ForegroundColor Yellow
+        # Set a default language if desired, or exit with an error
+    }
+    
 }
