@@ -985,7 +985,7 @@ Function Test-URLExists {
 #######################################################
 # SCRIPT Execution
 #######################################################
-
+#Region Script to Run Frontend and gather Info
 try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
     $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
@@ -1051,6 +1051,13 @@ $FormResults = Get-InputFormData
 
 
 
+
+#endregion Script to Run Frontend and gather Info
+
+#Start Pre-Caching of selected items based on $FormResults
+
+#Boot Media First
+#Region Boot Media Pre-Cache
 if ($FormResults.PreCacheAllBootImages -eq $true){
     # Process a list of static files for Boot Images
     $BootImagefiles = @("boot.sdi",
@@ -1077,3 +1084,40 @@ if ($FormResults.PreCacheAllBootImages -eq $true){
     }
 
 }
+#endregion Boot Media Pre-Cache
+
+#Region Operating Systems Pre-Cache
+if ($FormResults.SelectedOperatingSystems -and $FormResults.SelectedOperatingSystems.Count -gt 0) {
+    foreach ($ContentItem in $FormResults.SelectedOperatingSystems) {
+        Write-Host "Pre-caching operating system: $($ContentItem.Name) (ID: $($ContentItem.Id))" -ForegroundColor Green
+        $destFile = Request-DeployRContent -ContentName $ContentItem.name -ContentItemId $ContentItem.Id -ContentItemVersion $ContentItem.versionNo -ErrorAction SilentlyContinue
+    }
+}
+#endregion Operating Systems Pre-Cache
+
+#Region Driver Packs Pre-Cache
+if ($FormResults.SelectedDriverPacks -and $FormResults.SelectedDriverPacks.Count -gt 0) {
+    foreach ($ContentItem in $FormResults.SelectedDriverPacks) {
+        Write-Host "Pre-caching driver pack: $($ContentItem.Name) (ID: $($ContentItem.Id))" -ForegroundColor Green
+        $destFile = Request-DeployRContent -ContentName $ContentItem.name -ContentItemId $ContentItem.Id -ContentItemVersion $ContentItem.versionNo -ErrorAction SilentlyContinue
+    }
+}
+#endregion Driver Packs Pre-Cache
+
+#Region Other Pre-Cache
+if ($FormResults.SelectedOther -and $FormResults.SelectedOther.Count -gt 0){
+    foreach ($ContentItem in $FormResults.SelectedOther) {
+        Write-Host "Pre-caching item: $($ContentItem.Name) (ID: $($ContentItem.Id))" -ForegroundColor Green
+        $destFile = Request-DeployRContent -ContentName $ContentItem.name -ContentItemId $ContentItem.Id -ContentItemVersion $ContentItem.versionNo -ErrorAction SilentlyContinue
+    }
+}
+#endregion Other Pre-Cache
+
+#Region Applications Pre-Cache
+if ($FormResults.SelectedApplications -and $FormResults.SelectedApplications.Count -gt 0){
+    foreach ($ContentItem in $FormResults.SelectedApplications) {
+        Write-Host "Pre-caching application: $($ContentItem.Name) (ID: $($ContentItem.Id))" -ForegroundColor Green
+        $destFile = Request-DeployRContent -ContentName $ContentItem.name -ContentItemId $ContentItem.Id -ContentItemVersion $ContentItem.versionNo -ErrorAction SilentlyContinue
+    }
+}
+#endregion Applications Pre-Cache
