@@ -240,7 +240,7 @@ Function Get-InputFormData {
     #endregion Hardware 
 
     # Build dynamic UI strings based on Usage
-    $WindowTitle = "System Configuration - $Usage OSD"
+    $WindowTitle = "PreCache Content Chooser"
     $HeaderText = "System Configuration - $Usage"
     $DomainSuffixLabel = if ($Usage -eq "ConfigMgr") { "Domain Suffix, used as Domain for Domain Join:" } else { "Domain Suffix (optional):" }
     $DomainJoinRadioLabel = if ($Usage -eq "ConfigMgr") { "Domain Join" } else { "Offline Domain Join" }
