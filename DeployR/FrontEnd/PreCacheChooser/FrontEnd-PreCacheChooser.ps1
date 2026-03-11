@@ -290,6 +290,15 @@ Function Get-InputFormData {
 
                         <TextBlock Text="Boot Images" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
                         <CheckBox x:Name="chkPreCacheBootImages" Content="PreCache all Boot Images" Margin="12,4,0,0" FontSize="12"/>
+
+                        <Separator Margin="0,8,0,8"/>
+
+                        <TextBlock Text="Bulk Selection" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <TextBlock FontSize="11" Foreground="Gray" Margin="12,0,0,6" TextWrapping="Wrap" Text="Select or deselect all content items across all tabs."/>
+                        <StackPanel Orientation="Horizontal" Margin="12,0,0,0">
+                            <Button x:Name="btnSelectAll" Content="Select All" Width="100" Height="28" Margin="0,0,8,0" FontSize="11"/>
+                            <Button x:Name="btnDeselectAll" Content="Deselect All" Width="100" Height="28" Margin="0,0,0,0" FontSize="11"/>
+                        </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -442,6 +451,8 @@ Function Get-InputFormData {
     $spOperatingSystemsList = $Window.FindName("spOperatingSystemsList")
     $spDriverPacksList = $Window.FindName("spDriverPacksList")
     $spOtherList = $Window.FindName("spOtherList")
+    $btnSelectAll = $Window.FindName("btnSelectAll")
+    $btnDeselectAll = $Window.FindName("btnDeselectAll")
     
     # Hardware tab controls
     $txtHwMake = $Window.FindName("txtHwMake")
@@ -768,6 +779,37 @@ Function Get-InputFormData {
         try { if ($script:AutoCloseTimer) { $script:AutoCloseTimer.Stop() } } catch {}
         $Window.DialogResult = $false
         $Window.Close()
+    })
+
+    # Select All / Deselect All button handlers
+    $btnSelectAll.Add_Click({
+        $chkPreCacheBootImages.IsChecked = $true
+        foreach ($sp in @($spOperatingSystemsList, $spDriverPacksList, $spOtherList, $spApplicationsList)) {
+            if ($null -ne $sp) {
+                foreach ($panel in $sp.Children) {
+                    if ($panel -is [System.Windows.Controls.StackPanel]) {
+                        foreach ($child in $panel.Children) {
+                            if ($child -is [System.Windows.Controls.CheckBox]) { $child.IsChecked = $true }
+                        }
+                    }
+                }
+            }
+        }
+    })
+
+    $btnDeselectAll.Add_Click({
+        $chkPreCacheBootImages.IsChecked = $false
+        foreach ($sp in @($spOperatingSystemsList, $spDriverPacksList, $spOtherList, $spApplicationsList)) {
+            if ($null -ne $sp) {
+                foreach ($panel in $sp.Children) {
+                    if ($panel -is [System.Windows.Controls.StackPanel]) {
+                        foreach ($child in $panel.Children) {
+                            if ($child -is [System.Windows.Controls.CheckBox]) { $child.IsChecked = $false }
+                        }
+                    }
+                }
+            }
+        }
     })
     
     # Setup auto-close timer BEFORE showing the form
