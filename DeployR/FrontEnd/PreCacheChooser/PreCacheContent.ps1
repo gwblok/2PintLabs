@@ -33,6 +33,7 @@ if (!($Global:LogFolderPath)) {
 #Import of FormResults from PreCacheChooser Form
 $jsonPath = Join-Path -Path $Global:LogFolderPath -ChildPath "FrontendFormResults.json"
 if (Test-Path -Path $jsonPath) {
+    Write-Host "Loading form results from $jsonPath" -ForegroundColor Green
     $FormResults = Get-Content -Path $jsonPath | ConvertFrom-Json
 }
 else {
