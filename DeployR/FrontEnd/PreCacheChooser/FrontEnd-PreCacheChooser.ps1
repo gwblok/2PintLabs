@@ -498,7 +498,7 @@ Function Get-InputFormData {
                 $cb.Margin = '6,0,0,0'
                 $cb.FontSize = 12
                 $cb.FontWeight = 'SemiBold'
-                $cb.Tag = @{ Id = $os.Id; Name = $os.Name; Description = $os.Description; VersionNo = $os.versionNo; Status = $os.status }
+                $cb.Tag = @{ Id = $os.Id; ContentItemId = $os.contentItemId; Name = $os.Name; Description = $os.Description; VersionNo = $os.versionNo; Status = $os.status }
                 if ($osAutoCheck.ContainsKey($os.Id)) { $cb.IsChecked = $true }
 
                 # Build display: Name (vN)
@@ -561,7 +561,7 @@ Function Get-InputFormData {
                 $cb.Margin = '6,0,0,0'
                 $cb.FontSize = 12
                 $cb.FontWeight = 'SemiBold'
-                $cb.Tag = @{ Id = $dp.Id; Name = $dp.Name; Description = $dp.Description; VersionNo = $dp.versionNo; Status = $dp.status }
+                $cb.Tag = @{ Id = $dp.Id; ContentItemId = $dp.contentItemId; Name = $dp.Name; Description = $dp.Description; VersionNo = $dp.versionNo; Status = $dp.status }
                 if ($dpAutoCheck.ContainsKey($dp.Id)) { $cb.IsChecked = $true }
                 $displayText = $dp.Name
                 if ($dp.versionNo) { $displayText += " (v$($dp.versionNo))" }
@@ -620,7 +620,7 @@ Function Get-InputFormData {
                 $cb.Margin = '6,0,0,0'
                 $cb.FontSize = 12
                 $cb.FontWeight = 'SemiBold'
-                $cb.Tag = @{ Id = $otherItem.Id; Name = $otherItem.Name; Description = $otherItem.Description; VersionNo = $otherItem.versionNo; Status = $otherItem.status }
+                $cb.Tag = @{ Id = $otherItem.Id; ContentItemId = $otherItem.contentItemId; Name = $otherItem.Name; Description = $otherItem.Description; VersionNo = $otherItem.versionNo; Status = $otherItem.status }
                 if ($otherAutoCheck.ContainsKey($otherItem.Id)) { $cb.IsChecked = $true }
                 $displayText = $otherItem.Name
                 if ($otherItem.versionNo) { $displayText += " (v$($otherItem.versionNo))" }
@@ -679,7 +679,7 @@ Function Get-InputFormData {
                 $cb.Margin = '6,0,0,0'
                 $cb.FontSize = 12
                 $cb.FontWeight = 'SemiBold'
-                $cb.Tag = @{ Id = $app.Id; Name = $app.Name; Description = $app.Description; VersionNo = $app.versionNo; Status = $app.status }
+                $cb.Tag = @{ Id = $app.Id; ContentItemId = $app.contentItemId; Name = $app.Name; Description = $app.Description; VersionNo = $app.versionNo; Status = $app.status }
                 if ($appAutoCheck.ContainsKey($app.Id)) { $cb.IsChecked = $true }
                 $displayText = $app.Name
                 if ($app.versionNo) { $displayText += " (v$($app.versionNo))" }
@@ -804,6 +804,7 @@ Function Get-InputFormData {
                                 $tagData = $child.Tag
                                 $script:SelectedOperatingSystems += [PSCustomObject]@{
                                     Id = $tagData.Id
+                                    ContentItemId = $tagData.ContentItemId
                                     Name = $tagData.Name
                                     Description = $tagData.Description
                                     VersionNo = $tagData.VersionNo
@@ -831,6 +832,7 @@ Function Get-InputFormData {
                                 $tagData = $child.Tag
                                 $script:SelectedDriverPacks += [PSCustomObject]@{
                                     Id = $tagData.Id
+                                    ContentItemId = $tagData.ContentItemId
                                     Name = $tagData.Name
                                     Description = $tagData.Description
                                     VersionNo = $tagData.VersionNo
@@ -858,6 +860,7 @@ Function Get-InputFormData {
                                 $tagData = $child.Tag
                                 $script:SelectedOther += [PSCustomObject]@{
                                     Id = $tagData.Id
+                                    ContentItemId = $tagData.ContentItemId
                                     Name = $tagData.Name
                                     Description = $tagData.Description
                                     VersionNo = $tagData.VersionNo
@@ -885,6 +888,7 @@ Function Get-InputFormData {
                                 $tagData = $child.Tag
                                 $script:SelectedApplications += [PSCustomObject]@{
                                     Id = $tagData.Id
+                                    ContentItemId = $tagData.ContentItemId
                                     Name = $tagData.Name
                                     Description = $tagData.Description
                                     VersionNo = $tagData.VersionNo

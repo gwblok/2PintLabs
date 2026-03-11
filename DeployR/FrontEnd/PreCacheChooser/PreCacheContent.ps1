@@ -74,8 +74,8 @@ if ($FormResults.PreCacheAllBootImages -eq $true){
 #Region Operating Systems Pre-Cache
 if ($FormResults.SelectedOperatingSystems -and $FormResults.SelectedOperatingSystems.Count -gt 0) {
     foreach ($ContentItem in $FormResults.SelectedOperatingSystems) {
-        Write-Host "Pre-caching operating system: $($ContentItem.Name) (ID: $($ContentItem.Id))" -ForegroundColor Green
-        $destFile = Request-DeployRContent -ContentName $ContentItem.name -ContentItemId $ContentItem.Id -ContentItemVersion $ContentItem.versionNo -ErrorAction SilentlyContinue
+        Write-Host "Pre-caching operating system: $($ContentItem.Name) (ID: $($ContentItem.ContentItemId))" -ForegroundColor Green
+        $destFile = Request-DeployRContent -ContentName $ContentItem.name -ContentItemId $ContentItem.ContentItemId -ContentItemVersion $ContentItem.versionNo -ErrorAction SilentlyContinue
     }
 }
 #endregion Operating Systems Pre-Cache
@@ -83,8 +83,8 @@ if ($FormResults.SelectedOperatingSystems -and $FormResults.SelectedOperatingSys
 #Region Driver Packs Pre-Cache
 if ($FormResults.SelectedDriverPacks -and $FormResults.SelectedDriverPacks.Count -gt 0) {
     foreach ($ContentItem in $FormResults.SelectedDriverPacks) {
-        Write-Host "Pre-caching driver pack: $($ContentItem.Name) (ID: $($ContentItem.Id))" -ForegroundColor Green
-        $destFile = Request-DeployRContent -ContentName $ContentItem.name -ContentItemId $ContentItem.Id -ContentItemVersion $ContentItem.versionNo -ErrorAction SilentlyContinue
+        Write-Host "Pre-caching driver pack: $($ContentItem.Name) (ID: $($ContentItem.ContentItemId))" -ForegroundColor Green
+        $destFile = Request-DeployRContent -ContentName $ContentItem.name -ContentItemId $ContentItem.ContentItemId -ContentItemVersion $ContentItem.versionNo -ErrorAction SilentlyContinue
     }
 }
 #endregion Driver Packs Pre-Cache
@@ -92,8 +92,8 @@ if ($FormResults.SelectedDriverPacks -and $FormResults.SelectedDriverPacks.Count
 #Region Other Pre-Cache
 if ($FormResults.SelectedOther -and $FormResults.SelectedOther.Count -gt 0){
     foreach ($ContentItem in $FormResults.SelectedOther) {
-        Write-Host "Pre-caching item: $($ContentItem.Name) (ID: $($ContentItem.Id))" -ForegroundColor Green
-        $destFile = Request-DeployRContent -ContentName $ContentItem.name -ContentItemId $ContentItem.Id -ContentItemVersion $ContentItem.versionNo -ErrorAction SilentlyContinue
+        Write-Host "Pre-caching item: $($ContentItem.Name) (ID: $($ContentItem.ContentItemId))" -ForegroundColor Green
+        $destFile = Request-DeployRContent -ContentName $ContentItem.name -ContentItemId $ContentItem.ContentItemId -ContentItemVersion $ContentItem.versionNo -ErrorAction SilentlyContinue
     }
 }
 #endregion Other Pre-Cache
@@ -101,8 +101,8 @@ if ($FormResults.SelectedOther -and $FormResults.SelectedOther.Count -gt 0){
 #Region Applications Pre-Cache
 if ($FormResults.SelectedApplications -and $FormResults.SelectedApplications.Count -gt 0){
     foreach ($ContentItem in $FormResults.SelectedApplications) {
-        Write-Host "Pre-caching application: $($ContentItem.Name) (ID: $($ContentItem.Id))" -ForegroundColor Green
-        $destFile = Request-DeployRContent -ContentName $ContentItem.name -ContentItemId $ContentItem.Id -ContentItemVersion $ContentItem.versionNo -ErrorAction SilentlyContinue
+        Write-Host "Pre-caching application: $($ContentItem.Name) (ID: $($ContentItem.ContentItemId))" -ForegroundColor Green
+        $destFile = Request-DeployRContent -ContentName $ContentItem.name -ContentItemId $ContentItem.ContentItemId -ContentItemVersion $ContentItem.versionNo -ErrorAction SilentlyContinue
     }
 }
 #endregion Applications Pre-Cache
