@@ -39,8 +39,8 @@ The frontend will automatically close after a few minutes, so if forgotten about
 
 ## Frontend Looks
 
-![Image01](./media/Image01.png)
-![Image02](./media/Image02.png)
-![Image03](./media/Image03.png)
-![Image04](./media/Image04.png)
-![Image05](./media/Image05.png)
+![Image01](./media/image01.png)
+![Image02](./media/image02.png)
+![Image03](./media/image03.png)
+![Image04](./media/image04.png)
+![Image05](./media/image05.png)
