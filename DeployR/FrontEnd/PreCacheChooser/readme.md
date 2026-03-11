@@ -21,6 +21,10 @@ pwsh.exe -NoProfile -ExecutionPolicy Bypass -File ".\FrontEnd-PreCacheChooser.ps
 ```
 
 4) Implementing the PreCacheContent.ps1 Script: Create a "Run PowerShell script" step, either embed the script or reference the content item and put in the name of the script.
+   MAKE SURE you set the time out to 0 instead of the default 15
+
+![TS01](./media/TS01.png)
+![TS02](./media/TS02.png)
 
 ## PreCaching Content on Devices
 
