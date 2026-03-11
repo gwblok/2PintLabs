@@ -15,12 +15,12 @@
 2) Create a new task sequence from template, choose the "Cache All" template, then edit it.
     Keep the "Enable BranchCache" step, delete the other one.
 
-3) Add a "Run Command Line Step", reference the content item with the scripts, set the Command Line to:
+3) Implementing the Frontend-PreCacheChoose.ps1 Script: Add a "Run Command Line Step", reference the content item with the scripts, set the Command Line to:
 ```
 pwsh.exe -NoProfile -ExecutionPolicy Bypass -File ".\FrontEnd-PreCacheChooser.ps1" -Wait -NoNewWindow -PassThru
 ```
 
-4) Create a "Run PowerShell script" step, either embed the script or reference the content item and put in the name of the script.
+4) Implementing the PreCacheContent.ps1 Script: Create a "Run PowerShell script" step, either embed the script or reference the content item and put in the name of the script.
 
 ## PreCaching Content on Devices
 
