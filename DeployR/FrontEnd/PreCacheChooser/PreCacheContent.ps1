@@ -2,6 +2,24 @@
 
 # THIS SCRIPT requires the "Run PowerShell Script" step and can be called by name or embedded.
 
+#region Functions
+Function Test-URLExists {
+    param (
+    [string]$URL
+    )
+    try {
+        $request = [System.Net.WebRequest]::Create($URL)
+        $request.Method = "HEAD"
+        $response = $request.GetResponse()
+        $response.Close()
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+#endregion Functions
+
 try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
     $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
