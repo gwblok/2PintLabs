@@ -80,7 +80,8 @@ Function Get-AdkPaths {
 #endregion functions
 
 
-
+$transcriptPath = "C:\Windows\Temp\DeployR_ISO_Generation_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+Start-Transcript -Path $transcriptPath -NoClobber
 $TempDir = "C:\Windows\Temp\DeployR_ISO"
 $ADKPaths = Get-AdkPaths
 $adkRoot = $ADKPaths.AdkRoot
@@ -172,3 +173,4 @@ if ($proc.ExitCode -ne 0) {
     throw "Failed to generate ISO: $($proc.ExitCode)"
 }
 Write-Host "ISO generated: $isoNew" -ForegroundColor Green
+Stop-Transcript
