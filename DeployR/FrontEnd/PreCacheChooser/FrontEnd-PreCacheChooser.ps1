@@ -1,3 +1,7 @@
+# THIS SCRIPT MUST BE RUN First, it allows you to choose what you want to cache then creates a JSON file of that information for the next script to use.
+# THIS SCRIPT requires the "Run COMMAND LINE Script" with the command: pwsh.exe -NoProfile -ExecutionPolicy Bypass -File ".\FrontEnd-PreCacheChooser.ps1" -Wait -NoNewWindow -PassThru
+#   You will need to have this in a content item and have the content item associated with this step.
+
 
 $ScriptVersion = '26.2.17.21.12'
 

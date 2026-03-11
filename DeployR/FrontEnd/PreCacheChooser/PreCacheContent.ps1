@@ -1,3 +1,7 @@
+#THIS SCRIPT MUST BE RUN AFTER YOU RUN THE FRONTEND SCRIPT, it relies on the output of the form results from the frontend script to know what content to pre-cache. It will read the form results from a JSON file that the frontend script creates in the logs folder.
+
+# THIS SCRIPT requires the "Run PowerShell Script" step and can be called by name or embedded.
+
 try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
     $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
