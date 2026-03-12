@@ -103,7 +103,7 @@ else {
         Write-Host " DeployR ContentLocation is NOT found in Registry and not in Default Location." -ForegroundColor Red
     }
 }
-$BootFolderPath = "$($DeployRContentPath)Content\Boot"
+$BootFolderPath = "$($DeployRContentPath)\Content\Boot"
 $WIMLocation = "$BootFolderPath\winpe_amd64.wim"
 if (-not (Test-Path $WIMLocation)) {
     throw "PE WIM not found at expected location: $WIMLocation"
