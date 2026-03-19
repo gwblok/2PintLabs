@@ -26,7 +26,7 @@ Function Install-App {
     Write-Host "Success codes: $returnCodes"
 
     # Figure out the working directory
-    $workingDir = ${TSEnv:Content-Application}
+    $workingDir = ${TSEnv:_Content-Application}
     if ($contentItemVersion.installationWorkingDirectory) {
         # Drive letter in it?  Then it's not a relative path.  (UNC paths won't work, so we'll ignore those.)
         if ($contentItemVersion.installationWorkingDirectory -like "*:*")

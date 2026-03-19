@@ -13,7 +13,7 @@ Import-Module DeployR.Utility
 # Get the provided variables
 [String]$URL = ${TSEnv:BrandingLockScreenImageURL}
 [String]$ImageFileName = ${TSEnv:BrandingLockScreenImageFileName}
-[String]$ImageFileContentItem = ${TSEnv:CONTENT-BrandingLockScreenImageCI}
+[String]$ImageFileContentItem = ${TSEnv:_CONTENT-BrandingLockScreenImageCI}
 [String]$BrandingLockScreenImageEnforce = ${TSEnv:BrandingLockScreenImageEnforce}
 
 #Report Variables:

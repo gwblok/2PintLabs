@@ -15,7 +15,7 @@ Import-Module DeployR.Utility
 [String]$URL = ${TSEnv:BrandingImageURL}
 [String]$FinishAction = ${TSEnv:FinishAction}
 [String]$ImageFileName = ${TSEnv:BrandingImageFileName}
-[String]$ImageFileContentItem = ${TSEnv:CONTENT-BrandingImageCI}
+[String]$ImageFileContentItem = ${TSEnv:_CONTENT-BrandingImageCI}
 
 Function Resize-Image {
     [CmdletBinding()]

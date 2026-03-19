@@ -13,7 +13,7 @@ Import-Module DeployR.Utility
 # Get the provided variables
 [String]$URL = ${TSEnv:BrandingBackgroundImageURL}
 [String]$ImageFileName = ${TSEnv:BrandingBackgroundImageFileName}
-[String]$ImageFileContentItem = ${TSEnv:CONTENT-BrandingBackgroundImageCI}
+[String]$ImageFileContentItem = ${TSEnv:_CONTENT-BrandingBackgroundImageCI}
 [String]$BrandingBackgroundImageSystemMode = ${TSEnv:BrandingBackgroundImageSystemMode}
 
 #Report Variables:

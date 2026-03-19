@@ -12,7 +12,7 @@ Import-Module DeployR.Utility
 
 # Get the provided variables
 [String]$WMIEFromCloud = ${TSEnv:WMIEFromCloud}
-[String]$WMIEContentItem = ${TSEnv:CONTENT-WMIEContentItem}
+[String]$WMIEContentItem = ${TSEnv:_CONTENT-WMIEContentItem}
 
 #region functions
 Function New-AppIcon {

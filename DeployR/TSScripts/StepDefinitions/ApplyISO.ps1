@@ -74,7 +74,7 @@ switch ($osImage.Architecture)
 }
 
 # Override the method if the unattend.xml does not exist
-if ($continueMethod -eq "0" -and ${TSEnv:Content-Unattend} -eq "") {
+if ($continueMethod -eq "0" -and ${TSEnv:_Content-Unattend} -eq "") {
 	Write-Host "No unattend.xml specified, will default to using SetupComplete.cmd"
 	$continueMethod = "1"
 }
@@ -85,7 +85,7 @@ switch ($continueMethod) {
 		# Use provided unattend.xml
 
 		# Copy the unattend.xml provided to the correct location
-		$unattend = Join-Path -Path ${TSEnv:Content-Unattend} -ChildPath ${TSEnv:ContentFile-Unattend}
+		$unattend = Join-Path -Path ${TSEnv:_Content-Unattend} -ChildPath ${TSEnv:_ContentFile-Unattend}
 		Write-Host "Copying $unattend to S:\Windows\Panther\Unattend"
 		Copy-Item $unattend "S:\Windows\Panther\Unattend\Unattend.xml"
 	}
