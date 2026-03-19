@@ -28,3 +28,5 @@ function Set-WindowsOEMActivation {
 	    Write-Output ' Key not found!'
     }
 }
+#Run the Functions
+Set-WindowsOEMActivation 
