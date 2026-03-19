@@ -5,7 +5,7 @@ function Get-WindowsOEMProductKey {
 
 function Set-WindowsOEMActivation {
     $ProductKey = Get-WindowsOEMProductKey
-    Write-Output "Starting Process to Set Windows Licence to OEM Value in BIOS"
+    Write-Output "Starting Process to Set Windows License to OEM Value in BIOS"
     if ($ProductKey) {
         try {
             Write-Output " Setting Key: $ProductKey" 
