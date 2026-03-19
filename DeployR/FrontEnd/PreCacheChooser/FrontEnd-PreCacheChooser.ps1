@@ -24,8 +24,8 @@ Function Get-InputFormData {
     # Resolve script directory robustly to support dot-sourcing and different PowerShell hosts
     $scriptDir = $null
     if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"))) {
-        $scriptDir = ${TSEnv:CONTENT-CONTENT}
-        Write-Host "Resolved script directory via TS Var CONTENT-CONTENT: $scriptDir" -ForegroundColor Cyan
+        $scriptDir = ${TSEnv:_CONTENT-CONTENT}
+        Write-Host "Resolved script directory via TS Var _CONTENT-CONTENT: $scriptDir" -ForegroundColor Cyan
     }
     if (-not $scriptDir){
         try { $scriptDir = $PSScriptRoot } catch {}

@@ -195,7 +195,7 @@ try {
 }
 catch {}
 if (Get-Module -name "DeployR.Utility" -ErrorAction SilentlyContinue){
-    $ContentLocation = ${TSEnv:CONTENT-CONTENT}
+    $ContentLocation = ${TSEnv:_CONTENT-CONTENT}
     Write-Host "Running in TS, getting content location from TSEnv: $ContentLocation"
     $CCTKPath = "$ContentLocation\CCTK.exe"
     if (Test-Path -Path $CCTKPath){

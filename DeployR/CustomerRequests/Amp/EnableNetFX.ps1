@@ -4,7 +4,7 @@ Import-Module DeployR.Utility
 
 
 # Source = current script/working directory (where the .cab files live)
-$SourcePath = ${TSEnv:CONTENT-CONTENT} 
+$SourcePath = ${TSEnv:_CONTENT-CONTENT} 
 
 # Normalize offline Windows path
 $letter    = $OfflineDrive -replace '[:\\]',''

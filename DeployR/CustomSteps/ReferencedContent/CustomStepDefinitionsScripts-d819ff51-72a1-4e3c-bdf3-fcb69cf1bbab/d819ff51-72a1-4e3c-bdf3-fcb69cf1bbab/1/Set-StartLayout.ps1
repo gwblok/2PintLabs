@@ -5,8 +5,8 @@ if ($env:SystemDrive -eq "X:"){
 
 Import-Module DeployR.Utility
 
-[String]$ContentItem = ${TSEnv:CONTENT-CONTENT}
-[String]$BrandedContentItem = ${TSEnv:CONTENT-BRANDINGStartLayoutCI}
+[String]$ContentItem = ${TSEnv:_CONTENT-CONTENT}
+[String]$BrandedContentItem = ${TSEnv:_CONTENT-BRANDINGStartLayoutCI}
 
 
 

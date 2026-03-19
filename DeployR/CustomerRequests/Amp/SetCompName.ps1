@@ -1,7 +1,7 @@
 
 
 Import-Module DeployR.Utility
-$WorkingDir = ${TSEnv:Content-Content}
+$WorkingDir = ${TSEnv:_Content-Content}
 
 #Gather UUID From Current Machine
 $uuid = (Get-CimInstance Win32_ComputerSystemProduct).UUID

@@ -8,7 +8,7 @@ catch {
 if (Get-Module -name "DeployR.Utility"){
     write-Host "Using DeployR.Utility Module to get FQDN" -ForegroundColor Green
     $FQDN = ${TSEnv:FormFQDN}
-    $ContentLocation = ${TSEnv:CONTENT-CONTENT}
+    $ContentLocation = ${TSEnv:_CONTENT-CONTENT}
     write-Host "FQDN = $(${TSEnv:FormFQDN})" -ForegroundColor Green
 }
 else{

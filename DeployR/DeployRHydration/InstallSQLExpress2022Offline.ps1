@@ -6,7 +6,7 @@ catch {
 }
 
 if (Get-Module -name "DeployR.Utility"){
-    $ContentLocation = ${TSEnv:CONTENT-CONTENT}
+    $ContentLocation = ${TSEnv:_CONTENT-CONTENT}
 }
 else{
     $ContentLocation = Split-Path -Path $MyInvocation.MyCommand.Definition -Parent

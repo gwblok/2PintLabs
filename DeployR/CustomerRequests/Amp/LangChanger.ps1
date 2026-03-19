@@ -49,7 +49,7 @@ if (!($CABsDownloaded)){
     Write-Host "Searching for language package(s) for language $WantedLang"
     
     #Setup language pack path
-    $WorkingDir = ${TSEnv:Content-Content}
+    $WorkingDir = ${TSEnv:_Content-Content}
     #$BaseLanguagePath = $WorkingDir
     $SourceLanguagePackagePath = $WorkingDir
     

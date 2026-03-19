@@ -15,7 +15,7 @@ Import-Module DeployR.Utility
 [String]$URL = ${TSEnv:BrandingImageURL}
 [String]$FinishAction = ${TSEnv:FinishAction}
 [String]$ImageFileName = ${TSEnv:BrandingImageFileName}
-[String]$ImageFileContentItem = ${TSEnv:CONTENT-BrandingImageCI}
+[String]$ImageFileContentItem = ${TSEnv:_CONTENT-BrandingImageCI}
 
 Function Resize-Image {
     [CmdletBinding()]
@@ -176,5 +176,6 @@ if ($URL -ne "") {
 
 if ($ImageFileName -ne "") {
     Write-Output "Generic User Image File Name is set to $ImageFileName"
+    Write-Output "Content Item for Image is set to $ImageFileContentItem"
     Set-GenericUserImage -ImageFileName $ImageFileName -ImageFileContentItem $ImageFileContentItem -FinishAction $FinishAction
 }
