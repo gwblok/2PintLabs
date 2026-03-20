@@ -105,8 +105,9 @@ function Import-DriverPack {
             Copy-Item -Path $InputSourceFolder -Destination "$DriverPackSourcePath\Extracted" -Force
         }
         if ($CabPath -and (Test-Path $CabPath)) {
-            Write-Host "  Using provided CAB Path: $CabPath"
-            Copy-Item -Path $CabPath -Destination "$DriverPackSourcePath\$DriverPackFileName" -Force
+            Write-Host "  Using provided CAB Path: $CabPath" -ForegroundColor Green
+            write-HOst "  Copying CAB to Source Folder: $DriverPackSourcePath\$DriverPackFileFullName"
+            Copy-Item -Path $CabPath -Destination "$DriverPackSourcePath\$DriverPackFileFullName" -Force
         }
         if (Test-Path "$DriverPackSourcePath\$DriverPackFileFullName") {
             Write-Host "  Driver Pack already downloaded: $DriverPackFileFullName"
@@ -193,42 +194,57 @@ function Import-PanasonicDriverPacks {
     param (
     [string]$SourceFolder = "D:\DeployRContentItems\Source\DriverPacks",
     [string]$DeployRModulePath ='C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility',
-    [string]$CabPath
+    [string]$CabPath,
+    [string]$ModelAlias
     )
     Write-Host "Importing Panasonic Driver Packs" -ForegroundColor Green
     #Ensure Source Folder exists
     if (-not (Test-Path $SourceFolder)) {
         New-Item -Path $SourceFolder -ItemType Directory -Force | Out-Null
     }
-    #Get the Panasonic Driver Pack Catalog JSON
-    
-    
-    Import-Module $DeployRModulePath
-    $PanasonicCatalogURL = "https://pna-b2b-storage-mkt.s3.amazonaws.com/computer/software/apps/Panasonic.json"
-    $JSONCatalog = Invoke-RestMethod -Uri $PanasonicCatalogURL
-    $PanasonicDriverPacks = $JSONCatalog.PanasonicModels
     $MakeAlias = "Panasonic Corporation"
-    
-    $TotalModels = (($PanasonicDriverPacks.PSObject.Properties).Count).Count
-    Write-Host "Total Panasonic Models to process: $TotalModels" -ForegroundColor Magenta
-    $CurrentCount = 0
-    foreach ($modelKey in $PanasonicDriverPacks.PSObject.Properties.Name) {
-        $CurrentCount++
-        Write-Host "Processing model $CurrentCount of $TotalModels" -ForegroundColor Cyan
-        $model = $PanasonicDriverPacks.$modelKey
-        $ModelAlias = $modelKey
-        Write-Host " Processing $MakeAlias - $ModelAlias" -ForegroundColor Cyan
-        if ($Model.URL10) {
-            $OSVer = 'Win10'
-            $URL = $model.URL10
-            Write-Host "  Processing Windows $OSVer $URL" -foregroundColor Green
-            Import-DriverPack -MakeAlias $MakeAlias -ModelAlias $ModelAlias -OSVer $OSVer -URL $URL -ArchiveSourceFolder $SourceFolder -DeployRModulePath $DeployRModulePath
+    if ($CabPath -and (Test-Path $CabPath)) {
+        if (-not $ModelAlias) {
+            Write-Error "ModelAlias parameter is required when using CabPath. Exiting."
+            return
         }
-        if ($Model.URL11) {
-            $OSVer = 'Win11'
-            $URL = $model.URL11
-            Write-Host "  Processing Windows $OSVer $URL" -foregroundColor Green
-            Import-DriverPack -MakeAlias $MakeAlias -ModelAlias $ModelAlias -OSVer $OSVer -URL $URL -ArchiveSourceFolder $SourceFolder -DeployRModulePath $DeployRModulePath
+        Write-Host "  Using provided CAB Path: $CabPath"
+        #Assumes the CAB contains the extracted driver packs in the correct folder structure
+        #Copy the CAB to the source folder and extract it
+        $DriverPackFileName = (Get-Item $CabPath).Name
+        $OSVer = if ($DriverPackFileName -match "Win11") {'Win11'} else {'Win10'}
+        Write-Host "  Processing Windows $OSVer $URL" -foregroundColor Green
+        Import-DriverPack -MakeAlias $MakeAlias -ModelAlias $ModelAlias -OSVer $OSVer -CabPath $CabPath -ArchiveSourceFolder $SourceFolder -DeployRModulePath $DeployRModulePath -ImportByName:$false
+    }
+    else{
+        #Get the Panasonic Driver Pack Catalog JSON
+        Import-Module $DeployRModulePath
+        $PanasonicCatalogURL = "https://pna-b2b-storage-mkt.s3.amazonaws.com/computer/software/apps/Panasonic.json"
+        $JSONCatalog = Invoke-RestMethod -Uri $PanasonicCatalogURL
+        $PanasonicDriverPacks = $JSONCatalog.PanasonicModels
+        
+
+        $TotalModels = (($PanasonicDriverPacks.PSObject.Properties).Count).Count
+        Write-Host "Total Panasonic Models to process: $TotalModels" -ForegroundColor Magenta
+        $CurrentCount = 0
+        foreach ($modelKey in $PanasonicDriverPacks.PSObject.Properties.Name) {
+            $CurrentCount++
+            Write-Host "Processing model $CurrentCount of $TotalModels" -ForegroundColor Cyan
+            $model = $PanasonicDriverPacks.$modelKey
+            $ModelAlias = $modelKey
+            Write-Host " Processing $MakeAlias - $ModelAlias" -ForegroundColor Cyan
+            if ($Model.URL10) {
+                $OSVer = 'Win10'
+                $URL = $model.URL10
+                Write-Host "  Processing Windows $OSVer $URL" -foregroundColor Green
+                Import-DriverPack -MakeAlias $MakeAlias -ModelAlias $ModelAlias -OSVer $OSVer -URL $URL -ArchiveSourceFolder $SourceFolder -DeployRModulePath $DeployRModulePath -ImportByName:$false
+            }
+            if ($Model.URL11) {
+                $OSVer = 'Win11'
+                $URL = $model.URL11
+                Write-Host "  Processing Windows $OSVer $URL" -foregroundColor Green
+                Import-DriverPack -MakeAlias $MakeAlias -ModelAlias $ModelAlias -OSVer $OSVer -URL $URL -ArchiveSourceFolder $SourceFolder -DeployRModulePath $DeployRModulePath -ImportByName:$false
+            }
         }
     }
 }
