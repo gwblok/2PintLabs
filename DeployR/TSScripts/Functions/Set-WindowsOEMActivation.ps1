@@ -9,11 +9,11 @@ function Set-WindowsOEMActivation {
     if ($ProductKey) {
         try {
             Write-Output " Setting Key: $ProductKey" 
-            $service = get-wmiObject -query "select * from SoftwareLicensingService"
+            $service = Get-CimInstance -Query "select * from SoftwareLicensingService"
             if ($service){
-                $service.InstallProductKey($ProductKey) | Out-Null
-                $service.RefreshLicenseStatus() | Out-Null
-                $service.RefreshLicenseStatus() | Out-Null
+                Invoke-CimMethod -InputObject $service -MethodName "InstallProductKey" -Arguments @{ProductKey = $ProductKey} | Out-Null
+                Invoke-CimMethod -InputObject $service -MethodName "RefreshLicenseStatus" | Out-Null
+                Invoke-CimMethod -InputObject $service -MethodName "RefreshLicenseStatus" | Out-Null
                 Write-Output  " Successfully Applied Key"
             }
             else {
