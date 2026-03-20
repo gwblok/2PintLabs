@@ -34,6 +34,7 @@ function Import-DriverPack {
     [string]$FriendlyModel, # e.g., 'Latitude 5580' vs '07A8' ModelAlias
     [string]$OSVer,  # e.g., 'Win10' or 'Win11'
     [string]$URL,  # URL to download the driver pack
+    [string]$CabPath, #If you already downloaded the CAB file and use that instead of the URL
     [string]$InputSourceFolder, #Downloaded Extracted Driver Pack Source Folder
     [string]$DriverPackFileName = "", # If not provided, will be derived from URL
     [string]$ArchiveSourceFolder = "D:\DeployRContentItems\Source\DriverPacks",
@@ -42,9 +43,9 @@ function Import-DriverPack {
     )
     
     
-    if (-not $URL -and -not $InputSourceFolder) {
-        Write-Error "Either URL or InputSourceFolder are required parameters. Exiting."
-        Write-Host "Please provide either a URL to download the driver pack or a local InputSourceFolder path where the driver pack is already extracted." -ForegroundColor Yellow
+    if (-not $URL -and -not $InputSourceFolder -and -not $CabPath) {
+        Write-Error "Either URL, CabPath, or InputSourceFolder are required parameters. Exiting."
+        Write-Host "Please provide either a URL to download the driver pack, a local CabPath to the CAB file, or a local InputSourceFolder path where the driver pack is already extracted." -ForegroundColor Yellow
         return
     }
     
@@ -63,7 +64,12 @@ function Import-DriverPack {
     }
     else {
         if (-not $DriverPackFileName) {
-            $DriverPackFileName = $URL.Split("/")[-1]
+            if ($CabPath) {
+                $DriverPackFileName = (Get-Item $CabPath).Name
+            }
+            else {
+                $DriverPackFileName = $URL.Split("/")[-1]
+            }
             $DriverPackFileFullName = $DriverPackFileName
             #Get Extension
             $DriverPackFileNameExt = $DriverPackFileName.Split(".")[-1]
@@ -97,6 +103,10 @@ function Import-DriverPack {
             Write-Host "  Using provided Input Source Folder: $InputSourceFolder"
             $DriverPackFileName = (Get-Item $InputSourceFolder).Name
             Copy-Item -Path $InputSourceFolder -Destination "$DriverPackSourcePath\Extracted" -Force
+        }
+        if ($CabPath -and (Test-Path $CabPath)) {
+            Write-Host "  Using provided CAB Path: $CabPath"
+            Copy-Item -Path $CabPath -Destination "$DriverPackSourcePath\$DriverPackFileName" -Force
         }
         if (Test-Path "$DriverPackSourcePath\$DriverPackFileFullName") {
             Write-Host "  Driver Pack already downloaded: $DriverPackFileFullName"
@@ -182,7 +192,8 @@ function Import-DriverPack {
 function Import-PanasonicDriverPacks {
     param (
     [string]$SourceFolder = "D:\DeployRContentItems\Source\DriverPacks",
-    [string]$DeployRModulePath ='C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
+    [string]$DeployRModulePath ='C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility',
+    [string]$CabPath
     )
     Write-Host "Importing Panasonic Driver Packs" -ForegroundColor Green
     #Ensure Source Folder exists
