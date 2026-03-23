@@ -1,4 +1,5 @@
-$StifleRConfigPath = "D:\Apps\2Pint Software\StifleR Server\StifleR.Service.exe.config"
+#UPDATE THE PATH BELOW TO MATCH YOUR INSTALL LOCATION
+$StifleRConfigPath = "C:\Program Files\2Pint Software\StifleR Server\StifleR.Service.exe.config"
 if (Test-Path -Path $StifleRConfigPath) {
     [xml]$configXml = Get-Content -Path $StifleRConfigPath
 
