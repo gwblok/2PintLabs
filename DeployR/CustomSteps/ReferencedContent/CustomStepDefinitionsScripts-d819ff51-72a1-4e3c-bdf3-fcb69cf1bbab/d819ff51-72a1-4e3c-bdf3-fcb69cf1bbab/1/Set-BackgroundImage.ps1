@@ -131,6 +131,7 @@ SchemeName=@%SystemRoot%\System32\mmres.dll,-800
     if ($ImageFileName){
         $ImageFilePath = "$ImageFileContentItem\$ImageFileName"
         if (Test-Path $ImageFilePath){
+            Write-Output "Found $ImageFileName in content item, copying to temp folder for use as background."
             Copy-item -Path $ImageFilePath -Destination "$StoragePath\Background.jpg" -Force -Verbose
         }
         else{
@@ -201,6 +202,7 @@ if ($ImageFileName -ne ""){
 }
 if ($ImageFileContentItem -ne ""){
     Write-Output "Background Image Content Item is set to $ImageFileContentItem"
+    Write-Output "Running command: Set-BackgroundImage -ImageFileName $ImageFileName -ImageFileContentItem $ImageFileContentItem -SystemMode $SystemMode"
     Set-BackgroundImage -ImageFileName $ImageFileName -ImageFileContentItem $ImageFileContentItem -SystemMode $SystemMode
 }
 
