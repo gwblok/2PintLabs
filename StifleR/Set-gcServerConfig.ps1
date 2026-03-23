@@ -1,4 +1,4 @@
-$StifleRConfigPath = "D:\Apps\2Pint Software\StifleR Server\StifleR.Service.exe.config"
+$StifleRConfigPath = "C:\Program Files\2Pint Software\StifleR Server\StifleR.Service.exe.config"
 if (Test-Path -Path $StifleRConfigPath) {
     [xml]$configXml = Get-Content -Path $StifleRConfigPath
 
