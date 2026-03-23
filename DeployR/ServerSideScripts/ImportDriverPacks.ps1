@@ -159,8 +159,13 @@ function Import-DriverPack {
         #Extract the Driver Pack
         
         #Create DeployR Content Item for the Driver Pack
-        
-        $NewCI = New-DeployRContentItem -Name "Driver Pack - $MakeAlias - $FolderModelAlias - $OSVer" -Type Folder -Purpose DriverPack -Description "File: $DriverPackFileName"
+        if ($OSVer -eq "Win11"){
+            $Tags = @("Windows11", "x64")
+        }
+        else{
+            $Tags = @("Windows10", "x64")
+        }
+        $NewCI = New-DeployRContentItem -Name "Driver Pack - $MakeAlias - $FolderModelAlias - $OSVer" -Type Folder -Purpose DriverPack -Description "File: $DriverPackFileName" -Tags $Tags
         $ContentId = $NewCI.id
         if ($ImportByName){
             $NewVersion = New-DeployRContentItemVersion -ContentItemId $ContentId -Description "Source: $DriverPackSourcePath" -DriverManufacturer $MakeAlias -DriverModel $FriendlyModel -SourceFolder "$DriverPackSourcePath\Extracted"
@@ -187,7 +192,6 @@ function Import-DriverPack {
         }
     }
 }
-
 
 #region Panasonic Driver Packs Import
 function Import-PanasonicDriverPacks {
