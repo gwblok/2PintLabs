@@ -176,5 +176,6 @@ if ($URL -ne "") {
 
 if ($ImageFileName -ne "") {
     Write-Output "Generic User Image File Name is set to $ImageFileName"
+    Write-Output "Content Item for Image is set to $ImageFileContentItem"
     Set-GenericUserImage -ImageFileName $ImageFileName -ImageFileContentItem $ImageFileContentItem -FinishAction $FinishAction
 }

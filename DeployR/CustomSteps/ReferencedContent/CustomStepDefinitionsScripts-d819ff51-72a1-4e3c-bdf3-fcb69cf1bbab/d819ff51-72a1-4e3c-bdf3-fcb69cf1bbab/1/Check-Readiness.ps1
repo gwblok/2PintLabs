@@ -1,6 +1,6 @@
 #Pull Vars from TS:
 try {
-    Import-Module DeployR.Utility
+    Import-Module DeployR.Utility -ErrorAction SilentlyContinue
 }
 catch {}
 

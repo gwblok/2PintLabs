@@ -284,6 +284,7 @@ if ($EnableBackup2GitHub -and $GitHubCustomSteps -and $GitHubCustomStepsReferenc
         #Get all step definitions except the built-in ones
         write-host "Getting all step definitions..." -ForegroundColor Yellow
         $StepDefinitions = Get-DeployRMetadata -Type StepDefinition | Where-Object {$_.id -notlike '0000*' -and $_.name -notmatch "Delete"}
+        $StepDefinitions = $StepDefinitions | Where-Object {$_.typeName -notmatch "No Backup"}
         foreach ($stepDef in $StepDefinitions) {
             write-host "Backing up step definition: $($stepDef.name) | $($stepDef.id)" -ForegroundColor Cyan
             $ExportFolderName = "$($stepDef.name)-$($stepDef.id)"

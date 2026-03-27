@@ -301,6 +301,7 @@ Function Get-DCUExitInfo {
     @{ExitCode = 3003; Description = "The Dell Client Management Service is busy."; Resolution = "Wait until the service is available to process new requests."}
     @{ExitCode = 3004; Description = "The Dell Client Management Service has initiated a self-update install of the application."; Resolution = "Wait until the service is available to process new requests."}
     @{ExitCode = 3005; Description = "The Dell Client Management Service is installing pending updates."; Resolution = "Wait until the service is available to process new requests."}
+    @{ExitCode = 3006; Description = "Currently the system is in Windows Out of Box Experience (OOBE) State"; Resolution = "Please try again after sometime"}
     )
     $DCUExitInfo | Where-Object {$_.ExitCode -eq $DCUExit}
 }
