@@ -1,11 +1,12 @@
-<# Grab Info about file C:\Windows\System32\GroupPolicy\Machine\Registry.pol
-Report Size and last date modified
+<#Created based on this thread:
+https://www.reddit.com/r/DeployR/comments/1s5fawn/deployr_setupcompletecmd_lgpo_machine_policies/
 
-Run .\LGPO.exe /m .\Machine.pol inside a start-process and capture the output, and report the results
+This script is intended to be used as a test to confirm that running LGPO.exe with a Machine.pol file will update the Registry.pol file in the expected location. 
+It captures the state of the Registry.pol file before and after running LGPO.exe, and compares the file size and last modified timestamp to determine if it was updated.
 
-then once again grab info about that file and confirm it's changed
+Note, odds are good the file doesn't exist before running LGPO.exe, so the script also handles that case and reports if the file was created.
+
 #>
-
 $polFile = 'C:\Windows\System32\GroupPolicy\Machine\Registry.pol'
 
 # --- Before: Grab file info ---
