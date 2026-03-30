@@ -67,5 +67,4 @@ if (Test-Path $polFile) {
     }
 } else {
     Write-Output "  File does not exist after LGPO run: $polFile"
-}>
-
+}
