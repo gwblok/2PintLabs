@@ -37,7 +37,7 @@ function Import-DriverPack {
     [string]$CabPath, #If you already downloaded the CAB file and use that instead of the URL
     [string]$InputSourceFolder, #Downloaded Extracted Driver Pack Source Folder
     [string]$DriverPackFileName = "", # If not provided, will be derived from URL
-    [string]$ArchiveSourceFolder = "D:\DeployRContentItems\Source\DriverPacks",
+    [string]$ArchiveSourceFolder = "D:\DeployRSources\Source\DriverPacks\x64",
     [string]$DeployRModulePath ='C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility',
     [bool]$SkipArchive
     )
