@@ -1,33 +1,4 @@
-﻿#Pull Vars from TS:
-try {
-    Import-Module DeployR.Utility -ErrorAction SilentlyContinue
-}
-catch {}
-
-
-
-# Get the provided variables
-if (Get-Module -name "DeployR.Utility"){
-    $CRMinMemory = ${TSEnv:CRMinMemory}
-    $CRMinFreeStorage = ${TSEnv:CRMinFreeStorage}
-    $CROSType = ${TSEnv:CROSType}
-    $CRMinOSVer = ${TSEnv:CRMinOSVer}
-    $CRTPM2 = ${TSEnv:CRTPM2}
-    $CRMinWin11 = ${TSEnv:CRMinWin11}
-    $HostValueOSType = if (${TSEnv:IsServerOS} -eq "true") { "Server" } else { "Client" }
-    $DebugLogging = ${TSEnv:CRDebugLogging}
-}
-else{
-    $CRMinMemory = "4"
-    $CRMinFreeStorage = "20"
-    $CROSType = "Client"
-    $CRMinOSVer = "19045"
-    $CRTPM2 = "true"
-    $CRMinWin11 = "true"
-    $HostValueOSType = if ((Get-CimInstance -ClassName Win32_OperatingSystem).ProductType -eq 1) { "Client" } else { "Server" }
-    $DebugLogging = "true"
-}
-
+﻿
 ##*=============================================
 ##* VARIABLE DECLARATION
 ##*=============================================
@@ -38,7 +9,7 @@ else{
 [string]$ScriptName = [System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Definition)
 
 
-Start-Transcript
+
 Write-Output --------------------------------------
 Write-Output $ScriptPath $ScriptName
 Get-Date
@@ -57,11 +28,16 @@ $logfile = "$WaaSFolder\CustomActions.log"
 $whoami = whoami
 
 
-# Load some required namespaces
-$null = [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime]
-$null = [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime]
-$Null = [System.Security.AccessControl.FileSystemAccessRule]
-Add-Type -Path "$PSScriptRoot\Microsoft.Toolkit.Uwp.Notifications.dll"
+# Load some required namespaces (not used directly in this launcher, but kept for compatibility)
+try {
+    $null = [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime]
+    $null = [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime]
+    $Null = [System.Security.AccessControl.FileSystemAccessRule]
+    Add-Type -Path "$PSScriptRoot\Microsoft.Toolkit.Uwp.Notifications.dll"
+}
+catch {
+    Write-Warning "WinRT type loading failed (expected in some TS/SYSTEM contexts): $_"
+}
 
 #endregion
 ##*=============================================
@@ -73,38 +49,6 @@ Add-Type -Path "$PSScriptRoot\Microsoft.Toolkit.Uwp.Notifications.dll"
 ##*=============================================
 #region FunctionListings
 
-#CMTraceLog Function formats logging in CMTrace style
-        function CMTraceLog {
-         [CmdletBinding()]
-    Param (
-		    [Parameter(Mandatory=$false)]
-		    $Message,
- 
-		    [Parameter(Mandatory=$false)]
-		    $ErrorMessage,
- 
-		    [Parameter(Mandatory=$false)]
-		    $Component = "NotificationLauncher",
- 
-		    [Parameter(Mandatory=$false)]
-		    [int]$Type,
-		
-		    [Parameter(Mandatory=$true)]
-		    $LogFile
-	    )
-    <#
-    Type: 1 = Normal, 2 = Warning (yellow), 3 = Error (red)
-    #>
-	    $Time = Get-Date -Format "HH:mm:ss.ffffff"
-	    $Date = Get-Date -Format "MM-dd-yyyy"
- 
-	    if ($ErrorMessage -ne $null) {$Type = 3}
-	    if ($Component -eq $null) {$Component = " "}
-	    if ($Type -eq $null) {$Type = 1}
- 
-	    $LogMessage = "<![LOG[$Message $ErrorMessage" + "]LOG]!><time=`"$Time`" date=`"$Date`" component=`"$Component`" context=`"`" type=`"$Type`" thread=`"`" file=`"`">"
-	    $LogMessage | Out-File -Append -Encoding UTF8 -FilePath $LogFile
-    }
 
 #Create a Process as Logged-On-User from PowerShell
 #https://rzander.azurewebsites.net/create-a-process-as-loggedon-user/
@@ -401,19 +345,24 @@ Add-Type -ReferencedAssemblies 'System', 'System.Runtime.InteropServices' -TypeD
 #region ScriptBody
 
 
-CMTraceLog -Message  "--------------------------" -Type 1 -LogFile $LogFile
-CMTraceLog -Message  "Starting $ScriptName" -Type 1 -LogFile $LogFile
-CMTraceLog -Message  "Running as: $whoami" -Type 1 -LogFile $LogFile
+Write-Output "--------------------------"
+Write-Output "Starting $ScriptName"
+Write-Output "Running as: $whoami"
 
 
 #$EXE = "cmd.exe"
 #$ARG = '/c start /MIN powershell.exe -ExecutionPolicy ByPass -File C:\ProgramData\WaaS\PreInstall\PreInstallNotification.ps1'
 #[murrayju.ProcessExtensions.ProcessExtensions]::StartProcessAsCurrentUser($EXE, $ARG)
-
-$EXE = "c:\windows\system32\cmd.exe"
-$ARG = '/c start /MIN c:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy ByPass -windowstyle hidden -File C:\ProgramData\WaaS\PreInstall\PreInstallNotification.ps1'
-[murrayju.ProcessExtensions.ProcessExtensions]::StartProcessAsCurrentUser($EXE, $ARG)
-
+if ($whoami -like "*-SVC") {
+    Write-Output "Running in SYSTEM context, launching notification as logged-on user..."
+    $EXE = "c:\windows\system32\cmd.exe"
+    $ARG = '/c start /MIN c:\windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy ByPass -windowstyle hidden -File .\PreInstallNotification.ps1'
+    [murrayju.ProcessExtensions.ProcessExtensions]::StartProcessAsCurrentUser($EXE, $ARG)
+}
+else {
+    Write-Output "Not running in SYSTEM context, launching notification directly..."
+    Start-Process -FilePath "powershell.exe" -ArgumentList '-ExecutionPolicy ByPass -File .\PreInstallNotification.ps1' -WindowStyle Hidden
+}
 #$EXE = "powershell.exe"
 #$ARG = ' -ExecutionPolicy ByPass -File C:\ProgramData\WaaS\PreInstall\PreInstallNotification.ps1'
 #[murrayju.ProcessExtensions.ProcessExtensions]::StartProcessAsCurrentUser($EXE, $ARG)
@@ -423,7 +372,7 @@ $ARG = '/c start /MIN c:\windows\System32\WindowsPowerShell\v1.0\powershell.exe 
 
 
 
-CMTraceLog -Message  "Finished $ScriptName" -Type 1 -LogFile $LogFile
+Write-Output "Finished $ScriptName"
 exit $exitcode
 #endregion
 ##*=============================================

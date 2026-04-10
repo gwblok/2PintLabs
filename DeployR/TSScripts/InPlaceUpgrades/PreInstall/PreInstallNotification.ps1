@@ -1,25 +1,25 @@
 ﻿<#
 .SYNOPSIS
-    --.
+--.
 .DESCRIPTION
-    SuccessSetupDiag.ps1, triggered by Success.cmd
-    Application Checking PreFlight script to confirm some applications are at specific levels, or the script will fail the upgrade out early, making reporting easier.
+SuccessSetupDiag.ps1, triggered by Success.cmd
+Application Checking PreFlight script to confirm some applications are at specific levels, or the script will fail the upgrade out early, making reporting easier.
 
-    Update the $AppChecks variable to check for additional apps. Add as many versions as you want to "Approve" to be allowed
+Update the $AppChecks variable to check for additional apps. Add as many versions as you want to "Approve" to be allowed
 .INPUTS
-    None.
+None.
 .OUTPUTS
-    None.
+None.
 .NOTES
-    Created by @gwblok
+Created by @gwblok
 .LINK
-    https://garytown.com
+https://garytown.com
 .LINK
-    https://www.recastsoftware.com
+https://www.recastsoftware.com
 .COMPONENT
-    --
+--
 .FUNCTIONALITY
-    --
+--
 #>
 
 ## Set script requirements
@@ -70,37 +70,37 @@ Add-Type -Path "$PSScriptRoot\Microsoft.Toolkit.Uwp.Notifications.dll"
 #region FunctionListings
 
 #CMTraceLog Function formats logging in CMTrace style
-        function CMTraceLog {
-         [CmdletBinding()]
+function CMTraceLog {
+    [CmdletBinding()]
     Param (
-		    [Parameter(Mandatory=$false)]
-		    $Message,
- 
-		    [Parameter(Mandatory=$false)]
-		    $ErrorMessage,
- 
-		    [Parameter(Mandatory=$false)]
-		    $Component = "Notification",
- 
-		    [Parameter(Mandatory=$false)]
-		    [int]$Type,
-		
-		    [Parameter(Mandatory=$true)]
-		    $LogFile
-	    )
+    [Parameter(Mandatory=$false)]
+    $Message,
+    
+    [Parameter(Mandatory=$false)]
+    $ErrorMessage,
+    
+    [Parameter(Mandatory=$false)]
+    $Component = "Notification",
+    
+    [Parameter(Mandatory=$false)]
+    [int]$Type,
+    
+    [Parameter(Mandatory=$true)]
+    $LogFile
+    )
     <#
     Type: 1 = Normal, 2 = Warning (yellow), 3 = Error (red)
     #>
-	    $Time = Get-Date -Format "HH:mm:ss.ffffff"
-	    $Date = Get-Date -Format "MM-dd-yyyy"
- 
-	    if ($ErrorMessage -ne $null) {$Type = 3}
-	    if ($Component -eq $null) {$Component = " "}
-	    if ($Type -eq $null) {$Type = 1}
- 
-	    $LogMessage = "<![LOG[$Message $ErrorMessage" + "]LOG]!><time=`"$Time`" date=`"$Date`" component=`"$Component`" context=`"`" type=`"$Type`" thread=`"`" file=`"`">"
-	    $LogMessage | Out-File -Append -Encoding UTF8 -FilePath $LogFile
-    }
+    $Time = Get-Date -Format "HH:mm:ss.ffffff"
+    $Date = Get-Date -Format "MM-dd-yyyy"
+    
+    if ($ErrorMessage -ne $null) {$Type = 3}
+    if ($Component -eq $null) {$Component = " "}
+    if ($Type -eq $null) {$Type = 1}
+    
+    $LogMessage = "<![LOG[$Message $ErrorMessage" + "]LOG]!><time=`"$Time`" date=`"$Date`" component=`"$Component`" context=`"`" type=`"$Type`" thread=`"`" file=`"`">"
+    $LogMessage | Out-File -Append -Encoding UTF8 -FilePath $LogFile
+}
 
 
 
@@ -123,21 +123,21 @@ $SetupProgressPath = "HKLM:System\Setup\mosetup\volatile"
 CMTraceLog -Message  "Waiting For SetupProgress Value to be populated..." -Type 1 -LogFile $LogFile
 $Minutes = 1
 DO
-    {    
+{    
     $SetupProgress = Get-ItemPropertyValue -Path $SetupProgressPath -Name "SetupProgress" -ErrorAction SilentlyContinue
     if (!($SetupProgress))
-        {
+    {
         $Minutes += 1
         Start-Sleep -Seconds 60
-        }
+    }
     if ($Minutes -eq 20)
-        {
+    {
         CMTraceLog -Message  "Waited $Minutes Minutes, exiting script with Exit 20, I'm tired of waiting" -Type 3 -LogFile $LogFile
         $TimeStamp = Get-Date -f s
-        New-ItemProperty -Path $registryPath -Name $keynameFinish -Value $TimeStamp -Force
+        New-ItemProperty -Path $registryPath -Name $keynameFinish -Value $TimeStamp -Force | Out-Null
         exit 20
-        }
     }
+}
 Until ($SetupProgress)
 
 $ToastTag = "PowerShell"
@@ -152,10 +152,11 @@ $ProgressBar = [Microsoft.Toolkit.Uwp.Notifications.AdaptiveProgressBar]@{
 }
 
 
-$ToastContent = $ToastContentBuilder.AddText("Upgrading Windows 10...").
-    AddVisualChild($ProgressBar).
-    AddText("Please do not reboot until you're notified...").
-    GetToastContent()
+$ToastContent = $ToastContentBuilder.AddText("Upgrading Windows...").
+AddVisualChild($ProgressBar).
+AddText("Please do not reboot until you're notified...").
+SetToastScenario([Microsoft.Toolkit.Uwp.Notifications.ToastScenario]::Reminder).
+GetToastContent()
 $Toast = [Windows.UI.Notifications.ToastNotification]::new($ToastContent.GetXml())
 $Toast.Tag = $ToastTag
 $Toast.Group = $ToastGroup
@@ -164,7 +165,7 @@ $dict = New-Object 'System.Collections.Generic.Dictionary[[string],[string]]'
 $dict.Add("progressValue","$SetupProgressNumber")
 $dict.Add("progressValueString","$SetupProgress% Complete")
 $dict.Add("progressStatus","Installing...")
-$dict.Add("progressTitle","Processing Feature Update of Windows to 20H2")
+$dict.Add("progressTitle","Processing Feature Update of Windows")
 
 $Toast.Data = [Windows.UI.Notifications.NotificationData]::new($dict, 0)
 
@@ -176,7 +177,7 @@ $Notification.Show($Toast)
 Start-Sleep -Seconds 2
 
 do 
-    {
+{
     Start-Sleep -Seconds 5
     $SetupProgress = Get-ItemPropertyValue -Path $SetupProgressPath -Name "SetupProgress" -ErrorAction SilentlyContinue
     $SetupProgressNumber = $SetupProgress / 100
@@ -188,13 +189,13 @@ do
     $dict.Add("progressTitle","Processing Feature Update of Windows to 20H2")
     $NotificationData = [Windows.UI.Notifications.NotificationData]::new($dict, 0)
     [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Windows.SystemToast.SecurityAndMaintenance").Update($NotificationData, $ToastTag, $ToastGroup)
-
     
-    }
+    
+}
 Until ($SetupProgress -eq "100")
 
 if ($SetupProgress -eq "100")
-    {
+{
     ### Update the Toast! (Run this separately to update)
     $dict = New-Object 'System.Collections.Generic.Dictionary[[string],[string]]'
     $dict.Add("progressValue","$SetupProgressNumber")
@@ -203,10 +204,10 @@ if ($SetupProgress -eq "100")
     $dict.Add("progressTitle","First Phase of  Feature Update of Windows to 20H2 Complete")
     $NotificationData = [Windows.UI.Notifications.NotificationData]::new($dict, 0)
     [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Windows.SystemToast.SecurityAndMaintenance").Update($NotificationData, $ToastTag, $ToastGroup)
-    }
+}
 
 $TimeStamp = Get-Date -f s
-New-ItemProperty -Path $registryPath -Name $keynameFinish -Value $TimeStamp -Force
+New-ItemProperty -Path $registryPath -Name $keynameFinish -Value $TimeStamp -Force | Out-Null
 CMTraceLog -Message  "Finished $ScriptName" -Type 1 -LogFile $LogFile
 exit $exitcode
 #endregion
