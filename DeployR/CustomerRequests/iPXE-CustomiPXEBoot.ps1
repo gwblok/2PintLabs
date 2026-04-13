@@ -28,6 +28,7 @@ $Paramdata
 :start
 menu iPXE Anywhere build menu
 item --gap --          -------------------------------- Please choose an action           ------------------------  
+item --key n deployr0 Boot to DeployR Menu
 item --key n deployr1 Boot to DeployR TS 1
 item --key m deployr2 Boot to DeployR TS 2
 item --gap --          --------------------------------                Advanced           ------------------------
@@ -37,6 +38,9 @@ item --key x exit      Exit and continue boot order
 choose --timeout 30000 --default deployr selected || goto cancel
 goto `${selected}
 
+:deployr0
+chain -ar `${wsurl}/script?scriptname=custom/deployr.ps1##params=paramdata || shell
+goto start
 
 :deployr1
 chain -ar `${wsurl}/script?scriptname=custom/deployrTS1.ps1##params=paramdata || shell
