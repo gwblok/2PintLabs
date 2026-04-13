@@ -35,7 +35,7 @@ item --gap --          --------------------------------                Advanced 
 item reboot            Reboot the computer
 item
 item --key x exit      Exit and continue boot order
-choose --timeout 30000 --default deployr selected || goto cancel
+choose --timeout 30000 --default deployr0 selected || goto cancel
 goto `${selected}
 
 :deployr0
