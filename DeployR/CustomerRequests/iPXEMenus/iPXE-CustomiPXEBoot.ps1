@@ -16,6 +16,19 @@ param(
     $TargetNetwork
 )
 
+$scriptPath = "C:\Program Files\2Pint Software\iPXE AnywhereWS\Scripts"
+$FunctionsFile = "$scriptPath\Functions\Functions.ps1"
+$LogPath = "D:\iPXELogging"
+
+if((Test-Path $FunctionsFile) -eq $false){
+    throw [System.IO.FileNotFoundException] "Could not find: $FunctionsFile"
+}
+else{
+    Invoke-Expression (Get-Content -Path $FunctionsFile -Raw)
+}
+
+Out-LogVariables -LogPath $LogPath
+
 $menu = @"
 #!ipxe
 #default section to set some key variable such as pictures etc.
