@@ -1,4 +1,22 @@
-﻿function Invoke-CMTraceLog {
+﻿<# Create Function folder scripts\Functions
+Copy this Functions file into it (scripts\Functions\Functions.ps1)
+Then add this into your scripts to enable them:
+
+$scriptPath = "C:\Program Files\2Pint Software\iPXE AnywhereWS\Scripts"
+$FunctionsFile = "$scriptPath\Functions\Functions.ps1"
+$LogPath = "D:\iPXELogging"
+
+if((Test-Path $FunctionsFile) -eq $false){
+    throw [System.IO.FileNotFoundException] "Could not find: $FunctionsFile"
+}
+else{
+    Invoke-Expression (Get-Content -Path $FunctionsFile -Raw)
+}
+
+Then you can call the functions like so: 
+Out-LogVariables -LogPath $LogPath
+#>
+function Invoke-CMTraceLog {
 	[CmdletBinding()]
 	Param (
 	[Parameter(Mandatory=$false)]
