@@ -30,24 +30,6 @@ Function Out-LogVariables{
 		$LogPath = "D:\iPXELogging"
 	)
 
-	param(
-	$Machine, 
-	$RequestStatusInfo, 
-	$RequestNetworkInfo, 
-	$Machineinformation, 
-	$QueryParams, 
-	$PostParams, 
-	$Paramdata, 
-	$DeployMachineKeyValues,
-	$TargetMachineKeyValues,
-	$DeployLocation,
-	$DeployNetworkGroup,
-	$DeployNetwork,
-	$TargetLocation,
-	$TargetNetworkGroup,
-	$TargetNetwork
-	)
-	
 	#We use StringBuilder for performance
 	
 	$CustomVarsValues = @{WindowsMenu= "Available" }
@@ -136,8 +118,5 @@ Function Out-LogVariables{
 	
 	#$sb.ToString() | out-file 'c:\temp\var.ini
 	[string]$MAC = ($RequestStatusInfo.DeployMAC.ToString()).replace(":","")
-	
 	$sb.ToString() | out-file "$LogPath\var\var$($MAC).ini" -Force
-	return $sb.ToString()
-	
 }
