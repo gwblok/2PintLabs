@@ -52,14 +52,17 @@ choose --timeout 30000 --default deployr0 selected || goto cancel
 goto `${selected}
 
 :deployr0
+$Paramdata
 chain -ar `${wsurl}/script?scriptname=custom/deployr.ps1##params=paramdata || shell
 goto start
 
 :deployr1
+$Paramdata
 chain -ar `${wsurl}/script?scriptname=custom/deployrTS1.ps1##params=paramdata || shell
 goto start
 
 :deployr2
+$Paramdata
 chain -ar `${wsurl}/script?scriptname=custom/deployrTS2.ps1##params=paramdata || shell
 goto start
 
