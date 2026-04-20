@@ -1,4 +1,9 @@
 <#
+THIS DOES NOT WORK... CHANGES IN 1.1 do not allow upload (for security)
+I haven't had time to play with this anymore.
+
+
+Orginial IDEA: 
 Ok, so this should backup the user profiles on the machine and upload to the DeployR Server.
 I have to do some testing yet, but I just wrote this tonight... and haven't tried.
 
