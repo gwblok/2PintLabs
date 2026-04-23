@@ -15,25 +15,33 @@ and if it doesn't have permissions to do that, it will fail.
 
 #>
 
-
+# Rememeber these are all TS variables you need to set. 
 param(
     [string]$ComputerName,
     [string]$NewOwner,
     [string]$OU,
     [string]$DryRun
 )
-$ouPath = $OU
 
-#Convert $DryRun to boolean
+
+#Convert $DryRun to boolean (This was like a whatif the customer wanted)
 if ($DryRun) {
+    if ($DryRun -eq 'true') {
+        #It's already a string set to 'true', do nothing
+    } else {
+        #It might be false or some other value, set to 'false' string to be safe
+        $DryRun = 'false'
+    }
+    #Convert to boolean for internal use
     $DryRun = [System.Convert]::ToBoolean($DryRun)
 } else {
+    # If $DryRun is not provided, default to false
     $DryRun = $false
 }
 
 Write-Information "Received ComputerName: $ComputerName, NewOwner: $NewOwner, OU: $OU, DryRun: $DryRun"
 
-
+$ouPath = $OU  #because the script was orginally written with $ouPath variable, I just set it here for simplicity, you could refactor the script to use $OU directly if you wanted.
 if ($computerName -and $ouPath) {
     try {
         # Get the computer object
