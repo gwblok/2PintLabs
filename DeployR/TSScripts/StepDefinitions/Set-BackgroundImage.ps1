@@ -19,6 +19,7 @@ Import-Module DeployR.Utility
 [String]$ImageFileName = ${TSEnv:BrandingBackgroundImageFileName}
 [String]$ImageFileContentItem = ${TSEnv:_CONTENT-BrandingBackgroundImageCI}
 [String]$BrandingBackgroundImageSystemMode = ${TSEnv:BrandingBackgroundImageSystemMode}
+[String]$BrandingBackgroundImageWallpaperStyle = ${TSEnv:BrandingBackgroundImageWallpaperStyle}
 
 #Report Variables:
 if ($URL -ne ""){
@@ -37,7 +38,15 @@ if ($BrandingBackgroundImageSystemMode -eq "True"){
 else {
     $SystemMode = "Light"
 }
+if ($BrandingBackgroundImageWallpaperStyle -ne ""){
+    Write-Output "Background Image Wallpaper Style: $BrandingBackgroundImageWallpaperStyle"
+}
+else{
+    $BrandingBackgroundImageWallpaperStyle = "10"
+    Write-Output "No Wallpaper Style provided, defaulting to Fill (10)"
+}
 Write-Output "Background Image System Mode: $SystemMode"
+Write-Output "Background Image Wallpaper Style: $BrandingBackgroundImageWallpaperStyle"
 
 Function Set-BackgroundImage {
     <#
@@ -55,7 +64,8 @@ Function Set-BackgroundImage {
     [String]$ImageURL,
     [String]$ImageFileName, 
     [String]$ImageFileContentItem,
-    [String]$SystemMode = "Dark" # Default to Dark Mode
+    [String]$SystemMode = "Dark", # Default to Dark Mode
+    [String]$WallpaperStyle = "10" # 10 is Fill, 0 is Center, 6 is Fit, 2 is Stretch, 22 is Span
 
     )
     
@@ -106,7 +116,7 @@ DefaultValue.MUI=@main.cpl,-1020
 [Control Panel\Desktop]
 Wallpaper=%SystemRoot%\web\wallpaper\DeployROSD\DeployROSD.jpg
 TileWallpaper=0
-WallpaperStyle=10
+WallpaperStyle=$WallpaperStyle
 Pattern=
 
 [VisualStyles]
