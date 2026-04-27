@@ -5,8 +5,12 @@ Replaces Default Windows Background with your own
 DeployR
 #>
 if ($env:SystemDrive -eq "X:"){
-    Write-Host "Running in WinPE, this step requires a full Windows environment to run properly."
-    exit 0
+    Write-Host "Running in WinPE"
+    $IsWinPE = $true
+}
+else {
+    $IsWinPE = $false
+    Write-Host "Not Running in WinPE"
 }
 Import-Module DeployR.Utility
 
@@ -150,18 +154,19 @@ SchemeName=@%SystemRoot%\System32\mmres.dll,-800
         Invoke-WebRequest -UseBasicParsing -Uri $BackgroundURL -OutFile "$StoragePath\Background.jpg"
     }
     
-
+    if ($IsWinPE -eq $true){$TargetPath = "S:"}
+    else {$TargetPath = "C:"}
     # STEP 2: Configure background
     if (Test-Path -Path "$StoragePath\Background.jpg"){
     Write-Host "Setting up OSD theme"
     Write-Host "Confirmed Background.jpg exists, proceeding to set as background via Theme."
-    New-Item -Path "C:\Windows\Resources\OEM Themes" -ItemType Directory -Force | Out-Null
-    Write-Host "Creating DeployROSD.theme file in C:\Windows\Resources\OEM Themes"
-    $ThemeFile | Out-File -FilePath "C:\Windows\Resources\OEM Themes\DeployROSD.theme" -Force -Encoding UTF8
-    New-Item -Path  "C:\Windows\web\wallpaper\DeployROSD" -ItemType Directory -Force | Out-Null
-    Write-Host "Copying Background.jpg to C:\Windows\web\wallpaper\DeployROSD\DeployROSD.jpg"
-    Copy-Item "$StoragePath\Background.jpg" "C:\Windows\web\wallpaper\DeployROSD\DeployROSD.jpg" -Force
-    if (Test-Path -Path "C:\Windows\Web\Wallpaper\DeployROSD\DeployROSD.jpg"){
+    New-Item -Path "$TargetPath\Windows\Resources\OEM Themes" -ItemType Directory -Force | Out-Null
+    Write-Host "Creating DeployROSD.theme file in $TargetPath\Windows\Resources\OEM Themes"
+    $ThemeFile | Out-File -FilePath "$TargetPath\Windows\Resources\OEM Themes\DeployROSD.theme" -Force -Encoding UTF8
+    New-Item -Path  "$TargetPath\Windows\web\wallpaper\DeployROSD" -ItemType Directory -Force | Out-Null
+    Write-Host "Copying Background.jpg to $TargetPath\Windows\web\wallpaper\DeployROSD\DeployROSD.jpg"
+    Copy-Item "$StoragePath\Background.jpg" "$TargetPath\Windows\web\wallpaper\DeployROSD\DeployROSD.jpg" -Force
+    if (Test-Path -Path "$TargetPath\Windows\Web\Wallpaper\DeployROSD\DeployROSD.jpg"){
         Write-Host "Background Image successfully copied to Wallpaper folder."
     }
     else{
@@ -171,8 +176,8 @@ SchemeName=@%SystemRoot%\System32\mmres.dll,-800
     
     [GC]::Collect()
     start-sleep -Milliseconds 500
-    Write-Host " Mounting Default User Registry Hive (REG LOAD HKLM\Default C:\Users\Default\NTUSER.DAT)"
-    REG LOAD HKLM\Default C:\Users\Default\NTUSER.DAT
+    Write-Host " Mounting Default User Registry Hive (REG LOAD HKLM\Default $TargetPath\Users\Default\NTUSER.DAT)"
+    REG LOAD HKLM\Default "$TargetPath\Users\Default\NTUSER.DAT"
     $reg = New-ItemProperty -Path "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Themes" -Name "InstallTheme" -Value "%SystemRoot%\resources\OEM Themes\DeployROSD.theme" -PropertyType String -Force | Out-Null
     $reg = New-ItemProperty -Path "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Themes" -Name "CurrentTheme" -Value "%SystemRoot%\resources\OEM Themes\DeployROSD.theme" -PropertyType String -Force | Out-Null
 

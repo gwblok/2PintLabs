@@ -5,8 +5,12 @@ Replaces Default Windows Lock Screen with your own
 DeployR
 #>
 if ($env:SystemDrive -eq "X:"){
-    Write-Host "Running in WinPE, this step requires a full Windows environment to run properly."
-    exit 0
+    Write-Host "Running in WinPE"
+    $IsWinPE = $true
+}
+else {
+    $IsWinPE = $false
+    Write-Host "Not Running in WinPE"
 }
 Import-Module DeployR.Utility
 
@@ -189,20 +193,22 @@ Function Set-LockScreenImage {
         Invoke-WebRequest -UseBasicParsing -Uri $LockScreenURL -OutFile "$StoragePath\lockscreen.jpg"
     }
     
+    if ($IsWinPE -eq $true){$TargetPath = "S:"}
+    else {$TargetPath = "C:"}
     
     #Copy the 2 files into place
     if (Test-Path -Path "$StoragePath\lockscreen.jpg"){
-        Write-Output "Running Command: Copy-Item $StoragePath\lockscreen.jpg C:\windows\web\Screen\img100.jpg -Force -Verbose"
-        Copy-Item "$StoragePath\lockscreen.jpg" C:\windows\web\Screen\img100.jpg -Force -Verbose
-        Write-Output "Running Command: Copy-Item $StoragePath\lockscreen.jpg C:\windows\web\Screen\img105.jpg -Force -Verbose"
-        Copy-Item "$StoragePath\lockscreen.jpg" C:\windows\web\Screen\img105.jpg -Force -Verbose
+        Write-Output "Running Command: Copy-Item $StoragePath\lockscreen.jpg $TargetPath\windows\web\Screen\img100.jpg -Force -Verbose"
+        Copy-Item "$StoragePath\lockscreen.jpg" $TargetPath\windows\web\Screen\img100.jpg -Force -Verbose
+        Write-Output "Running Command: Copy-Item $StoragePath\lockscreen.jpg $TargetPath\windows\web\Screen\img105.jpg -Force -Verbose"
+        Copy-Item "$StoragePath\lockscreen.jpg" $TargetPath\windows\web\Screen\img105.jpg -Force -Verbose
     }
     else{
         Write-Output "Did not find lockscreen.jpg in temp folder - Please confirm URL or ImageFileName is correct."
     }
     if ($BrandingLockScreenImageEnforce -eq "true") {
         Write-Output "Enforcing Lock Screen Image"
-        $LockScreenImagePath = "C:\windows\web\Screen\EnforcedLockScreenImage.jpg"
+        $LockScreenImagePath = "$TargetPath\windows\web\Screen\EnforcedLockScreenImage.jpg"
         Copy-Item "$StoragePath\lockscreen.jpg" $LockScreenImagePath -Force -Verbose
         $RegPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP"
         if (!(Test-Path -Path $RegPath)) {
@@ -217,8 +223,12 @@ Function Set-LockScreenImage {
     }
 }
 #endregion functions
+if ($IsWinPE){
 
-try {
+}
+#Else Take OwnerShip of Files and Set Permissions for Admin & System to ensure we can copy the new lock screen image into place
+else {
+    try {
     #Take OwnerShip
     enable-privilege SeTakeOwnershipPrivilege 
     #Set Permissions on Files
@@ -247,6 +257,8 @@ try {
     }
 }
 catch {}
+}
+
 
 
 
