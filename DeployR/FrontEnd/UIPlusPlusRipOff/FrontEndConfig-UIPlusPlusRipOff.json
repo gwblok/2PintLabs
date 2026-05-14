@@ -1,0 +1,72 @@
+{
+  "WindowTitle": "POS Setup",
+  "HeaderTitle": "Welcome to POS Setup",
+  "HeaderDescription": "Configure this terminal for imaging. Required values are collected across tabs.",
+  "LogoFileName": "Logo.png",
+  "Roles": [
+    "Cegid POS Terminal",
+    "Cegid CRES",
+    "NCR POS Terminal"
+  ],
+  "Regions": [
+    {
+      "Name": "Americas",
+      "Countries": [
+        "United States",
+        "Canada",
+        "Mexico"
+      ],
+      "DefaultOU": "OU=NJL,OU=POS Terminals,OU=Retail,DC=tiffco,DC=net",
+      "WS10G": "tco-amer-retail-Cgd"
+    },
+    {
+      "Name": "EMEA",
+      "Countries": [
+        "Spain",
+        "Sweden",
+        "Switzerland",
+        "United Kingdom"
+      ],
+      "DefaultOU": "OU=EMEA,OU=POS Terminals,OU=Retail,DC=tiffco,DC=net",
+      "WS10G": "tco-emea-retail-Cgd"
+    },
+    {
+      "Name": "APAC",
+      "Countries": [
+        "Taiwan",
+        "Thailand",
+        "Singapore",
+        "Japan"
+      ],
+      "DefaultOU": "OU=APAC,OU=POS Terminals,OU=Retail,DC=tiffco,DC=net",
+      "WS10G": "tco-apac-retail-Cgd"
+    }
+  ],
+  "CountryCodes": {
+    "United States": "US",
+    "Canada": "CA",
+    "Mexico": "MX",
+    "Spain": "ES",
+    "Sweden": "SE",
+    "Switzerland": "CH",
+    "United Kingdom": "UK",
+    "Taiwan": "TW",
+    "Thailand": "TH",
+    "Singapore": "SG",
+    "Japan": "JP"
+  },
+  "RoleComputerNameSuffix": {
+    "Cegid POS Terminal": "POS",
+    "Cegid CRES": "POS",
+    "NCR POS Terminal": "POS"
+  },
+  "TimeZones": [
+    "Central Standard Time",
+    "Eastern Standard Time",
+    "Pacific Standard Time",
+    "W. Europe Standard Time",
+    "GMT Standard Time",
+    "SE Asia Standard Time",
+    "Tokyo Standard Time"
+  ]
+}
