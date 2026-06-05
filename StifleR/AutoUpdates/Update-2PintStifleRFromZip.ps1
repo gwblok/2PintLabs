@@ -226,6 +226,8 @@ if ($Installed_2Pint_Software_StifleR_Beacon) {
     $BeaconInstall = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$($Beacon.FullName)`" /qb! /l*v C:\Windows\Temp\StifleRBeaconInstall.log" -Wait -NoNewWindow -PassThru
     if ($BeaconInstall.ExitCode -eq 0) {
         Write-Host "StifleR Beacon update installed successfully." -ForegroundColor Green
+        Set-Service -Name StifleRBeacon -StartupType Automatic
+        Start-Service -Name StifleRBeacon
     } else {
         Write-Host "StifleR Beacon update installation failed with exit code: $($BeaconInstall.ExitCode)" -ForegroundColor Red
     }
