@@ -48,7 +48,17 @@ if (!(Test-Path -Path $targetFolder)) {
 Get-ChildItem -Path $sourceFolder -Filter *.zip | Unblock-File
 
 #Extract each zip file to the target folder, creating a subfolder for each zip file based on its name
-Get-ChildItem -Path $sourceFolder -Filter StifleR*.zip | ForEach-Object {
+$StifleRZipFiles = Get-ChildItem -Path $sourceFolder -Filter StifleR*.zip
+if ($StifleRZipFiles.Count -eq 0) {
+    Write-Host "No StifleR zip files found in source folder: $sourceFolder"
+    exit
+}
+if ($StifleRZipFiles.Count -gt 1) {
+    Write-Host "Multiple StifleR zip files found in source folder: $sourceFolder. Lets look for the latest one." -ForegroundColor Green
+    $latestZip = $StifleRZipFiles | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    Write-Host "Latest StifleR zip file found: $($latestZip.Name)"
+}
+$latestZip | ForEach-Object {
     $zipFile = $_.FullName
     $fileName = $_.Name
     $destination = Join-Path -Path $targetFolder -ChildPath $_.BaseName
@@ -110,6 +120,7 @@ $PreReqApps = @(
 [PSCustomObject]@{Title = '2Pint Software DeployR'; Installed = $false; Notes = 'Required for DeployR Servers'; URL = 'https://documentation.2pintsoftware.com/deployr'}
 [PSCustomObject]@{Title = '2Pint Software StifleR Server'; Installed = $false; Notes = 'Required for DeployR Servers'; URL = 'https://documentation.2pintsoftware.com/stifler'}
 [PSCustomObject]@{Title = '2Pint Software StifleR Dashboards'; Installed = $false; Notes = 'Required for DeployR Servers'; URL = 'https://documentation.2pintsoftware.com/stifler'}
+[PSCustomObject]@{Title = '2Pint Software StifleR Beacon'; Installed = $false; Notes = 'OPTIONAL for DeployR Servers'; URL = 'https://documentation.2pintsoftware.com/stifler'}
 [PSCustomObject]@{Title = '2Pint Software StifleR WmiAgent'; Installed = $false; Notes = 'OPTIONAL for DeployR Servers'; URL = 'https://documentation.2pintsoftware.com/stifler'}
 [PSCustomObject]@{Title = '2Pint Software StifleR ActionHub'; Installed = $false; Notes = 'OPTIONAL for DeployR Servers'; URL = 'https://documentation.2pintsoftware.com/stifler'}
 [PSCustomObject]@{Title = '2Pint Software iPXE Anywhere WebService'; Installed = $false; Notes = 'OPTIONAL for DeployR Servers'; URL = 'https://documentation.2pintsoftware.com/ipxe-ws'}
@@ -122,6 +133,8 @@ $installedApps = Get-InstalledApps | Where-Object {$_.DisplayName -notmatch " - 
 $installedApps = $installedApps | Where-Object {$_.DisplayName -notmatch "SDK"}
 $installedApps = $installedApps | Where-Object {$_.DisplayName -notmatch "AppHost"}
 
+
+$PreReqStatus = @()
 
 foreach ($app in $PreReqApps) {
     $found = $installedApps | Where-Object {
@@ -137,6 +150,11 @@ foreach ($app in $PreReqApps) {
         $app.Installed = $false
         New-Variable -Name "Installed_$($app.Title.Replace(' ', '_'))" -Value $false -Scope Global -Force
     }
+
+    $PreReqStatus += [PSCustomObject]@{
+        Title            = $app.Title
+        'Installed Status' = $app.Installed
+    }
 }
 
 #Install StifleR
@@ -145,6 +163,7 @@ if ($Installed_2Pint_Software_StifleR_Server) {
     $ServerInstall = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$($StiflerRServer.FullName)`" /qb! /l*v C:\Windows\Temp\StifleRServerInstall.log" -Wait -NoNewWindow -PassThru
     if ($ServerInstall.ExitCode -eq 0) {
         Write-Host "StifleR Server update installed successfully. Starting Service" -ForegroundColor Green
+        Set-Service -Name StifleRServer -StartupType Automatic
         Start-Service -Name StifleRServer
     } else {
         Write-Host "StifleR Server update installation failed with exit code: $($ServerInstall.ExitCode)" -ForegroundColor Red
@@ -202,17 +221,17 @@ if ($Installed_2Pint_Software_StifleR_ActionHub) {
     Write-Host "StifleR ActionHub is not installed. Skipping update."
 }
 #Install Beacon
-if ($Installed_2Pint_Software_Beacon) {
-    Write-Host "2Pint Software Beacon is installed. Installing 2Pint Software Beacon update..."
-    $BeaconInstall = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$($Beacon.FullName)`" /qb! /l*v C:\Windows\Temp\BeaconInstall.log" -Wait -NoNewWindow -PassThru
+if ($Installed_2Pint_Software_StifleR_Beacon) {
+    Write-Host "StifleR Beacon is installed. Installing StifleR Beacon update..."
+    $BeaconInstall = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$($Beacon.FullName)`" /qb! /l*v C:\Windows\Temp\StifleRBeaconInstall.log" -Wait -NoNewWindow -PassThru
     if ($BeaconInstall.ExitCode -eq 0) {
-        Write-Host "2Pint Software Beacon update installed successfully." -ForegroundColor Green
+        Write-Host "StifleR Beacon update installed successfully." -ForegroundColor Green
     } else {
-        Write-Host "2Pint Software Beacon update installation failed with exit code: $($BeaconInstall.ExitCode)" -ForegroundColor Red
+        Write-Host "StifleR Beacon update installation failed with exit code: $($BeaconInstall.ExitCode)" -ForegroundColor Red
     }
     
 } else {
-    Write-Host "2Pint Software Beacon is not installed. Skipping update."
+    Write-Host "StifleR Beacon is not installed. Skipping update."
 }
 
 
