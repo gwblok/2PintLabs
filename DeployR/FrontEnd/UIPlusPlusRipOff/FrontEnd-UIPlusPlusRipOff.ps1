@@ -572,13 +572,15 @@ if (-not $formResults.FormSubmitted) {
 
 $tsEnv = $null
 try {
-    $tsEnv = New-Object -ComObject Microsoft.SMS.TSEnvironment
+    Import-Module DeployR.Utility -ErrorAction SilentlyContinue
+    $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
+    write-CMTraceLog -Message "DeployR.Utility module imported. Logs will be written to $Global:LogFolderPath"
+    $tsEnv = $true
 }
 catch {
-    Write-CMTraceLog -Message 'Task Sequence COM object not available. Continuing with local testing behavior.' -Type Warning
 }
 
-Set-CMTaskSequenceVariables -FormResults $formResults -TsEnv $tsEnv
+
 Set-DeployRTaskSequenceVariables -FormResults $formResults
 
 if (-not $tsEnv -and -not ((Get-Module -Name 'DeployR.Utility') -and (-not (Test-Path -Path 'HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings')))) {
