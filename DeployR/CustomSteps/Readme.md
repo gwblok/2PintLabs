@@ -23,7 +23,7 @@ Grab all the scripts (or the ones needed for the steps you're wanting to import)
 
 ![Image01](.\media\stepdef01.png)
 
-### Update Step to use the Content Item
+### Update Step Definition to use the Content Item
 
 Once you have the the step definition imported and createed the content item, you can set the content item with the scripts in the step definition.
 
