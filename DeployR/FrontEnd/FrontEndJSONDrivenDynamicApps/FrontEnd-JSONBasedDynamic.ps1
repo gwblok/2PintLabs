@@ -45,7 +45,7 @@ Function Get-InputFormData {
     Add-Type -AssemblyName PresentationFramework
     
     
-        # If no explicit LogoPath was provided earlier, try to use Logo-blue.png located
+    # If no explicit LogoPath was provided earlier, try to use Logo-blue.png located
     # in the same directory as this script.
     # Resolve script directory robustly to support dot-sourcing and different PowerShell hosts
     $scriptDir = $null
@@ -82,7 +82,7 @@ Function Get-InputFormData {
             }
         }
         $configPath = Join-Path -Path $scriptDir -ChildPath 'FrontEndConfig.json' -ErrorAction SilentlyContinue
-
+        
         if (-not $JSONConfig) {
             Write-Verbose "FrontEndConfig.json not found at $configPath"
             try { Write-CMTraceLog -Message "FrontEndConfig.json not found at $configPath" -Type "Warning" -Component "Config" } catch {}
@@ -113,19 +113,19 @@ Function Get-InputFormData {
     ###########################################
     #Build Data from JSON
     ##########################################
-
+    
     #Usage (DeployR or ConfigMgr)
     $Usage = $JSONConfig.Usage
     if (-not $Usage) { $Usage = "DeployR" }  # Default to DeployR if not specified
-
+    
     ###########################################
     #Build Data from JSON
     ##########################################
-
+    
     #Usage (DeployR or ConfigMgr)
     $Usage = $JSONConfig.Usage
     if (-not $Usage) { $Usage = "DeployR" }  # Default to DeployR if not specified
-
+    
     #Logo File Name
     $LogoFileName = $JSONConfig.LogoFileName
     write-host "Logo file name from JSON config: $LogoFileName" -ForegroundColor Cyan
@@ -156,33 +156,33 @@ Function Get-InputFormData {
                 Write-Warning "Error downloading default logo $_"
             }
         }
-    
+        
     } catch {}
-
+    
     #Default Domain Suffix
     $DefaultDomainSuffix = $JSONConfig.DomainSuffix
-
+    
     #OU Options
     $OUOptions = @()
     $JSONConfig.OUs | ForEach-Object {
         $OUOptions += $_
     }
-
+    
     #Autopilot Group Tags
     $AutopilotGroupTagOptions = @()
     $JSONConfig.AutopilotGroupTags | ForEach-Object {
         $AutopilotGroupTagOptions += $_
     }
-
+    
     #Role Options
     $RoleOptions = @()
     $JSONConfig.Roles | ForEach-Object {
         $RoleOptions += $_
     }
-
+    
     #Finish Action Options
     $FinishActionOptions = @('Shutdown', 'Restart', 'Reseal', 'Log Off', 'Nothing')
-
+    
     # Software options - try to pull dynamically from DeployR, fall back to static list if unavailable
     # Try to get apps dynamically from DeployR
     $UseDeployRSoftwareList = $JSONConfig.SoftwareFromDeployR
@@ -240,7 +240,7 @@ Function Get-InputFormData {
             }
         }
     }
-
+    
     # Define hardware ID type options (If you change this, you'll need to also update methods to gather this info)
     $HardwareIdOptions = @(
     "Serial Number",
@@ -249,7 +249,7 @@ Function Get-InputFormData {
     )
     
     #Region Collection Hardware Information:
-
+    
     $LocalInfo = @{}		
     $LocalInfo['IsDesktop'] = "False"
     $LocalInfo['IsLaptop'] = "False"
@@ -418,13 +418,13 @@ Function Get-InputFormData {
         return "UNKNOWN"
     }
     #endregion Hardware 
-
+    
     # Build dynamic UI strings based on Usage
     $WindowTitle = "System Configuration - $Usage OSD"
     $HeaderText = "System Configuration - $Usage"
     $DomainSuffixLabel = if ($Usage -eq "ConfigMgr") { "Domain Suffix, used as Domain for Domain Join:" } else { "Domain Suffix (optional):" }
     $DomainJoinRadioLabel = if ($Usage -eq "ConfigMgr") { "Domain Join" } else { "Offline Domain Join" }
-
+    
     # XAML Form Definition
     [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -435,6 +435,7 @@ Function Get-InputFormData {
         MinHeight="400"
         MinWidth="520"
         WindowStartupLocation="CenterScreen"
+    Topmost="True"
         ResizeMode="CanResize">
     <Grid Margin="15">
         <Grid.RowDefinitions>
@@ -628,7 +629,7 @@ Function Get-InputFormData {
                                   Height="28"
                                   FontSize="12"
                                   Visibility="Collapsed"/>
-
+    
                         <!-- Finish Action GroupBox -->
                         <GroupBox Header="Finish Action" FontSize="13" FontWeight="Bold" Margin="0,15,0,0" Padding="10">
                             <StackPanel>
@@ -816,10 +817,10 @@ Function Get-InputFormData {
     $txtHwGwList.Text = if ($gwList -and $gwList.Count -gt 0) { $gwList -join "`n" } else { "N/A" }
     # Asset Tag (from SMBIOS) - show NA when not present or empty
     $txtHwAssetTag.Text = if ($AssetTag) { $AssetTag } else { "N/A" }
-
+    
     # Initialize option OU script variable
     $script:OptionOU = $null
-
+    
     # Helper to toggle Autopilot controls visibility/enabled state
     function Set-AutopilotControlsState {
         param(
@@ -860,7 +861,7 @@ Function Get-InputFormData {
             $spEntraIDOptions.Visibility = 'Collapsed'
         }
     }
-
+    
     function Update-FinishActionOptions {
         param([string]$WorkplaceJoinType)
         
@@ -915,7 +916,7 @@ Function Get-InputFormData {
     # Load logo from base64 or file path
     $logoLoaded = $false
     
-
+    
     # Load Logo from file path
     if (!$logoLoaded -and ![string]::IsNullOrWhiteSpace($LogoPath) -and (Test-Path $LogoPath)) {
         try {
@@ -955,7 +956,7 @@ Function Get-InputFormData {
         $comboItem.Tag = $role.Value
         $cmbUserRole.Items.Add($comboItem) | Out-Null
     }
-
+    
     # select first item by default if present
     if ($cmbUserRole.Items.Count -gt 0) { $cmbUserRole.SelectedIndex = 0 }
     
@@ -973,7 +974,7 @@ Function Get-InputFormData {
         $cmbOptionOU.Items.Add($ou) | Out-Null
     }
     $cmbOptionOU.SelectedIndex = 0
-
+    
     # Populate Finish Action ComboBox - Initial load based on default Workgroup selection
     $cmbFinishAction = $Window.FindName("cmbFinishAction")
     # Start with the default workplace join type (Local Workgroup)
@@ -1002,7 +1003,7 @@ Function Get-InputFormData {
             }
         }
     }
-
+    
     # Populate Hardware ID Type ComboBox
     foreach ($hwType in $HardwareIdOptions) {
         $cmbHardwareId.Items.Add($hwType) | Out-Null
@@ -1026,13 +1027,13 @@ Function Get-InputFormData {
             }
         }
     }
-
+    
     # Show which DeployR tag is used for dynamic software query
     try {
         $displayTag = if ([string]::IsNullOrWhiteSpace([string]$SoftwareTagForDeployR)) { "(not set)" } else { [string]$SoftwareTagForDeployR }
         $txtSoftwareTagInfo.Text = "Apps dynamically queried from DeployR based on the tag '$displayTag'"
     } catch {}
-
+    
     # Only show warning if DeployR was supposed to be used (SoftwareFromDeployR = True) but failed
     try {
         if ($UseDeployRSoftwareList -eq "True" -and $DeployRRetrievalFailed) {
@@ -1116,7 +1117,7 @@ Function Get-InputFormData {
             $prefix = $txtPrefix.Text.Trim().ToUpper()
             $hwType = $cmbHardwareId.SelectedItem
             $hwId = Get-HardwareId -Type $hwType
-
+            
             # If Asset Tag selected but not available, show a warning in the status area
             if ($hwType -eq "Asset Tag" -and ([string]::IsNullOrWhiteSpace($hwId) -or $hwId -eq "UNKNOWN")) {
                 $txtWarning.Text = "Warning: Asset Tag not available - generated name may be invalid"
@@ -1185,9 +1186,9 @@ Function Get-InputFormData {
     # Radio Button Events
     function Set-PanelVisualState {
         param(
-            [bool]$noNameSelected,
-            [bool]$manualSelected,
-            [bool]$hardwareSelected
+        [bool]$noNameSelected,
+        [bool]$manualSelected,
+        [bool]$hardwareSelected
         )
         try {
             # Use opacity for reliable visual de-emphasis across themes/control templates
@@ -1198,7 +1199,7 @@ Function Get-InputFormData {
         try { $lblPrefix.Opacity = (if ($hardwareSelected) { 1.0 } else { 0.5 }) } catch {}
         try { $lblHardwareIdType.Opacity = (if ($hardwareSelected) { 1.0 } else { 0.5 }) } catch {}
     }
-
+    
     $rbNoName.Add_Checked({
         # No-name: disable manual and hardware panels
         $txtManualName.IsEnabled = $false
@@ -1457,16 +1458,16 @@ Function Get-InputFormData {
                 $selectedHwId = Get-HardwareId -Type $selectedHwType
                 if ([string]::IsNullOrWhiteSpace($selectedHwId) -or $selectedHwId -eq "UNKNOWN") {
                     [System.Windows.MessageBox]::Show(
-                        "Asset Tag was selected as the Hardware ID Type but no Asset Tag was found. Please choose a different Hardware ID Type or ensure the device has an Asset Tag.",
-                        "Validation Error",
-                        [System.Windows.MessageBoxButton]::OK,
-                        [System.Windows.MessageBoxImage]::Warning
+                    "Asset Tag was selected as the Hardware ID Type but no Asset Tag was found. Please choose a different Hardware ID Type or ensure the device has an Asset Tag.",
+                    "Validation Error",
+                    [System.Windows.MessageBoxButton]::OK,
+                    [System.Windows.MessageBoxImage]::Warning
                     )
                     return
                 }
             }
         }
-
+        
         # Stop auto-close timer (if running), then set dialog result and close
         try { if ($script:AutoCloseTimer) { $script:AutoCloseTimer.Stop() } } catch {}
         # Set dialog result and close
@@ -1506,13 +1507,13 @@ Function Get-InputFormData {
     
     # Apply initial visual state for radios and labels
     try { Set-PanelVisualState -noNameSelected ([bool]$rbNoName.IsChecked) -manualSelected ([bool]$rbManualName.IsChecked) -hardwareSelected ([bool]$rbHardwareName.IsChecked) } catch {}
-
+    
     # Show the form
     $result = $Window.ShowDialog()
     
     # Capture Finish Action selection before form closes
     $script:FinishAction = $cmbFinishAction.SelectedItem
-
+    
     # Create and return PSObject with form results
     if ($result -eq $true) {
         $FormResults = [PSCustomObject]@{
@@ -1579,9 +1580,9 @@ Function Get-InputFormData {
         #     "Execs" { # Apply executive lab settings }
         # }
         
-    # Stop transcription before returning
-    try { Stop-FrontendTranscription } catch {}
-    return $FormResults
+        # Stop transcription before returning
+        try { Stop-FrontendTranscription } catch {}
+        return $FormResults
         
     } else {
         Write-Host "`nForm was cancelled." -ForegroundColor Yellow
@@ -1683,8 +1684,8 @@ function Write-CMTraceLog {
 function Get-DeployRFrontEndApps {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
-        [string]$Tag
+    [Parameter(Mandatory = $true)]
+    [string]$Tag
     )
     #This will connect with the DeployR Server and pull a list of Apps that are specified to show in the front end
     
@@ -1698,28 +1699,28 @@ function Get-DeployRFrontEndApps {
         }
     }
     catch {}
-   <#
+    <#
     if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"))) {
     IF ($null -ne ${TSEnv:DEPLOYRCLIENTPASSCODE}){
-            Write-Host "Using DeployR Client Passcode from TS Environment Variable"
-            $ClientPasscode = ${TSEnv:DEPLOYRCLIENTPASSCODE}
-            Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
-        }
-        
+    Write-Host "Using DeployR Client Passcode from TS Environment Variable"
+    $ClientPasscode = ${TSEnv:DEPLOYRCLIENTPASSCODE}
+    Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+    }
+    
     }
     else{
-        if (Test-Path "HKLM:\software\2Pint Software\DeployR\GeneralSettings") {
-            $DeployRReg = Get-Item -Path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"
-            $ClientPasscode = $DeployRReg.GetValue("ClientPasscode")
-            Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
-        }
-        elseif (Test-Path "D:\DeployRPasscode.txt") {
-            $ClientPasscode = (Get-Content "D:\DeployRPasscode.txt" -Raw)
-            Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
-        }
-        else {
-            throw "Cannot find DeployR Client Passcode in registry or D:\DeployRPasscode.txt"
-        }
+    if (Test-Path "HKLM:\software\2Pint Software\DeployR\GeneralSettings") {
+    $DeployRReg = Get-Item -Path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"
+    $ClientPasscode = $DeployRReg.GetValue("ClientPasscode")
+    Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+    }
+    elseif (Test-Path "D:\DeployRPasscode.txt") {
+    $ClientPasscode = (Get-Content "D:\DeployRPasscode.txt" -Raw)
+    Connect-DeployR -Passcode $ClientPasscode -ErrorAction Stop
+    }
+    else {
+    throw "Cannot find DeployR Client Passcode in registry or D:\DeployRPasscode.txt"
+    }
     }
     #>
     write-host "Retrieving DeployR Applications with tag '$Tag'..." -ForegroundColor Cyan
