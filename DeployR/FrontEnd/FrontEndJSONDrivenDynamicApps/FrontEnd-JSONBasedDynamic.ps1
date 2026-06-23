@@ -1,5 +1,5 @@
 
-$ScriptVersion = '26.2.17.21.12'
+$ScriptVersion = '26.6.11.20.26'
 
 
 #Region Functions
@@ -179,6 +179,9 @@ Function Get-InputFormData {
     $JSONConfig.Roles | ForEach-Object {
         $RoleOptions += $_
     }
+
+    #Finish Action Options
+    $FinishActionOptions = @('Shutdown', 'Restart', 'Reseal', 'Log Off', 'Nothing')
 
     # Software options - try to pull dynamically from DeployR, fall back to static list if unavailable
     # Try to get apps dynamically from DeployR
@@ -625,6 +628,14 @@ Function Get-InputFormData {
                                   Height="28"
                                   FontSize="12"
                                   Visibility="Collapsed"/>
+
+                        <!-- Finish Action GroupBox -->
+                        <GroupBox Header="Finish Action" FontSize="13" FontWeight="Bold" Margin="0,15,0,0" Padding="10">
+                            <StackPanel>
+                                <TextBlock Text="Select finish action:" FontSize="11" Margin="0,0,0,5"/>
+                                <ComboBox Name="cmbFinishAction" Height="28" FontSize="12"/>
+                            </StackPanel>
+                        </GroupBox>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -849,6 +860,57 @@ Function Get-InputFormData {
             $spEntraIDOptions.Visibility = 'Collapsed'
         }
     }
+
+    function Update-FinishActionOptions {
+        param([string]$WorkplaceJoinType)
+        
+        # Define which options are available for each workplace join type
+        $availableOptions = @()
+        
+        switch ($WorkplaceJoinType) {
+            'Workgroup' {
+                # Local Workgroup: All options available
+                $availableOptions = @('Shutdown', 'Restart', 'Reseal', 'Log Off', 'Nothing')
+            }
+            'EntraID' {
+                # EntraID Join: Reseal NOT available
+                $availableOptions = @('Shutdown', 'Restart', 'Log Off', 'Nothing')
+            }
+            'Autopilot' {
+                # Autopilot Registration: Only Reseal available
+                $availableOptions = @('Reseal')
+            }
+            'ODJ' {
+                # Offline Domain Join: Reseal NOT available
+                $availableOptions = @('Shutdown', 'Restart', 'Log Off', 'Nothing')
+            }
+            default {
+                # Default: All options available
+                $availableOptions = @('Shutdown', 'Restart', 'Reseal', 'Log Off', 'Nothing')
+            }
+        }
+        
+        # Remember current selection if it's still available
+        $currentSelection = $cmbFinishAction.SelectedItem
+        
+        # Clear and repopulate the dropdown
+        $cmbFinishAction.Items.Clear()
+        foreach ($action in $availableOptions) {
+            $cmbFinishAction.Items.Add($action) | Out-Null
+        }
+        
+        # Try to restore the previous selection if it's still available, otherwise select first item
+        if ($currentSelection -and $availableOptions -contains $currentSelection) {
+            $cmbFinishAction.SelectedItem = $currentSelection
+        } else {
+            # Default to 'Restart' if available, otherwise first item
+            if ($availableOptions -contains 'Restart') {
+                $cmbFinishAction.SelectedItem = 'Restart'
+            } else {
+                $cmbFinishAction.SelectedIndex = 0
+            }
+        }
+    }
     
     # Load logo from base64 or file path
     $logoLoaded = $false
@@ -911,6 +973,35 @@ Function Get-InputFormData {
         $cmbOptionOU.Items.Add($ou) | Out-Null
     }
     $cmbOptionOU.SelectedIndex = 0
+
+    # Populate Finish Action ComboBox - Initial load based on default Workgroup selection
+    $cmbFinishAction = $Window.FindName("cmbFinishAction")
+    # Start with the default workplace join type (Local Workgroup)
+    Update-FinishActionOptions -WorkplaceJoinType 'Workgroup'
+    
+    # Check if there's an existing FINISHACTION value from TSEnv
+    $existingFinishAction = ${TSEnv:FINISHACTION}
+    if (-not [string]::IsNullOrWhiteSpace($existingFinishAction)) {
+        # Try to find the existing value in the dropdown
+        $index = $cmbFinishAction.Items.IndexOf($existingFinishAction)
+        if ($index -ge 0) {
+            $cmbFinishAction.SelectedIndex = $index
+        } else {
+            # If not found exactly, try case-insensitive match
+            $index = 0
+            foreach ($item in $cmbFinishAction.Items) {
+                if ($item -eq $existingFinishAction -or $item.ToLower() -eq $existingFinishAction.ToLower()) {
+                    $cmbFinishAction.SelectedIndex = $index
+                    break
+                }
+                $index++
+            }
+            # If still not found, default to first available option
+            if ($cmbFinishAction.SelectedIndex -lt 0) {
+                $cmbFinishAction.SelectedIndex = 0
+            }
+        }
+    }
 
     # Populate Hardware ID Type ComboBox
     foreach ($hwType in $HardwareIdOptions) {
@@ -1160,6 +1251,12 @@ Function Get-InputFormData {
     $rbAutopilot.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
     # Online Domain Join removed - EntraID options handled by other radio handlers
     $rbDomainJoin.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
+    
+    # Wire Workplace Join radio buttons to update Finish Action dropdown options
+    $rbWorkgroup.Add_Checked({ Update-FinishActionOptions -WorkplaceJoinType 'Workgroup' })
+    $rbEntraID.Add_Checked({ Update-FinishActionOptions -WorkplaceJoinType 'EntraID' })
+    $rbAutopilot.Add_Checked({ Update-FinishActionOptions -WorkplaceJoinType 'Autopilot' })
+    $rbDomainJoin.Add_Checked({ Update-FinishActionOptions -WorkplaceJoinType 'ODJ' })
     
     # Ensure Online Domain Join also turns off Autopilot controls when selected
     # Online Domain Join removed - Autopilot controls handled by other radio handlers
@@ -1413,6 +1510,9 @@ Function Get-InputFormData {
     # Show the form
     $result = $Window.ShowDialog()
     
+    # Capture Finish Action selection before form closes
+    $script:FinishAction = $cmbFinishAction.SelectedItem
+
     # Create and return PSObject with form results
     if ($result -eq $true) {
         $FormResults = [PSCustomObject]@{
@@ -1424,6 +1524,7 @@ Function Get-InputFormData {
             SelectedUserRole = $script:SelectedUserRole
             AutopilotGroupTag = $script:AutopilotGroupTag
             DomainJoinOU = $script:OptionOU
+            FinishAction = $script:FinishAction
             AssetTag = if ($LocalInfo.ContainsKey('AssetTag') -and -not [string]::IsNullOrWhiteSpace($LocalInfo['AssetTag'])) { $LocalInfo['AssetTag'] } else { 'NA' }
             DomainJoinSelected = ($script:WorkplaceJoin -eq 'ODJ')
             EntraIDUserUPN = $script:EntraIDUserUPN
@@ -1649,17 +1750,6 @@ try {
 }
 catch {
 }
-#Logic to support ConfigMgr TS Environment Variables
-try {
-    $tsenv = new-object -comobject Microsoft.SMS.TSEnvironment
-}
-catch{}
-if ($TSEnv){
-    $Global:LogFolderPath = $TSEnv.value("_SMSTSLogPath")
-    Write-Output "ConfigMgr TS Environment detected. Log Path set to $Global:LogFolderPath"
-    #Close the Progress UI to not cover Frontend
-    (new-object -ComObject Microsoft.SMS.TsProgressUI).CloseProgressDialog()
-}
 
 # Start up the logs paths for DeployR / ConfigMgr or Local Testing
 if (!($Global:LogFolderPath)) {
@@ -1711,61 +1801,6 @@ write-host "=====================================================" -ForegroundCo
 $FormResults = Get-InputFormData
 
 
-
-
-
-
-
-if ($TSEnv){
-    Write-Output "Setting ConfigMgr TS Environment Variables..."
-    Write-CMTraceLog -Message "Setting ConfigMgr TS Environment Variables..." -Type "Info" -Component "Main"
-    $tsenv.value("NamingStrategy") = $FormResults.NamingStrategy
-    Write-CMTraceLog -Message "NamingStrategy =  $tsenv.value('NamingStrategy')" -Type "Info" -Component "Main"
-    $tsenv.value("OSDComputerName") = $FormResults.GeneratedComputerName
-    Write-CMTraceLog -Message "OSDComputerName = $($tsenv.value('OSDComputerName'))" -Type "Info" -Component "Main"
-    $tsenv.value("DomainSuffix") = $FormResults.DomainSuffix
-    Write-CMTraceLog -Message "DomainSuffix = $($tsenv.value('DomainSuffix'))" -Type "Info" -Component "Main"
-    $tsenv.value("OSDDomainName") = $FormResults.DomainSuffix
-    Write-CMTraceLog -Message "OSDDomainName = $($tsenv.value('OSDDomainName'))" -Type "Info" -Component "Main"
-    $tsenv.value("HardwareIdType") = $FormResults.HardwareIdType
-    Write-CMTraceLog -Message "HardwareIdType = $($tsenv.value('HardwareIdType'))" -Type "Info" -Component "Main"
-    $tsenv.value("WorkplaceJoin") = $FormResults.WorkplaceJoin
-    if ($FormResults.EntraIDUserUPN) {
-        $tsenv.value("EntraIDUserUPN") = $FormResults.EntraIDUserUPN
-        $tsenv.value("ENTRAUPN") = $FormResults.EntraIDUserUPN
-        Write-CMTraceLog -Message "EntraIDUserUPN = $($tsenv.value('EntraIDUserUPN'))" -Type "Info" -Component "Main"
-        Write-CMTraceLog -Message "ENTRAUPN = $($tsenv.value('ENTRAUPN'))" -Type "Info" -Component "Main"
-    }
-    if ($FormResults.DomainJoinOU) {
-        $tsenv.value("FrontEndDomainJoinOU") = $FormResults.DomainJoinOU
-        $tsenv.value("OSDDomainOUName") = $FormResults.DomainJoinOU
-        Write-CMTraceLog -Message "FrontEndDomainJoinOU = $($tsenv.value('FrontEndDomainJoinOU'))" -Type "Info" -Component "Main"
-        Write-CMTraceLog -Message "OSDDomainOUName = $($tsenv.value('OSDDomainOUName'))" -Type "Info" -Component "Main"
-    }
-    if ($FormResults.WorkplaceJoin -eq "Autopilot"){
-        if ($FormResults.AutopilotGroupTag) {
-            $tsenv.value("AutopilotGroupTag") = $FormResults.AutopilotGroupTag
-            Write-CMTraceLog -Message "AutopilotGroupTag = $($tsenv.value('AutopilotGroupTag'))" -Type "Info" -Component "Main"
-        }
-    }
-    $tsenv.value("SelectedUserRole") = $FormResults.SelectedUserRole
-    Write-CMTraceLog -Message "SelectedUserRole = $($tsenv.value('SelectedUserRole'))" -Type "Info" -Component "Main"
-    $tsenv.value("SelectedSoftwareCsv") = $FormResults.SelectedSoftwareCsv
-
-    # Export individual software selections as Install_<id> = 'True'/'False'
-    try {
-        foreach ($kv in $FormResults.SelectedSoftwareMap.GetEnumerator()) {
-            $key = $kv.Key
-            $val = if ($kv.Value) { 'True' } else { 'False' }
-            $varName = "Install_$($key)"
-            $tsenv.value("$varName") = $val
-            Write-CMTraceLog -Message "$varName = $val" -Type "Info" -Component "Main"
-        }
-    } catch {
-        Write-Warning "Failed to export individual software TS variables: $_"
-    }
-}
-
 # Set Variables in DeployR TS Environment if DeployR.Utility is available and no existing installation
 if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings"))) {
     $DEPLOYRCLIENTPASSCODE = ${TSEnv:DEPLOYRCLIENTPASSCODE}
@@ -1805,10 +1840,14 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     if ($FormResults.SelectedUserRole){
         ${TSEnv:SelectedUserRole} = $FormResults.SelectedUserRole
     }
+    if ($FormResults.FinishAction){
+        ${TSEnv:FINISHACTION} = $FormResults.FinishAction
+    }
     if ($FormResults.SelectedSoftwareCsv){
         ${TSEnv:SelectedSoftwareCsv} = $FormResults.SelectedSoftwareCsv
     }
     
+    #Write Info to Log File about the variables we just set for visibility
     try { Write-CMTraceLog -Message  "Set DeployR TS Environment Variables:" -Type "Info" -Component "Main" } catch {}
     try { Write-CMTraceLog -Message "NamingStrategy = $(${TSEnv:NamingStrategy})" -Type "Info" -Component "Main" } catch {}
     try { Write-CMTraceLog -Message "ComputerName = $(${TSEnv:ComputerName})" -Type "Info" -Component "Main" } catch {}
@@ -1820,6 +1859,9 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     }
     if ($FormResults.AutopilotGroupTag){
         try { Write-CMTraceLog -Message "AutopilotGroupTag = $(${TSEnv:AutopilotGroupTag})" -Type "Info" -Component "Main" } catch {}
+    }
+    if ($FormResults.FinishAction){
+        try { Write-CMTraceLog -Message "FinishAction = $(${TSEnv:FINISHACTION})" -Type "Info" -Component "Main" } catch {}
     }
     if ($FormResults.DomainJoinOU){
         try { Write-CMTraceLog -Message "DomainJoinOU = $(${TSEnv:DomainJoinOU})" -Type "Info" -Component "Main" } catch {}
@@ -1874,6 +1916,7 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
         try { Write-CMTraceLog -Message "Final TSENV list of applications to install: $($tsenvlist:Applications -join ', ')" -Type "Info" -Component "Main" } catch {}
     }
 }
+#If testing in Full OS outside of DeployR, just write out the results to console
 else{
     $env:NamingStrategy = $FormResults.NamingStrategy
     $env:ComputerName = $FormResults.GeneratedComputerName
@@ -1885,6 +1928,9 @@ else{
     }
     if ($FormResults.AutopilotGroupTag) {
         $env:AutopilotGroupTag = $FormResults.AutopilotGroupTag
+    }
+    if ($FormResults.FinishAction) {
+        $env:FinishAction = $FormResults.FinishAction
     }
     if ($FormResults.DomainJoinOU) {
         $env:DomainJoinOU = $FormResults.DomainJoinOU

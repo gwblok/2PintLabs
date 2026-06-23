@@ -19,7 +19,10 @@
   "OUs": [
     "OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com",
     "OU=Servers,OU=2PintTown,DC=2P,DC=garytown,DC=com",
-    "OU=IT,OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com"
+    "OU=InfoTech,OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com",
+    "OU=RetailPOS,OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com",
+    "OU=PeopleOps,OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com",
+    "OU=Management,OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com"
   ],
   
   "//AutopilotGroupTags": "Available Autopilot group tags for device registration",
