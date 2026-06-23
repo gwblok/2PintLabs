@@ -255,6 +255,7 @@ Function Get-InputFormData {
         MinHeight="400"
         MinWidth="520"
         WindowStartupLocation="CenterScreen"
+        Topmost="True"
         ResizeMode="CanResize">
     <Grid Margin="15">
         <Grid.RowDefinitions>
