@@ -1,5 +1,8 @@
-#This Script will Detect and Update BIOS on the Dell Device - FULL OS ONLY - NOT WINPE
-
+<#
+This Script will Detect and Update BIOS on the Dell Device - FULL OS ONLY - NOT WINPE
+This is only going to work on NEWER Dell Devices, typically 2018 and newer, with BIOS that support native WMI BIOS Management.  
+If you have an older Dell Device, this script will not work for you, it could be modified to be more simple, removing the checks for a BIOS password, and just running the BIOS update.
+#>
 
 #Set Variables (Just BIOS Password)
 $BIOSPassword = 'P@ssw0rd'
