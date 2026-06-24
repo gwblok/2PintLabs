@@ -1,17 +1,252 @@
 #This Script will Detect and Update BIOS on the Dell Device - FULL OS ONLY - NOT WINPE
 
+function Test-DellBIOSPassword {
+    
+    <#
+    .Synopsis
+    Tests if a BIOS password is currently set on the Dell device
+    
+    .Description
+    This function checks if a BIOS Admin or System password is set on the device by querying
+    the PasswordObject WMI class. It can check for Admin password, System password, or both.
+    
+    Returns $true if the specified password type is set, $false if not set.
+    Useful for conditional logic before attempting BIOS changes.
+    
+    .Parameter PasswordType
+    Specifies which password type to check. Valid values are:
+    - "Admin" (default) - Checks BIOS Admin password
+    - "System" - Checks System password
+    - "Both" - Checks if either Admin or System password is set
+    
+    .Outputs
+    System.Boolean
+    Returns $true if the password is set, $false if not set
+    
+    Changelog:
+    1.0.0 Initial Version
+    
+    .Example
+    Check if Admin password is set
+    
+    if (Test-DellBIOSPassword) {
+    Write-Host "BIOS Admin password is set"
+    } else {
+    Write-Host "No BIOS Admin password"
+    }
+    
+    .Example
+    Check if System password is set
+    
+    if (Test-DellBIOSPassword -PasswordType "System") {
+    Write-Host "System password is set"
+    }
+    
+    .Example
+    Check if either password type is set
+    
+    if (Test-DellBIOSPassword -PasswordType "Both") {
+    Write-Host "At least one password is set"
+    }
+    
+    #>
+    [CmdletBinding()]
+    param(
+    [Parameter(mandatory=$false)]
+    [ValidateSet("Admin", "System", "Both")]
+    [String]$PasswordType = "Admin"
+    )
+    
+    #########################################################################################################
+    ####                                    Program Section                                              ####
+    #########################################################################################################
+    
+    # Check if Dell BIOS WMI is supported on this device
+    if (-not (Test-DellBIOSWMISupport))
+    {
+        Write-Error "Error: This device does not support Dell BIOS WMI management. This feature is typically available on Dell devices manufactured after 2018."
+        return $false
+    }
+    
+    try
+    {
+        switch ($PasswordType)
+        {
+            "Admin" {
+                Write-Verbose "Checking if Admin password is set..."
+                $PasswordObject = Get-CimInstance -Namespace root/dcim/sysman/wmisecurity -ClassName PasswordObject -Filter "NameId='Admin'" -ErrorAction Stop
+                
+                if ($null -eq $PasswordObject)
+                {
+                    Write-Verbose "Unable to retrieve Admin password status"
+                    return $false
+                }
+                
+                if ($PasswordObject.IsPasswordSet -eq 1)
+                {
+                    Write-Verbose "Admin password is set"
+                    return $true
+                }
+                else
+                {
+                    Write-Verbose "Admin password is not set"
+                    return $false
+                }
+            }
+            
+            "System" {
+                Write-Verbose "Checking if System password is set..."
+                $PasswordObject = Get-CimInstance -Namespace root/dcim/sysman/wmisecurity -ClassName PasswordObject -Filter "NameId='System'" -ErrorAction Stop
+                
+                if ($null -eq $PasswordObject)
+                {
+                    Write-Verbose "Unable to retrieve System password status"
+                    return $false
+                }
+                
+                if ($PasswordObject.IsPasswordSet -eq 1)
+                {
+                    Write-Verbose "System password is set"
+                    return $true
+                }
+                else
+                {
+                    Write-Verbose "System password is not set"
+                    return $false
+                }
+            }
+            
+            "Both" {
+                Write-Verbose "Checking if Admin or System password is set..."
+                $AdminPassword = Get-CimInstance -Namespace root/dcim/sysman/wmisecurity -ClassName PasswordObject -Filter "NameId='Admin'" -ErrorAction Stop
+                $SystemPassword = Get-CimInstance -Namespace root/dcim/sysman/wmisecurity -ClassName PasswordObject -Filter "NameId='System'" -ErrorAction Stop
+                
+                $AdminSet = ($null -ne $AdminPassword) -and ($AdminPassword.IsPasswordSet -eq 1)
+                $SystemSet = ($null -ne $SystemPassword) -and ($SystemPassword.IsPasswordSet -eq 1)
+                
+                if ($AdminSet -or $SystemSet)
+                {
+                    Write-Verbose "At least one password is set (Admin: $AdminSet, System: $SystemSet)"
+                    return $true
+                }
+                else
+                {
+                    Write-Verbose "No passwords are set"
+                    return $false
+                }
+            }
+        }
+    }
+    catch
+    {
+        $errMsg = $_.Exception.Message
+        Write-Error "Error: Failed to check BIOS password status - $errMsg"
+        return $false
+    }
+}
+function Test-DellBIOSWMISupport {
+    
+    <#
+    .Synopsis
+    Tests if the Dell BIOS WMI namespaces are available on the current device
+    
+    .Description
+    This function checks if the required Dell WMI namespaces are available on the device.
+    It verifies the presence of the biosattributes and wmisecurity namespaces required for BIOS management.
+    This is used to determine if the device supports Dell BIOS management via WMI (typically devices from 2018 or newer).
+    
+    Returns $true if Dell BIOS WMI is supported, $false if not supported.
+    
+    .Outputs
+    System.Boolean
+    Returns $true if WMI support is available, $false otherwise
+    
+    Changelog:
+    1.0.0 Initial Version
+    
+    .Example
+    Test if Dell BIOS WMI support is available and proceed conditionally
+    
+    if (Test-DellBIOSWMISupport) {
+    Write-Host "Dell BIOS WMI is supported on this device"
+    $settings = Get-DellBIOSSetting
+    } else {
+    Write-Host "This device does not support Dell BIOS WMI"
+    }
+    
+    #>
+    [CmdletBinding()]
+    param()
+    
+    #########################################################################################################
+    ####                                    Program Section                                              ####
+    #########################################################################################################
+    
+    try
+    {
+        # Test for biosattributes namespace
+        $biosNamespace = Get-CimInstance -Namespace root/dcim/sysman/biosattributes -ClassName EnumerationAttribute -ErrorAction Stop | Select-Object -First 1
+        
+        if ($null -eq $biosNamespace)
+        {
+            Write-Verbose "Dell BIOS WMI namespace exists but returned no data"
+            return $false
+        }
+        
+        # Test for wmisecurity namespace
+        $securityNamespace = Get-CimInstance -Namespace root/dcim/sysman/wmisecurity -ClassName SecurityInterface -ErrorAction Stop
+        
+        if ($null -eq $securityNamespace)
+        {
+            Write-Verbose "Dell Security WMI namespace exists but returned no data"
+            return $false
+        }
+        
+        Write-Verbose "Dell BIOS WMI support is available"
+        return $true
+    }
+    catch
+    {
+        $errMsg = $_.Exception.Message
+        Write-Verbose "Dell BIOS WMI support is not available: $errMsg"
+        return $false
+    }
+}
+Function Get-DUPExitInfo {
+    [CmdletBinding()]
+    param(
+    [ValidateRange(0,4000)]
+    [int]$DUPExit
+    )
+    $DUPExitInfo = @(
+    # Generic application return codes
+    @{ExitCode = -1; DisplayName = "Unsuccessful"; Description = "DCU terminating the BIOS execution due to timeout."}
+    @{ExitCode = 0; DisplayName = "Success"; Description = "The operation completed successfully."}
+    @{ExitCode = 1; DisplayName = "Unsuccessful"; Description = "An error occurred during the update process; the update was not successful."}
+    @{ExitCode = 2; DisplayName = "Reboot required"; Description = "Reboot the system to complete the operation."}
+    @{ExitCode = 3; DisplayName = "Soft dependency error"; Description = "You attempted to update to the same version of the software or You tried to downgrade to a previous version of the software."}
+    @{ExitCode = 4; DisplayName = "Hard dependency error"; Description = "The required prerequisite software was not found on your computer."}
+    @{ExitCode = 5; DisplayName = "Qualification error"; Description = "A QUAL_HARD_ERROR cannot be suppressed by using the /f switch."}
+    @{ExitCode = 6; DisplayName = "Rebooting computer"; Description = "The computer is being rebooted."}
+    @{ExitCode = 7; DisplayName = "Password validation error"; Description = "Password not provided or incorrect password provided for BIOS execution"}
+    @{ExitCode = 8; DisplayName = "Requested Downgrade is not allowed."; Description = "Downgrading the BIOS to the version run is not allowed."}
+    @{ExitCode = 8; DisplayName = "RPM verification has failed"; Description = "The Linux DUP framework uses RPM verification to ensure the security of all DUP-dependent Linux utilities. If security is compromised, the framework displays a message and an RPM Verify Legend, and then exits with exit code 9."}
+    @{ExitCode = 8; DisplayName = "Some other error"; Description = "This exit code is for all errors that have not been specified in BIOS exit codes 0-9. That is, battery error, EC error, HW failure, so forth."}
+    )
+    $DUPExitInfo | Where-Object {$_.ExitCode -eq $DUPExit}
+}
 Function Get-DellBIOSUpdates {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$False)]
-        [ValidateLength(4,4)]    
-        [string]$SystemSKUNumber,
-        [switch]$Latest,
-        [switch]$Check, #This will find the latest BIOS update and compare it to the current BIOS version
-        [switch]$Flash,
-        [string]$Password,
-        [string]$DownloadPath
-
+    [Parameter(Mandatory=$False)]
+    [ValidateLength(4,4)]    
+    [string]$SystemSKUNumber,
+    [switch]$Latest,
+    [switch]$Check, #This will find the latest BIOS update and compare it to the current BIOS version
+    [switch]$Flash,
+    [string]$Password,
+    [string]$DownloadPath
+    
     )
     $Manufacturer = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufacturer
     if (!($SystemSKUNumber)) {
@@ -28,7 +263,7 @@ Function Get-DellBIOSUpdates {
                 $LatestBIOS = $LatestBIOS | Select-Object -First 1
             }
             [version]$LatestVersion = ($LatestBIOS).DellVersion
-
+            
             if ($CurrentBIOSVersion -lt $LatestVersion){
                 Write-Verbose "Current BIOS Version: $CurrentBIOSVersion"
                 Write-Verbose "Latest BIOS Version: $LatestVersion"
@@ -61,6 +296,14 @@ Function Get-DellBIOSUpdates {
         Start-BitsTransfer -DisplayName $UpdateFileName -Source $UpdatePath -Destination $UpdateLocalPath -Description "Downloading $UpdateFileName" -RetryInterval 60 #-CustomHeaders "User-Agent:Bob" 
         if (Test-Path -Path $UpdateLocalPath){
             Write-Host "Installing $UpdateFileName, logfile: $($UpdateLocalPath).log"
+            $IsPasswordSet = Test-DellBIOSPassword
+            if ($IsPasswordSet -and -not $Password){
+                Write-Host "BIOS Password is set, please provide the password to flash the BIOS"
+                return
+            }
+            if ($Password -and -not $IsPasswordSet){
+                $BIOSArgs = "/s /l=$UpdateLocalPath.log"
+            }
             if ($Password){
                 $BIOSArgs = "/s /l=$UpdateLocalPath.log /p=$Password"
             }
@@ -104,18 +347,18 @@ Function Get-DellBIOSUpdates {
 function Get-DCUUpdateList {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory=$False)]
-        [ValidateLength(4,4)]    
-        [string]$SystemSKUNumber,
-        [ValidateSet('bios','firmware','driver','application')]
-        [String[]]$updateType,
-        [ValidateSet('audio','video','network','chipset','storage','BIOS','Application')]
-        [String[]]$updateDeviceCategory,
-        [switch]$RAWXML,
-        [switch]$Latest,
-        [switch]$TLDR
+    [Parameter(Mandatory=$False)]
+    [ValidateLength(4,4)]    
+    [string]$SystemSKUNumber,
+    [ValidateSet('bios','firmware','driver','application')]
+    [String[]]$updateType,
+    [ValidateSet('audio','video','network','chipset','storage','BIOS','Application')]
+    [String[]]$updateDeviceCategory,
+    [switch]$RAWXML,
+    [switch]$Latest,
+    [switch]$TLDR
     )
-
+    
     
     $temproot = "$env:windir\temp"
     #$SystemSKUNumber = (Get-CimInstance -ClassName Win32_ComputerSystem).SystemSKUNumber
@@ -135,7 +378,7 @@ function Get-DCUUpdateList {
     }
     if (Test-Path $CabPathIndexModel){Remove-Item -Path $CabPathIndexModel -Force}
     
-
+    
     Invoke-WebRequest -Uri "http://downloads.dell.com/$($DellSKU.URL)" -OutFile $CabPathIndexModel -UseBasicParsing
     if (Test-Path $CabPathIndexModel){
         $null = expand $CabPathIndexModel $DellCabExtractPath\CatalogIndexPCModel.xml
@@ -223,11 +466,10 @@ Write-Host "Checking for Dell BIOS updates..."
 $Status = Get-DellBIOSUpdates -Check -Verbose
 if ($Status -eq $false){
     Write-Host "Dell BIOS update available. Flashing now..."
-    Get-DellBIOSUpdates -Flash
+    Get-DellBIOSUpdates -Flash -Password 'P@ssw0rd'
     Write-Host "Dell BIOS update complete, will update upon reboot..."
     $tsenv:SMSTSRebootRequested = "true"
 }
 else {
     Write-Host "No Dell BIOS updates available."
-    
 }
