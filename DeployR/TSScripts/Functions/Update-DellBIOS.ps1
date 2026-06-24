@@ -1,5 +1,21 @@
 #This Script will Detect and Update BIOS on the Dell Device - FULL OS ONLY - NOT WINPE
 
+
+#Set Variables (Just BIOS Password)
+$BIOSPassword = 'P@ssw0rd'
+
+#If you want to pull the BIOS Password from a TS Variable, use this section below after you've created a TS Variable called SECRETBIOSPASSWORD and set it to the BIOS Password you want to use.  
+#This is not really any moresecure than hardcoding the password in this script.
+<#
+try {
+    Import-Module DeployR.Utility -ErrorAction SilentlyContinue
+    $Global:BIOSPassword = ${TSEnv:SECRETBIOSPASSWORD}
+}
+catch {
+}
+#>
+
+#Region Functions
 function Test-DellBIOSPassword {
     
     <#
@@ -462,11 +478,17 @@ function Get-DellSupportedModels {
     return $SupportedModelsObject
 }
 
+#endregion Functions
+
+#Main Script
+
 Write-Host "Checking for Dell BIOS updates..."
 $Status = Get-DellBIOSUpdates -Check -Verbose
+
+#If the status is false, then we have a new BIOS update available, so we will flash it now
 if ($Status -eq $false){
     Write-Host "Dell BIOS update available. Flashing now..."
-    Get-DellBIOSUpdates -Flash -Password 'P@ssw0rd'
+    Get-DellBIOSUpdates -Flash -Password $BIOSPassword
     Write-Host "Dell BIOS update complete, will update upon reboot..."
     $tsenv:SMSTSRebootRequested = "true"
 }
