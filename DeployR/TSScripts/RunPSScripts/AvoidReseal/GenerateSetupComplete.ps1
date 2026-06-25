@@ -17,3 +17,14 @@ if (-not (Test-Path -Path "S:\Windows\Setup\Scripts\SetupComplete.cmd")) {
     Write-Host "Copying template SetupComplete.cmd to S:\Windows\Setup\Scripts"
     $SetupCompleteScript | Out-File "S:\Windows\Setup\Scripts\SetupComplete.cmd" -Force -Encoding utf8
 }
+
+#Confirm that the SetupComplete.cmd file was created successfull and write out content to log
+if (Test-Path -Path "S:\Windows\Setup\Scripts\SetupComplete.cmd") {
+    Write-Host "SetupComplete.cmd file created successfully."
+    $SetupCompleteContent = Get-Content -Path "S:\Windows\Setup\Scripts\SetupComplete.cmd" 
+    Write-Host "SetupComplete.cmd content:"
+    Write-Host $SetupCompleteContent
+
+} else {
+    Write-Host "Failed to create SetupComplete.cmd file."
+}
