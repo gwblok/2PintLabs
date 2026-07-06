@@ -706,7 +706,8 @@ function Test-WindowsDesktopRuntime {
     function Add-VersionCandidate {
         param(
             [string]$VersionText,
-            [string]$Source
+            [string]$Source,
+            [bool]$IncludeInMatch = $true
         )
 
         if ([string]::IsNullOrWhiteSpace($VersionText)) {
@@ -719,7 +720,7 @@ function Test-WindowsDesktopRuntime {
         })
 
         $v = Convert-ToNormalizedRuntimeVersion -VersionText $VersionText
-        if ($null -ne $v -and $v.Major -eq $requiredMajor -and $v.Minor -eq $requiredMinor) {
+        if ($IncludeInMatch -and $null -ne $v -and $v.Major -eq $requiredMajor -and $v.Minor -eq $requiredMinor) {
             $null = $matchingVersionObjects.Add([PSCustomObject]@{
                 VersionText = $VersionText
                 Source = $Source
@@ -778,7 +779,8 @@ function Test-WindowsDesktopRuntime {
                 if (-not [string]::IsNullOrWhiteSpace($displayName) -and
                     $displayName -like 'Microsoft Windows Desktop Runtime*' -and
                     -not [string]::IsNullOrWhiteSpace($displayVersion)) {
-                    Add-VersionCandidate -VersionText $displayVersion -Source 'uninstall-registry'
+                    # Keep uninstall entries for diagnostics only; they can use non-runtime encoding.
+                    Add-VersionCandidate -VersionText $displayVersion -Source 'uninstall-registry' -IncludeInMatch $false
                 }
             }
     }
