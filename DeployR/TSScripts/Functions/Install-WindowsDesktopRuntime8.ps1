@@ -35,7 +35,7 @@ function Install-WindowsDesktopRuntime8 {
 
         for ($i = 0; $i -lt $maxAttempts; $i++) {
             $currentPatch = $patch + $i
-            $currentVersion = "$major.$minor.$currentPatch"
+            $currentVersion = '{0}.{1}.{2}' -f $major, $minor, $currentPatch
             $url = $baseUrl -f $currentVersion
 
             if (Test-UrlExists -Url $url) {
@@ -51,7 +51,7 @@ function Install-WindowsDesktopRuntime8 {
         return $latestVersion
     }
 
-    function Download-File {
+    function Invoke-FileDownload {
         param (
             [string]$Url,
             [string]$FilePath
@@ -88,7 +88,7 @@ function Install-WindowsDesktopRuntime8 {
 
     $desktopRuntimeFile = Join-Path -Path $DownloadDirectory -ChildPath "windowsdesktop-runtime-$latestVersion-win-x64.exe"
 
-    Download-File -Url $desktopRuntimeUrl -FilePath $desktopRuntimeFile
+    Invoke-FileDownload -Url $desktopRuntimeUrl -FilePath $desktopRuntimeFile
 
     Write-Host "Installing Windows Desktop Runtime $latestVersion..."
     if (Test-Path -Path $desktopRuntimeFile) {
