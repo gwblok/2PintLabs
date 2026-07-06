@@ -136,17 +136,20 @@ Function Get-InputFormData {
     
     #Logo File Name
     $LogoFileName = $JSONConfig.LogoFileName
-    $LogoPath = $null
+    if (-not (Get-Variable -Name LogoPath -ErrorAction SilentlyContinue)) {
+        $LogoPath = $null
+    }
     write-host "Logo file name from JSON config: $LogoFileName" -ForegroundColor Cyan
     try {
-        if ((-not $LogoPath) -and (Test-Path $scriptDir)) {
+        if ([string]::IsNullOrWhiteSpace($LogoPath) -and (Test-Path $scriptDir)) {
             $possibleLogo = Join-Path -Path $scriptDir -ChildPath $LogoFileName
             if (Test-Path -Path $possibleLogo) { 
                 $LogoPath = $possibleLogo 
                 Write-Host "Using logo image at $LogoPath" -ForegroundColor Green
             }
         }
-        else {
+
+        if ([string]::IsNullOrWhiteSpace($LogoPath)) {
             #Download Default Logo from GitHub and save to temp path
             $2PintLogoDefaultURL = 'https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/FrontEnd/FrontEndJSONDriven/Logo.png'
             $tempLogoPath = Join-Path -Path $env:TEMP -ChildPath $LogoFileName

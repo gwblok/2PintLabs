@@ -39,6 +39,8 @@ else {
 
 $LogPath = "$env:SystemDrive\_2P\Logs"
 
+#As of DCU 5.7, it needed 8.0, not 10 (which is in DeployR 1.3+)
+$WindowsDesktopRuntimeVerRequired = "8.0"
 
 [String]$MakeAlias = ${TSEnv:MakeAlias}
 if ($MakeAlias -ne "Dell") {
@@ -654,61 +656,160 @@ function Get-DellDeviceDetails {
 
 # Function to check for Windows Desktop Runtime
 function Test-WindowsDesktopRuntime {
-    # Registry paths where .NET Runtime info is typically stored
-    $registryPaths = @(
-    "HKLM:\SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App",
-    "HKLM:\SOFTWARE\dotnet\Setup\InstalledVersions\x86\sharedfx\Microsoft.WindowsDesktop.App"
+    param(
+        [string]$RequiredBaseVersion
     )
-    
-    $runtimesFound = $false
-    $installedVersions = @()
-    
+
+    $requiredBaseVersion = $RequiredBaseVersion
+    [version]$requiredVersion = $null
+    $requiredVersionParsed = [version]::TryParse($requiredBaseVersion, [ref]$requiredVersion)
+
+    if (-not $requiredVersionParsed) {
+        Write-Host "Required Windows Desktop Runtime base version '$requiredBaseVersion' is not a valid version format." -ForegroundColor Red
+        return $false
+    }
+
+    $requiredMajor = $requiredVersion.Major
+    $requiredMinor = $requiredVersion.Minor
+
+    function Convert-ToNormalizedRuntimeVersion {
+        param(
+            [string]$VersionText
+        )
+
+        if ([string]::IsNullOrWhiteSpace($VersionText)) {
+            return $null
+        }
+
+        # WMI/uninstall entries sometimes encode major/minor as 80.x => 8.0.x, 100.x => 10.0.x
+        $m = [regex]::Match($VersionText, '^(\d{2,3})\.(\d+)\.(\d+)$')
+        if ($m.Success) {
+            $enc = [int]$m.Groups[1].Value
+            if ($enc -ge 20) {
+                $major = [math]::Floor($enc / 10)
+                $minor = $enc % 10
+                $normalized = "$major.$minor.$($m.Groups[2].Value).$($m.Groups[3].Value)"
+                [version]$vNorm = $null
+                if ([version]::TryParse($normalized, [ref]$vNorm)) {
+                    return $vNorm
+                }
+            }
+        }
+
+        [version]$candidateVersion = $null
+        if ([version]::TryParse($VersionText, [ref]$candidateVersion)) {
+            return $candidateVersion
+        }
+        return $null
+    }
+
+    function Add-VersionCandidate {
+        param(
+            [string]$VersionText,
+            [string]$Source
+        )
+
+        if ([string]::IsNullOrWhiteSpace($VersionText)) {
+            return
+        }
+
+        $null = $installedVersionObjects.Add([PSCustomObject]@{
+            VersionText = $VersionText
+            Source = $Source
+        })
+
+        $v = Convert-ToNormalizedRuntimeVersion -VersionText $VersionText
+        if ($null -ne $v -and $v.Major -eq $requiredMajor -and $v.Minor -eq $requiredMinor) {
+            $null = $matchingVersionObjects.Add([PSCustomObject]@{
+                VersionText = $VersionText
+                Source = $Source
+            })
+        }
+    }
+
+    $installedVersionObjects = New-Object System.Collections.ArrayList
+    $matchingVersionObjects = New-Object System.Collections.ArrayList
+
+    # Primary: dotnet CLI runtime list (most reliable across modern .NET installs)
+    try {
+        $dotnetLines = & dotnet --list-runtimes 2>$null
+        foreach ($line in $dotnetLines) {
+            if ($line -match '^Microsoft\.WindowsDesktop\.App\s+([0-9]+\.[0-9]+(?:\.[0-9]+(?:\.[0-9]+)?)?)\s+') {
+                Add-VersionCandidate -VersionText $matches[1] -Source 'dotnet-cli'
+            }
+        }
+    } catch {}
+
+    # Fallback: shared runtime folder versions
+    $desktopSharedPath = Join-Path -Path $env:ProgramFiles -ChildPath 'dotnet\shared\Microsoft.WindowsDesktop.App'
+    if (Test-Path $desktopSharedPath) {
+        Get-ChildItem -Path $desktopSharedPath -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+            Add-VersionCandidate -VersionText $_.Name -Source 'shared-folder'
+        }
+    }
+
+    # Fallback: registry paths where .NET Runtime info may be stored
+    $registryPaths = @(
+        'HKLM:\SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App',
+        'HKLM:\SOFTWARE\dotnet\Setup\InstalledVersions\x86\sharedfx\Microsoft.WindowsDesktop.App'
+    )
     foreach ($path in $registryPaths) {
         if (Test-Path $path) {
-            # Get all version subkeys
-            $versions = Get-ChildItem -Path $path -ErrorAction SilentlyContinue | 
-            ForEach-Object { $_.PSChildName }
-            
-            foreach ($version in $versions) {
-                $runtimesFound = $true
-                $installedVersions += $version
+            Get-ChildItem -Path $path -ErrorAction SilentlyContinue | ForEach-Object {
+                Add-VersionCandidate -VersionText $_.PSChildName -Source 'registry'
             }
         }
     }
-    
-    # Check via Get-WmiObject as alternative method
-    $wmiApps = Get-WmiObject -Class Win32_Product | 
-    Where-Object { $_.Name -like "*Microsoft Windows Desktop Runtime*" }
-    
-    if ($wmiApps) {
-        $runtimesFound = $true
-        $wmiVersions = $wmiApps | ForEach-Object { 
-            [PSCustomObject]@{
-                Version = $_.Version
-                Name = $_.Name
+
+    # Last resort: installed products list (avoid Win32_Product side effects)
+    $uninstallPaths = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    )
+    foreach ($upath in $uninstallPaths) {
+        Get-ItemProperty -Path $upath -ErrorAction SilentlyContinue |
+            ForEach-Object {
+                $displayNameProp = $_.PSObject.Properties['DisplayName']
+                $displayVersionProp = $_.PSObject.Properties['DisplayVersion']
+
+                $displayName = if ($null -ne $displayNameProp) { [string]$displayNameProp.Value } else { $null }
+                $displayVersion = if ($null -ne $displayVersionProp) { [string]$displayVersionProp.Value } else { $null }
+
+                if (-not [string]::IsNullOrWhiteSpace($displayName) -and
+                    $displayName -like 'Microsoft Windows Desktop Runtime*' -and
+                    -not [string]::IsNullOrWhiteSpace($displayVersion)) {
+                    Add-VersionCandidate -VersionText $displayVersion -Source 'uninstall-registry'
+                }
             }
-        }
-        $installedVersions += $wmiVersions
     }
+
+    $runtimesFound = ($installedVersionObjects.Count -gt 0)
     
     # Output results
     if ($runtimesFound) {
         Write-Host "Microsoft Windows Desktop Runtime is installed." -ForegroundColor Green
+        Write-Host "Required base version: $requiredBaseVersion"
         Write-Host "Found versions:"
-        $installedVersions | Sort-Object -Unique | ForEach-Object {
-            if ($_ -is [PSCustomObject]) {
-                Write-Host "- $($_).Name ($($_).Version)"
-            }
-            else {
-                Write-Host "- Version $_"
-            }
+        $installedVersionObjects |
+            Sort-Object -Property VersionText, Source -Unique |
+            ForEach-Object {
+                Write-Host "- Version $($_.VersionText) [$($_.Source)]"
+        }
+
+        if ($matchingVersionObjects.Count -gt 0) {
+            Write-Host "Required base version $requiredBaseVersion found." -ForegroundColor Green
+        }
+        else {
+            Write-Host "Required base version $requiredBaseVersion was not found in installed runtimes." -ForegroundColor Red
         }
     }
     else {
         Write-Host "Microsoft Windows Desktop Runtime is not installed." -ForegroundColor Red
+        Write-Host "Required base version: $requiredBaseVersion" -ForegroundColor Yellow
+        Write-Host "Please install Microsoft Windows Desktop Runtime $requiredBaseVersion.x and rerun this step." -ForegroundColor Yellow
     }
     
-    return $runtimesFound
+    return ($matchingVersionObjects.Count -gt 0)
 }
 #endregion functions
 
@@ -762,7 +863,7 @@ if ((Get-DCUVersion) -match "False"){
     
     #Write-Host "=============================================================================="
     Write-Host "Check for Desktop Runtime Dependencies"
-    $RunTimeInstalled = Test-WindowsDesktopRuntime
+    $RunTimeInstalled = Test-WindowsDesktopRuntime -RequiredBaseVersion $WindowsDesktopRuntimeVerRequired
     
     if (!$RunTimeInstalled) {
         Write-Host "Microsoft Windows Desktop Runtime is not installed, please install it before running Dell Command Update" -ForegroundColor Red
