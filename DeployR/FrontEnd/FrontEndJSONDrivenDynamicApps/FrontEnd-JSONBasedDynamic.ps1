@@ -1,4 +1,12 @@
+<#  2Pintlabs FrontEnd-JSONBasedDynamic.ps1
+    This is community, no official support
 
+    Change Log: 
+    26.7.6 - Added Checkbox for P2P Enablement to allow user to choose if they want to enable P2P for the rest of the task sequence
+        - It will default what the peering variable is already set to, but user can uncheck if they do not want to enable P2P
+
+
+#>
 $ScriptVersion = '26.6.23.20.26'
 
 
@@ -128,6 +136,7 @@ Function Get-InputFormData {
     
     #Logo File Name
     $LogoFileName = $JSONConfig.LogoFileName
+    $LogoPath = $null
     write-host "Logo file name from JSON config: $LogoFileName" -ForegroundColor Cyan
     try {
         if ((-not $LogoPath) -and (Test-Path $scriptDir)) {
@@ -557,6 +566,14 @@ Function Get-InputFormData {
             </StackPanel>
         </GroupBox>
         
+        <!-- Enable P2P Checkbox -->
+        <CheckBox Name="chkEnableP2P"
+                  Grid.Row="3"
+                  Content="Enable P2P for rest of the task sequence"
+                  FontSize="12"
+                  IsChecked="True"
+                  Margin="0,10,0,0"/>
+
         <!-- Workplace Join has been moved to its own tab (see below) -->
         
                 <!-- User Role dropdown moved to the 'Roles' tab to avoid duplicate UI in General -->
@@ -774,6 +791,7 @@ Function Get-InputFormData {
     $cmbHardwareId = $Window.FindName("cmbHardwareId")
     $txtDomainSuffix = $Window.FindName("txtDomainSuffix")
     $txtPreview = $Window.FindName("txtPreview")
+    $chkEnableP2P = $Window.FindName("chkEnableP2P")
     $rbWorkgroup = $Window.FindName("rbWorkgroup")
     $rbEntraID = $Window.FindName("rbEntraID")
     $rbAutopilot = $Window.FindName("rbAutopilot")
@@ -820,6 +838,14 @@ Function Get-InputFormData {
     
     # Initialize option OU script variable
     $script:OptionOU = $null
+
+    # Initialize Enable P2P checkbox from existing TSEnv:Peering (default True if not set)
+    $existingPeering = ${TSEnv:Peering}
+    if (-not [string]::IsNullOrWhiteSpace($existingPeering) -and $existingPeering -ieq 'False') {
+        $chkEnableP2P.IsChecked = $false
+    } else {
+        $chkEnableP2P.IsChecked = $true
+    }
     
     # Helper to toggle Autopilot controls visibility/enabled state
     function Set-AutopilotControlsState {
@@ -1413,6 +1439,9 @@ Function Get-InputFormData {
             default { $script:AutopilotGroupTag = $selectedAutopilot }
         }
         
+        # Capture Enable P2P checkbox
+        $script:EnableP2P = [bool]$chkEnableP2P.IsChecked
+
         # Store domain suffix (ignore if it's the default placeholder value)
         $script:DomainSuffix = $txtDomainSuffix.Text.Trim()
         if ([string]::IsNullOrWhiteSpace($script:DomainSuffix) -or $script:DomainSuffix -eq "contoso.local") {
@@ -1532,6 +1561,7 @@ Function Get-InputFormData {
             SelectedSoftware = $script:SelectedSoftware
             SelectedSoftwareMap = $script:SelectedSoftwareMap
             SelectedSoftwareCsv = $script:SelectedSoftwareCsv
+            EnableP2P = $script:EnableP2P
             FormSubmitted = $true
         }
         
@@ -1558,6 +1588,23 @@ Function Get-InputFormData {
         
         Write-Host "Workplace Join: $($FormResults.WorkplaceJoin)" -ForegroundColor Green
         Write-Host "Selected User Role: $($FormResults.SelectedUserRole)" -ForegroundColor Green
+        Write-Host "Enable P2P: $($FormResults.EnableP2P)" -ForegroundColor Green
+        Write-Host "Peering: $(if ($FormResults.EnableP2P) { 'True' } else { 'False' })" -ForegroundColor Green
+        if ($FormResults.FinishAction) {
+            Write-Host "Finish Action: $($FormResults.FinishAction)" -ForegroundColor Green
+        }
+        if ($FormResults.DomainJoinOU) {
+            Write-Host "Domain Join OU: $($FormResults.DomainJoinOU)" -ForegroundColor Green
+        }
+        if ($FormResults.EntraIDUserUPN) {
+            Write-Host "Entra ID User UPN: $($FormResults.EntraIDUserUPN)" -ForegroundColor Green
+        }
+        if ($FormResults.AutopilotGroupTag) {
+            Write-Host "Autopilot Group Tag: $($FormResults.AutopilotGroupTag)" -ForegroundColor Green
+        }
+        if ($FormResults.AssetTag -and $FormResults.AssetTag -ne 'NA') {
+            Write-Host "Asset Tag: $($FormResults.AssetTag)" -ForegroundColor Green
+        }
         
         # Example: Use the returned object in your script
         # if (![string]::IsNullOrWhiteSpace($FormResults.GeneratedComputerName)) {
@@ -1748,6 +1795,7 @@ function Get-DeployRFrontEndApps {
 try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
     $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
+    $Global:Peering = ${TSEnv:Peering}
 }
 catch {
 }
@@ -1844,6 +1892,9 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     if ($FormResults.FinishAction){
         ${TSEnv:FINISHACTION} = $FormResults.FinishAction
     }
+    # Set Peering TS variable based on Enable P2P checkbox
+    ${TSEnv:Peering} = if ($FormResults.EnableP2P) { 'True' } else { 'False' }
+    try { Write-CMTraceLog -Message "Peering = $(${TSEnv:Peering})" -Type "Info" -Component "Main" } catch {}
     if ($FormResults.SelectedSoftwareCsv){
         ${TSEnv:SelectedSoftwareCsv} = $FormResults.SelectedSoftwareCsv
     }
@@ -1933,6 +1984,7 @@ else{
     if ($FormResults.FinishAction) {
         $env:FinishAction = $FormResults.FinishAction
     }
+    $env:Peering = if ($FormResults.EnableP2P) { 'True' } else { 'False' }
     if ($FormResults.DomainJoinOU) {
         $env:DomainJoinOU = $FormResults.DomainJoinOU
     }
@@ -1958,10 +2010,13 @@ else{
         }
     } catch {}
     write-Host "Set Environment Variables for Testing outside DeployR:" -ForegroundColor Cyan
+    write-Host "NamingStrategy = $($env:NamingStrategy)" -ForegroundColor Green
     write-Host "ComputerName = $($env:ComputerName)" -ForegroundColor Green
     write-Host "DomainSuffix = $($env:DomainSuffix)" -ForegroundColor Green
     if ($env:HardwareIdType) { write-Host "HardwareIdType = $($env:HardwareIdType)" -ForegroundColor Green }
     write-Host "WorkplaceJoin = $($env:WorkplaceJoin)" -ForegroundColor Green
+    write-Host "Peering = $($env:Peering)" -ForegroundColor Green
+    if ($env:FinishAction) { write-Host "FinishAction = $($env:FinishAction)" -ForegroundColor Green }
     if ($env:DomainJoinOU) { write-Host "DomainJoinOU = $($env:DomainJoinOU)" -ForegroundColor Green }
     if ($env:AssetTag -and $env:AssetTag -ne 'NA') { write-Host "AssetTag = $($env:AssetTag)" -ForegroundColor Green }
     if ($env:EntraIDUserUPN) { write-Host "EntraIDUserUPN = $($env:EntraIDUserUPN)" -ForegroundColor Green }
