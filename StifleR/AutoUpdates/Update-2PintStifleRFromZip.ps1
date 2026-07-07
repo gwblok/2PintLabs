@@ -58,6 +58,10 @@ if ($StifleRZipFiles.Count -gt 1) {
     $latestZip = $StifleRZipFiles | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     Write-Host "Latest StifleR zip file found: $($latestZip.Name)"
 }
+else {
+    $latestZip = $StifleRZipFiles
+    Write-Host "Single StifleR zip file found: $($latestZip.Name)"
+}
 $latestZip | ForEach-Object {
     $zipFile = $_.FullName
     $fileName = $_.Name
