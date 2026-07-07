@@ -1,3 +1,29 @@
+<#
+.SYNOPSIS
+Looks up a BitLocker recovery password in Active Directory by PasswordId (GUID).
+Run this script as an administrator to use the -RunAsSystem switch, which starts a LocalSystem child process with PsExec to validate access using the server computer account context.
+The script will activate the functions in it, then allow you to run them, look at the examples below for usage.
+
+This was to help determine if the DeployR server computer account has access to the BitLocker recovery password in Active Directory.
+
+.NOTES
+- Save this script to a local path before running it.
+- Dot-source the saved script file to load the function.
+- Run PowerShell as Administrator when using -RunAsSystem.
+- -RunAsSystem starts a LocalSystem child process with PsExec to validate
+
+
+.EXAMPLE
+. This will test the function in the current user session: (as the logged-in user)
+. "D:\GitHub\2PintLabs\DeployR\ServerSideScripts\Get-BitlockerRecovery.ps1"
+Get-BitLockerRecoveryPasswordById -PasswordId "966E6BB0-E30B-482C-AC30-B825BEF33968"
+
+.EXAMPLE
+. using the -RunAsSystem switch will test the function in a LocalSystem child process: (as the DeployR server computer account)
+. "D:\GitHub\2PintLabs\DeployR\ServerSideScripts\Get-BitlockerRecovery.ps1"
+Get-BitLockerRecoveryPasswordById -PasswordId "966E6BB0-E30B-482C-AC30-B825BEF33968" -RunAsSystem
+#>
+
 # Ensure the ActiveDirectory module is loaded
 Import-Module ActiveDirectory -ErrorAction Stop
 
@@ -148,32 +174,3 @@ function Get-BitLockerRecoveryPasswordById {
 
     return $match.'msFVE-RecoveryPassword'
 }
-
-<#
-try {
-    # Define the OU or search base (change as needed)
-    $SearchBase = "DC=2P,DC=garytown,DC=com"
-
-    # Retrieve BitLocker recovery keys from AD
-    $BitLockerKeys = Get-ADObject -SearchBase $SearchBase `
-        -Filter 'objectClass -eq "msFVE-RecoveryInformation"' `
-        -Properties 'msFVE-RecoveryPassword', 'msFVE-KeyPackage', 'whenCreated' |
-        Select-Object `
-            @{Name='ComputerName';Expression={($_.DistinguishedName -split ',')[1] -replace '^CN=',''}},
-            @{Name='RecoveryPassword';Expression={$_.'msFVE-RecoveryPassword'}},
-            @{Name='KeyPackage';Expression={$_.'msFVE-KeyPackage'}},
-            @{Name='Created';Expression={$_.whenCreated}}
-
-    # Output to console
-    $BitLockerKeys | Format-Table -AutoSize
-
-    # Export to CSV
-    $ExportPath = "C:\Temp\BitLockerKeys.csv"
-    $BitLockerKeys | Export-Csv -Path $ExportPath -NoTypeInformation -Encoding UTF8
-
-    Write-Host "BitLocker recovery keys exported to $ExportPath" -ForegroundColor Green
-}
-catch {
-    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
-}
-#>
