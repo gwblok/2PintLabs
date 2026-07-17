@@ -1,4 +1,7 @@
-#Set Dell BIOS Settings
+#Gary Blok - 26.7.17
+#Set Dell BIOS Settings for use in DeployR Task Sequence
+#Uses a BIOS Password from the DeployR Secret Vault [Secure] or Task Sequence Environment Variable [Not very Secure]
+
 
 
 
@@ -7,23 +10,46 @@
 ####                                    Configuration Section                                        ####
 #########################################################################################################
 
+#Import Module
+Import-Module DeployR.Utility
+
+#Get Log Path from DeployR Task Sequence Environment Variable
+$LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
+$LogPath = "$($LogFolderPath)\BIOSSettings_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+
 #BIOS Password (if you have one configured)
+$password = $null
+$PasswordSource = "None"
+
 try {
-    $password = Get-Secret -Vault DeployR -Name "DellBIOSPassword" -ErrorAction Stop
-} catch {
-    Write-Warning "DellBIOSPassword secret not found. Using fallback value from task sequence environment variable."
-    if (-not $tsenv:DellBIOSPassword) {
-        Write-Warning "DellBIOSPassword environment variable is not set. Please provide a BIOS password."
-        $password = $null
+    $SecretPassword = Get-Secret -Vault DeployR -Name "DellBIOSPassword" | ConvertFrom-SecureString -AsPlainText -ErrorAction Stop
+    if (-not [string]::IsNullOrEmpty($SecretPassword)) {
+        $password = $SecretPassword
+        $PasswordSource = "Secret Vault (DeployR/DellBIOSPassword)"
     }
-    $password = $tsenv:DellBIOSPassword | ConvertTo-SecureString -AsPlainText -Force
+    else {
+        Write-Warning "DellBIOSPassword secret exists but is empty. Checking task sequence environment variable fallback."
+    }
+}
+catch {
+    Write-Warning "DellBIOSPassword secret not found. Checking task sequence environment variable fallback."
 }
 
-if ($password) {
-    write-host "BIOS password retrieved from secret vault or environment variable."
+if ([string]::IsNullOrEmpty($password)) {
+    if (-not [string]::IsNullOrEmpty($tsenv:DellBIOSPassword)) {
+        $password = $tsenv:DellBIOSPassword
+        $PasswordSource = "Task Sequence variable (DellBIOSPassword)"
+    }
+    else {
+        Write-Warning "DellBIOSPassword task sequence environment variable is not set."
+    }
+}
+
+if (-not [string]::IsNullOrEmpty($password)) {
+    Write-Host "BIOS password retrieved from: $PasswordSource"
     $BIOSPassword = "$password"  #Set your BIOS Admin Password here, if applicable. Leave empty if no password is set.
 } else {
-    write-host "BIOS password not found. Using empty password."
+    Write-Host "BIOS password not found in Secret Vault or task sequence variable. Using empty password."
     $BIOSPassword = ""
 }
 
@@ -628,7 +654,7 @@ function Set-DellBIOSSetting
                             default { $result ='Unknown' }
                         }
                         Write-Information "Message : BIOS setting $result" -InformationAction Continue
-                        return $false, $SetResult.Status
+                        return $false
                     }
                 }
                 catch
@@ -654,7 +680,7 @@ function Set-DellBIOSSetting
                             default { $result ='Unknown' }
                         }
                         Write-Information "Message : BIOS Password setting $result" -InformationAction Continue
-                        return $false, $SetResult.Status
+                        return $false
                         Return $false
                     }
                 }
@@ -716,7 +742,7 @@ function Set-DellBIOSSetting
                             default { $result ='Unknown' }
                         }
                         Write-Information "Message : BIOS Password setting $result" -InformationAction Continue
-                        return $false, $SetResult.Status
+                        return $false
                     }
                 }
                 catch
@@ -742,7 +768,7 @@ function Set-DellBIOSSetting
                             default { $result ='Unknown' }
                         }
                         Write-Information "Message : BIOS Password setting $result" -InformationAction Continue
-                        return $false, $SetResult.Status
+                        return $false
                         Return $false
                     }
                 }
@@ -797,7 +823,7 @@ function Set-DellBIOSSetting
                             default { $result ='Unknown' }
                         }
                         Write-Information "Message : BIOS setting $result" -InformationAction Continue
-                        return $false, $SetResult.Status
+                        return $false
                     }
                 }
                 catch
@@ -805,7 +831,7 @@ function Set-DellBIOSSetting
                     $errMsg = $_.Exception.Message
                     Write-Information $errMsg -InformationAction Continue
                     Write-Information "Message : BIOS setting failed" -InformationAction Continue
-                    return $false, $SetResult.Status
+                    return $false
                     Return $false
                 }
                 
@@ -853,7 +879,7 @@ function Set-DellBIOSSetting
                             default { $result ='Unknown' }
                         }
                         Write-Information "Message : BIOS setting $result" -InformationAction Continue
-                        return $false, $SetResult.Status
+                        return $false
                     }
                 }
                 catch
@@ -861,7 +887,7 @@ function Set-DellBIOSSetting
                     $errMsg = $_.Exception.Message
                     Write-Information $errMsg -InformationAction Continue
                     Write-Information "Message : BIOS setting failed" -InformationAction Continue
-                    return $false, $SetResult.Status
+                    return $false
                     Return $false
                 }
             }
@@ -890,7 +916,7 @@ function Set-DellBIOSSetting
                 default { $result ='Unknown' }
             }
             Write-Information "Message : BIOS Password setting $result" -InformationAction Continue
-            return $false, $SetResult.Status
+            return $false
         }
         Write-Information "Status : False" -InformationAction Continue
         Return $false
@@ -1209,16 +1235,19 @@ if (-not (Test-DellBIOSWMISupport)) {
 }
 Write-Host "SUCCESS: Dell BIOS WMI is supported on this device`n" -ForegroundColor Green
 
-# Test if BIOS Password is correctly set (if provided)
-if (-not [string]::IsNullOrEmpty($BIOSPassword)) {
-    Write-Host "Checking provided BIOS password..." -ForegroundColor Yellow
-    $TestPassword = Set-DellBIOSAdminPassword -CurrentPassword $BIOSPassword -NewPassword $BIOSPassword
-    if ($TestPassword) {
-        Write-Host "SUCCESS: Provided BIOS password is valid`n" -ForegroundColor Green
-    } else {
-        Write-Host "ERROR: Provided BIOS password is invalid`n" -ForegroundColor Red
+# Determine whether the device currently has an Admin BIOS password.
+# Avoid mutating preflight checks; password validity is evaluated during setting operations.
+$DeviceHasAdminPassword = Test-DellBIOSPassword -PasswordType "Admin"
+if ($DeviceHasAdminPassword) {
+    Write-Host "Device has an Admin BIOS password configured." -ForegroundColor Yellow
+    if ([string]::IsNullOrEmpty($BIOSPassword)) {
+        Write-Host "ERROR: BIOS password is required but not provided.`n" -ForegroundColor Red
         exit 1
     }
+}
+elseif (-not [string]::IsNullOrEmpty($BIOSPassword)) {
+    Write-Host "WARNING: BIOS password was provided but no Admin BIOS password is set on this device." -ForegroundColor Yellow
+    Write-Host "The provided password will be ignored.`n" -ForegroundColor Yellow
 }
 
 # Initialize results tracking
@@ -1277,7 +1306,8 @@ foreach ($Setting in $BIOSSettings) {
         continue
     }
     
-    # Validate desired value for enumeration types
+    # Validate desired value for enumeration types.
+    # String settings currently rely on BIOS-side validation and return failure if invalid.
     if ($CurrentSetting.AttributeType -eq "Enumeration") {
         if ($CurrentSetting.PossibleValues -notcontains $Setting.BIOSSettingValue) {
             Write-Host "  [FAILED] Invalid value. Possible values: $($CurrentSetting.PossibleValues -join ', ')" -ForegroundColor Red
@@ -1298,8 +1328,8 @@ foreach ($Setting in $BIOSSettings) {
     Write-Host "  Setting to: $($Setting.BIOSSettingValue)" -ForegroundColor White
     
     try {
-        # Check if BIOS password is actually set on the device
-        $DeviceHasPassword = Test-DellBIOSPassword -PasswordType "Admin"
+        # Reuse preflight password-state detection to avoid repeated WMI checks per setting.
+        $DeviceHasPassword = $DeviceHasAdminPassword
         
         if ($DeviceHasPassword) {
             Write-Host "  BIOS password is set on device" -ForegroundColor Gray
@@ -1385,12 +1415,8 @@ Write-Host "Failed:                   $FailureCount" -ForegroundColor $(if ($Fai
 Write-Host "Skipped:                  $SkippedCount" -ForegroundColor $(if ($SkippedCount -gt 0) { "Magenta" } else { "White" })
 Write-Host "========================================`n" -ForegroundColor Cyan
 
-# Display detailed results table
-Write-Host "Detailed Results:" -ForegroundColor Cyan
-$Results | Format-Table SettingName, CurrentValue, DesiredValue, Status -AutoSize
-
 # Export results to log file (optional)
-$LogPath = "$env:TEMP\DellBIOSConfig_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+
 $Results | Export-Csv -Path $LogPath -NoTypeInformation
 Write-Host "Detailed log saved to: $LogPath`n" -ForegroundColor Gray
 
