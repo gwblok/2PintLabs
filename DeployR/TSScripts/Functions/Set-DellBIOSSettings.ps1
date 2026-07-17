@@ -1,4 +1,5 @@
 #Gary Blok - 26.7.17 - Use at your own risk.  I am not responsible for any issues that may arise from using this script.  It is provided as is, with no warranty or support.
+# https://documentation.2pintsoftware.com/deployr/scripting/scripting-for-osd/set-secret-or-get-secret
 
 <#
 BEFORE YOU USE THIS SCRIPT IN DEPLOYR
@@ -37,7 +38,7 @@ Import-Module DeployR.Utility
 
 #Get Log Path from DeployR Task Sequence Environment Variable
 $LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
-$LogPath = "$($LogFolderPath)\BIOSSettings_$(Get-Date -Format 'yyyyMMdd_HHmmss').log"
+$LogPath = "$($LogFolderPath)\BIOSSettings_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
 
 #BIOS Password (if you have one configured)
 $password = $null
