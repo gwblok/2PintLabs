@@ -2,6 +2,30 @@
 #Set Dell BIOS Settings for use in DeployR Task Sequence
 #Uses a BIOS Password from the DeployR Secret Vault [Secure] or Task Sequence Environment Variable [Not very Secure]
 
+<#
+BEFORE YOU USE THIS SCRIPT IN DEPLOYR
+
+Prerequisites:
+- Run on supported Dell hardware with Dell BIOS WMI namespaces available (generally newer models).
+- Ensure DeployR task sequence environment is available and _DEPLOYRLOGS is set. [AKA, Running in a DeployR Task Sequence]
+- Ensure SecretManagement is configured if using the DeployR vault secret. [DeployR 1.2 & later]
+
+Password source priority:
+1) Secret Vault: DeployR/DellBIOSPassword
+2) Task Sequence variable: DellBIOSPassword
+3) Empty password (only valid when no BIOS Admin password is set on device)
+
+What this script does:
+- Compares each desired setting in $BIOSSettings to current BIOS state.
+- Skips settings that are missing, read-only, or already compliant.
+- Applies only required changes and writes a CSV log to _DEPLOYRLOGS.
+
+Important behavior:
+- If BIOS Admin password is set on device, a password must be provided by one of the sources above.
+- If a password is provided but the device has no BIOS Admin password, it is ignored.
+- Some BIOS changes require a reboot before they take effect.
+#>
+
 
 
 
