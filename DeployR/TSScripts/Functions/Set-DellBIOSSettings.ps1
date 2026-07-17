@@ -1,6 +1,4 @@
-#Gary Blok - 26.7.17
-#Set Dell BIOS Settings for use in DeployR Task Sequence
-#Uses a BIOS Password from the DeployR Secret Vault [Secure] or Task Sequence Environment Variable [Not very Secure]
+#Gary Blok - 26.7.17 - Use at your own risk.  I am not responsible for any issues that may arise from using this script.  It is provided as is, with no warranty or support.
 
 <#
 BEFORE YOU USE THIS SCRIPT IN DEPLOYR
