@@ -75,11 +75,17 @@ function Enable-RequiredWindowsOptionalFeatures {
 Write-Host -ForegroundColor Green "[+] Install-PowerShell74X"
 iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-PowerShell74X.ps1)
 
+Write-Host -ForegroundColor Green "[+] Install-PowerShell76X"
+iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-PowerShell76X.ps1)
+
 Write-Host -ForegroundColor Green "[+] Install-DotNetRuntimes80X"
 function Install-DotNetRuntimes80X {
     iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-DotNetRuntimes80X.ps1)
 }
-
+Write-Host -ForegroundColor Green "[+] Install-DotNetRuntimes100X"
+function Install-DotNetRuntimes100X {
+    iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-DotNetRuntimes100X.ps1)
+}
 
 Write-Host -ForegroundColor Green "[+] Install-WindowsADK"
 function Install-WindowsADK {
@@ -93,6 +99,7 @@ Write-Host -ForegroundColor Green "[+] Install-VCRedist-x64"
 function Install-VCRedist-x64 {
     iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-VCRedist-x64.ps1)
 }
+<# Depricated
 write-Host -ForegroundColor Green "[+] Install-SQLExpress2022"
 function Install-SQLExpress2022 {
     iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-SQLExpress2022.ps1)
@@ -101,13 +108,23 @@ write-Host -ForegroundColor Green "[+] Install-SQL2022CU"
 function Install-SQL2022CU {
     iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-SQL2022CU.ps1)
 }
+#>
+function Install-SQLExpress2025 {
+    iex (irm https://raw.githubusercontent.com/2pintsoftware/2Pint-DeployR/refs/heads/main/Installs/Pre-Reqs/Install-SQLExpress2025.ps1)
+}
+write-Host -ForegroundColor Green "[+] Install-SQL2022CU"
+function Install-SQL2025CU {
+    iex iex (irm https://raw.githubusercontent.com/2pintsoftware/2Pint-DeployR/refs/heads/main/Installs/Pre-Reqs/Install-SQL2025CU.ps1)
+}
+
+
 write-Host -ForegroundColor Green "[+] Configure-SQLExpress"
 function Configure-SQLExpress { 
-    iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Configure-SQLExpress.ps1)
+    iex (irm https://raw.githubusercontent.com/2pintsoftware/2Pint-DeployR/refs/heads/main/Installs/Pre-Reqs/Configure-SQLExpress.ps1)
 }
 write-Host -ForegroundColor Green "[+] Install-SSMS21"
-function Install-SSMS21 {
-    iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-SSMS21.ps1)
+function Install-SSMS22 {
+    iex (irm https://raw.githubusercontent.com/2pintsoftware/2Pint-DeployR/refs/heads/main/Installs/Pre-Reqs/Install-SMSS22.ps1)
 }
 
 Write-Host ""
