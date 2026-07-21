@@ -23,6 +23,11 @@ Important behavior:
 - If BIOS Admin password is set on device, a password must be provided by one of the sources above.
 - If a password is provided but the device has no BIOS Admin password, it is ignored.
 - Some BIOS changes require a reboot before they take effect.
+
+
+Changelog:
+ - 26.7.21 - Updated to add $ExitWithError variable to allow for task sequence failure on pre-reqs not met. $false will continue, $true will exit with error code 1 [Causing the TS to Fail].
+
 #>
 
 
@@ -43,6 +48,9 @@ $LogPath = "$($LogFolderPath)\BIOSSettings_$(Get-Date -Format 'yyyyMMdd_HHmmss')
 #BIOS Password (if you have one configured)
 $password = $null
 $PasswordSource = "None"
+
+#When PreReqs are not met, set this to $true to exit with error code 1, causing the task sequence to fail.  If you want to continue, because you really don't care, set to $false.
+$ExitWithError = $false
 
 try {
     $SecretPassword = Get-Secret -Vault DeployR -Name "DellBIOSPassword" | ConvertFrom-SecureString -AsPlainText -ErrorAction Stop
@@ -1254,7 +1262,11 @@ Write-Host "Checking Dell BIOS WMI support..." -ForegroundColor Yellow
 if (-not (Test-DellBIOSWMISupport)) {
     Write-Host "ERROR: This device does not support Dell BIOS WMI management." -ForegroundColor Red
     Write-Host "This feature is typically available on Dell devices manufactured after 2018.`n" -ForegroundColor Red
-    exit 1
+    if ($ExitWithError) {
+        exit 1
+    }
+
+    exit 0
 }
 Write-Host "SUCCESS: Dell BIOS WMI is supported on this device`n" -ForegroundColor Green
 
@@ -1265,7 +1277,11 @@ if ($DeviceHasAdminPassword) {
     Write-Host "Device has an Admin BIOS password configured." -ForegroundColor Yellow
     if ([string]::IsNullOrEmpty($BIOSPassword)) {
         Write-Host "ERROR: BIOS password is required but not provided.`n" -ForegroundColor Red
-        exit 1
+        if ($ExitWithError) {
+            exit 1
+        }
+
+        exit 0
     }
 }
 elseif (-not [string]::IsNullOrEmpty($BIOSPassword)) {
@@ -1446,7 +1462,11 @@ Write-Host "Detailed log saved to: $LogPath`n" -ForegroundColor Gray
 # Exit with appropriate code
 if ($FailureCount -gt 0) {
     Write-Host "Script completed with errors. Some settings could not be applied.`n" -ForegroundColor Yellow
-    exit 1
+    if ($ExitWithError) {
+        exit 1
+    }
+
+    exit 0
 }
 elseif ($SuccessCount -gt 0) {
     Write-Host "Script completed successfully. $SuccessCount setting(s) were changed.`n" -ForegroundColor Green
