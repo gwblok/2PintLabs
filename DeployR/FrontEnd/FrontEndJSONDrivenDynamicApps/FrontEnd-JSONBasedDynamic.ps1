@@ -1799,9 +1799,24 @@ try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
     $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
     $Global:Peering = ${TSEnv:Peering}
+    $ModuleImported = $true
 }
 catch {
+    write-host "DeployR.Utility module not found or failed to import. Continuing without it." -ForegroundColor Yellow
+    $ModuleImported = $false
 }
+
+if ($ModuleImported) {
+    $TSName = ${TSEnv:DEPLOYRTASKSEQUENCENAME}
+    if ($TSName) {
+        Write-Host "Running in TS: $TSName" -ForegroundColor Green
+        $Global:IsRunningTS = $true
+    } else {
+        Write-Host "Dam, This is not running in a TS, Sorry Brah" -ForegroundColor Yellow
+        $Global:IsRunningTS = $false
+    }
+}
+
 
 # Start up the logs paths for DeployR / ConfigMgr or Local Testing
 if (!($Global:LogFolderPath)) {
