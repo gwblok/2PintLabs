@@ -76,7 +76,7 @@ Write-Host -ForegroundColor Green "[+] Install-PowerShell74X"
 iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-PowerShell74X.ps1)
 
 Write-Host -ForegroundColor Green "[+] Install-PowerShell76X"
-iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-PowerShell76X.ps1)
+iex (irm https://raw.githubusercontent.com/2pintsoftware/2Pint-DeployR/refs/heads/main/Installs/Pre-Reqs/Install-PowerShell76X.ps1)
 
 Write-Host -ForegroundColor Green "[+] Install-DotNetRuntimes80X"
 function Install-DotNetRuntimes80X {
@@ -84,16 +84,16 @@ function Install-DotNetRuntimes80X {
 }
 Write-Host -ForegroundColor Green "[+] Install-DotNetRuntimes100X"
 function Install-DotNetRuntimes100X {
-    iex (irm https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/TSScripts/Functions/Install-DotNetRuntimes100X.ps1)
+    iex (irm https://raw.githubusercontent.com/2pintsoftware/2Pint-DeployR/refs/heads/main/Installs/Pre-Reqs/Install-DotNetRuntimes100X.ps1)
 }
 
 Write-Host -ForegroundColor Green "[+] Install-WindowsADK"
 function Install-WindowsADK {
-    iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-WindowsADK.ps1)
+    iex (irm https://raw.githubusercontent.com/2pintsoftware/2Pint-DeployR/refs/heads/main/Installs/Pre-Reqs/Install-WindowsADK.ps1)
 }
 Write-Host -ForegroundColor Green "[+] Install-WinPEAddOn"
 function Install-WinPEAddOn {
-    iex (irm https://raw.githubusercontent.com/materrill/miketerrill.net/refs/heads/master/Software%20Install%20Scripts/Install-WinPEAddOn.ps1)
+    iex (irm https://raw.githubusercontent.com/2pintsoftware/2Pint-DeployR/refs/heads/main/Installs/Pre-Reqs/Install-WindowsADKWinPE.ps1)
 }
 Write-Host -ForegroundColor Green "[+] Install-VCRedist-x64"
 function Install-VCRedist-x64 {
@@ -114,7 +114,7 @@ function Install-SQLExpress2025 {
 }
 write-Host -ForegroundColor Green "[+] Install-SQL2022CU"
 function Install-SQL2025CU {
-    iex iex (irm https://raw.githubusercontent.com/2pintsoftware/2Pint-DeployR/refs/heads/main/Installs/Pre-Reqs/Install-SQL2025CU.ps1)
+    iex (irm https://raw.githubusercontent.com/2pintsoftware/2Pint-DeployR/refs/heads/main/Installs/Pre-Reqs/Install-SQL2025CU.ps1)
 }
 
 
