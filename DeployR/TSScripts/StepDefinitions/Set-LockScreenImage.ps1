@@ -175,7 +175,14 @@ Function Set-LockScreenImage {
     if ($ImageFileName){
         $ImageFilePath = "$ImageFileContentItem\$ImageFileName"
         if (Test-Path $ImageFilePath){
-            Copy-item -Path $ImageFilePath -Destination "$StoragePath\lockscreen.jpg" -Force -Verbose
+            try {
+                Write-Output "Copying source image '$ImageFilePath' to '$StoragePath\lockscreen.jpg'"
+                Copy-item -Path $ImageFilePath -Destination "$StoragePath\lockscreen.jpg" -Force -Verbose -ErrorAction Stop
+                Write-Output "Successfully copied source image to temp storage."
+            }
+            catch {
+                Write-Output "Failed to copy source image to temp storage. Continuing script. Error: $($_.Exception.Message)"
+            }
         }
         else{
             Write-Output "Did not find $ImageFileName in current directory - Please confirm ImageFileName is correct."
@@ -198,10 +205,25 @@ Function Set-LockScreenImage {
     
     #Copy the 2 files into place
     if (Test-Path -Path "$StoragePath\lockscreen.jpg"){
-        Write-Output "Running Command: Copy-Item $StoragePath\lockscreen.jpg $TargetPath\windows\web\Screen\img100.jpg -Force -Verbose"
-        Copy-Item "$StoragePath\lockscreen.jpg" $TargetPath\windows\web\Screen\img100.jpg -Force -Verbose
-        Write-Output "Running Command: Copy-Item $StoragePath\lockscreen.jpg $TargetPath\windows\web\Screen\img105.jpg -Force -Verbose"
-        Copy-Item "$StoragePath\lockscreen.jpg" $TargetPath\windows\web\Screen\img105.jpg -Force -Verbose
+        Write-Output "Found '$StoragePath\lockscreen.jpg'. Starting lock screen file copy operations."
+
+        try {
+            Write-Output "Running Command: Copy-Item $StoragePath\lockscreen.jpg $TargetPath\windows\web\Screen\img100.jpg -Force -Verbose"
+            Copy-Item "$StoragePath\lockscreen.jpg" $TargetPath\windows\web\Screen\img100.jpg -Force -Verbose -ErrorAction Stop
+            Write-Output "Successfully copied image to img100.jpg"
+        }
+        catch {
+            Write-Output "Failed to copy image to img100.jpg. Continuing script. Error: $($_.Exception.Message)"
+        }
+
+        try {
+            Write-Output "Running Command: Copy-Item $StoragePath\lockscreen.jpg $TargetPath\windows\web\Screen\img105.jpg -Force -Verbose"
+            Copy-Item "$StoragePath\lockscreen.jpg" $TargetPath\windows\web\Screen\img105.jpg -Force -Verbose -ErrorAction Stop
+            Write-Output "Successfully copied image to img105.jpg"
+        }
+        catch {
+            Write-Output "Failed to copy image to img105.jpg. Continuing script. Error: $($_.Exception.Message)"
+        }
     }
     else{
         Write-Output "Did not find lockscreen.jpg in temp folder - Please confirm URL or ImageFileName is correct."
@@ -209,14 +231,27 @@ Function Set-LockScreenImage {
     if ($BrandingLockScreenImageEnforce -eq "true") {
         Write-Output "Enforcing Lock Screen Image"
         $LockScreenImagePath = "$TargetPath\windows\web\Screen\EnforcedLockScreenImage.jpg"
-        Copy-Item "$StoragePath\lockscreen.jpg" $LockScreenImagePath -Force -Verbose
-        $RegPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP"
-        if (!(Test-Path -Path $RegPath)) {
-            New-Item -Path $RegPath -Force | Out-Null
+        try {
+            Write-Output "Copying enforced lock screen image to '$LockScreenImagePath'"
+            Copy-Item "$StoragePath\lockscreen.jpg" $LockScreenImagePath -Force -Verbose -ErrorAction Stop
+            Write-Output "Enforced lock screen image copied successfully."
+
+            $RegPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\PersonalizationCSP"
+            Write-Output "Ensuring registry path exists: $RegPath"
+            if (!(Test-Path -Path $RegPath)) {
+                New-Item -Path $RegPath -Force | Out-Null
+                Write-Output "Created registry path: $RegPath"
+            }
+
+            Write-Output "Updating lock screen registry values."
+            New-ItemProperty -Path $RegPath -Name LockScreenImagePath -Value $LockScreenImagePath -PropertyType String -Force | Out-Null
+            New-ItemProperty -Path $RegPath -Name LockScreenImageUrl -Value $LockScreenImagePath -PropertyType String -Force | Out-Null
+            New-ItemProperty -Path $RegPath -Name LockScreenImageStatus -Value 1 -PropertyType DWORD -Force | Out-Null
+            Write-Output "Lock screen registry values updated successfully."
         }
-        New-ItemProperty -Path $RegPath -Name LockScreenImagePath -Value $LockScreenImagePath -PropertyType String -Force | Out-Null
-        New-ItemProperty -Path $RegPath -Name LockScreenImageUrl -Value $LockScreenImagePath -PropertyType String -Force | Out-Null
-        New-ItemProperty -Path $RegPath -Name LockScreenImageStatus -Value 1 -PropertyType DWORD -Force | Out-Null
+        catch {
+            Write-Output "Failed during lock screen enforcement steps. Continuing script. Error: $($_.Exception.Message)"
+        }
     } 
     else {
         Write-Output "Not enforcing Lock Screen Image"
