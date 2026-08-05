@@ -261,7 +261,12 @@ if (Test-Path -Path "$DownloadStepsPath\ReferencedContent") {
             $ReferenceContentFile = $_.FullName           
             $ReferenceContentJSON = Get-Content -Path $ReferenceContentFile -Raw | ConvertFrom-Json
             write-host "Checking Content already exists: $ReferenceContentFile" -ForegroundColor Yellow
-            if (Get-DeployRContentItem -Id $ReferenceContentJSON.id -ErrorAction SilentlyContinue) {
+            try {
+                $Status = Get-DeployRContentItem -Id $ReferenceContentJSON.id
+            } catch {
+                $Status = $false
+            }
+            if ($Status) {
                 Write-Host "Content item already exists: $($ReferenceContentJSON.name) | $($ReferenceContentJSON.id)" -ForegroundColor Yellow
                 $SourcePath = Join-Path -Path $ReferenceContentFolder -ChildPath (Get-ChildItem $ReferenceContentFolder -Directory).Name
                 $ContentVersions = Get-ChildItem -Path $SourcePath -Directory
@@ -280,7 +285,7 @@ if (Test-Path -Path "$DownloadStepsPath\ReferencedContent") {
 
 #Import Steps
 if ($ImportSteps){
-    $AvailableStepDefs = Get-ChildItem -Path $DownloadStepsPath -Directory | Where-Object {$_.Name -ne "ReferencedContent"}
+    $AvailableStepDefs = Get-ChildItem -Path $DownloadStepsPath -Directory | Where-Object { $_.Name -ne "ReferencedContent" -and $_.Name -ne "media" -and $_.Name -notlike "Sample*" }
     #Have User Select Steps to Import
     write-host "==========================================" -ForegroundColor darkgray
     write-host "Importing Custom Steps from: $DownloadStepsPath" -ForegroundColor Magenta
