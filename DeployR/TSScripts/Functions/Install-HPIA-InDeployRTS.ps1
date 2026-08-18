@@ -120,6 +120,60 @@ $payloadScriptBlock = {
 
 	Write-Host "DISM APPX provisioning completed successfully."
 
+	Write-Host "Creating per-user HPSA AppX registration script for first logon..."
+	$hpsaUserScriptDir = "C:\ProgramData\2Pint\Scripts"
+	$hpsaUserScriptPath = Join-Path -Path $hpsaUserScriptDir -ChildPath "Register-HPSA-Appx-PerUser.ps1"
+	New-Item -Path $hpsaUserScriptDir -ItemType Directory -Force | Out-Null
+
+	$hpsaUserScript = @"
+
+	`$ErrorActionPreference = "Stop"
+	`$hpsaRoot = "C:\SWSetup\sp173774\HPSA9x"
+	`$bundle = Get-ChildItem -Path `$hpsaRoot -Filter "*.appxbundle" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+
+	if (`$null -eq `$bundle) {
+		Write-Output "HPSA per-user register: appxbundle not found at `$hpsaRoot"
+		exit 1
+	}
+
+	`$packageName = [System.IO.Path]::GetFileNameWithoutExtension(`$bundle.Name)
+	`$existing = Get-AppxPackage -Name `$packageName -ErrorAction SilentlyContinue
+	if (`$null -ne `$existing) {
+		Write-Output "HPSA per-user register: package already present for user."
+		exit 0
+	}
+
+	`$arch = if ([Environment]::Is64BitOperatingSystem) { "x64" } else { "x86" }
+	`$dependencyPath = Join-Path -Path `$hpsaRoot -ChildPath "Dependencies\`$arch"
+	`$dependencyPackages = @()
+	if (Test-Path -Path `$dependencyPath) {
+		`$dependencyPackages = Get-ChildItem -Path `$dependencyPath -Filter "*.appx" -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+	}
+
+	if (`$dependencyPackages.Count -gt 0) {
+		Add-AppxPackage -Path `$bundle.FullName -DependencyPath `$dependencyPackages -ForceUpdateFromAnyVersion -ErrorAction Stop
+	}
+	else {
+		Add-AppxPackage -Path `$bundle.FullName -ForceUpdateFromAnyVersion -ErrorAction Stop
+	}
+
+	Write-Output "HPSA per-user register: package installed for current user."
+	exit 0
+
+"@
+
+	Set-Content -Path $hpsaUserScriptPath -Value $hpsaUserScript -Encoding UTF8 -Force
+	Write-Host "Per-user script written to: $hpsaUserScriptPath"
+
+	Write-Host "Registering Active Setup for per-user HPSA AppX registration..."
+	$activeSetupKeyPath = "HKLM:\SOFTWARE\Microsoft\Active Setup\Installed Components\2Pint.RegisterHPSAAppx"
+	New-Item -Path $activeSetupKeyPath -Force | Out-Null
+	Set-ItemProperty -Path $activeSetupKeyPath -Name "(Default)" -Value "Register HP Support Assistant AppX per user" -Type String
+	Set-ItemProperty -Path $activeSetupKeyPath -Name "Version" -Value "1,0,0,0" -Type String
+	Set-ItemProperty -Path $activeSetupKeyPath -Name "IsInstalled" -Value 1 -Type DWord
+	Set-ItemProperty -Path $activeSetupKeyPath -Name "StubPath" -Value "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$hpsaUserScriptPath`"" -Type String
+	Write-Host "Active Setup registration complete."
+
 	Write-Host "Launching InstallHPSA.exe with /s..."
 	$installProcess = Start-Process -FilePath $installHpsaExe.FullName -ArgumentList "/s" -WorkingDirectory $installWorkingDirectory -PassThru -Wait
 	Write-Host "InstallHPSA.exe finished with exit code: $($installProcess.ExitCode)"
