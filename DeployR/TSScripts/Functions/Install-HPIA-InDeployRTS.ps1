@@ -82,6 +82,44 @@ $payloadScriptBlock = {
 	}
 	Write-Host "Verified HPSA payload folder: $hpsa9xPath"
 
+	Write-Host "Preparing DISM APPX provisioning from extracted HPSA payload..."
+	$hpsaAppxBundle = Get-ChildItem -Path $hpsa9xPath -Filter "*.appxbundle" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+	if ($null -eq $hpsaAppxBundle) {
+		throw "No .appxbundle file was found in $hpsa9xPath"
+	}
+
+	Write-Host "Found HPSA APPX bundle: $($hpsaAppxBundle.FullName)"
+	$dependencyPackages = Get-ChildItem -Path (Join-Path -Path $hpsa9xPath -ChildPath "Dependencies") -Filter "*.appx" -Recurse -File -ErrorAction SilentlyContinue |
+		Sort-Object -Property FullName
+
+	$dismArgs = @(
+		"/Online"
+		"/Add-ProvisionedAppxPackage"
+		"/PackagePath:$($hpsaAppxBundle.FullName)"
+		"/SkipLicense"
+	)
+
+	if ($null -ne $dependencyPackages -and $dependencyPackages.Count -gt 0) {
+		Write-Host "Including dependency packages for DISM provisioning:"
+		foreach ($dependencyPackage in $dependencyPackages) {
+			Write-Host " - $($dependencyPackage.FullName)"
+			$dismArgs += "/DependencyPackagePath:$($dependencyPackage.FullName)"
+		}
+	}
+	else {
+		Write-Host "No dependency .appx files were found under $hpsa9xPath\Dependencies"
+	}
+
+	Write-Host "Running DISM to provision HPSA APPX for all users..."
+	$dismProcess = Start-Process -FilePath "dism.exe" -ArgumentList $dismArgs -PassThru -Wait -NoNewWindow
+	Write-Host "DISM finished with exit code: $($dismProcess.ExitCode)"
+
+	if ($dismProcess.ExitCode -ne 0) {
+		throw "DISM APPX provisioning failed with exit code $($dismProcess.ExitCode)."
+	}
+
+	Write-Host "DISM APPX provisioning completed successfully."
+
 	Write-Host "Launching InstallHPSA.exe with /s..."
 	$installProcess = Start-Process -FilePath $installHpsaExe.FullName -ArgumentList "/s" -WorkingDirectory $installWorkingDirectory -PassThru -Wait
 	Write-Host "InstallHPSA.exe finished with exit code: $($installProcess.ExitCode)"
