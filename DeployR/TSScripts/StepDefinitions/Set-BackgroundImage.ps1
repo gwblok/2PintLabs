@@ -66,34 +66,34 @@ Function Set-BackgroundImage {
     [String]$ImageFileContentItem,
     [String]$SystemMode = "Dark", # Default to Dark Mode
     [String]$WallpaperStyle = "10" # 10 is Fill, 0 is Center, 6 is Fit, 2 is Stretch, 22 is Span
-
+    
     )
     
-$ThemeFile = @"
-
+    $ThemeFile = @"
+    
 ; Copyright  Microsoft Corp.
-
+    
 [Theme]
 DisplayName=DeployR OSD Theme
 SetLogonBackground=0
-
+    
 ; Computer - SHIDI_SERVER
 [CLSID\{20D04FE0-3AEA-1069-A2D8-08002B30309D}\DefaultIcon]
 DefaultValue=%SystemRoot%\System32\imageres.dll,-109
-
+    
 ; UsersFiles - SHIDI_USERFILES
 [CLSID\{59031A47-3F72-44A7-89C5-5595FE6B30EE}\DefaultIcon]
 DefaultValue=%SystemRoot%\System32\imageres.dll,-123
-
+    
 ; Network - SHIDI_MYNETWORK
 [CLSID\{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}\DefaultIcon]
 DefaultValue=%SystemRoot%\System32\imageres.dll,-25
-
+    
 ; Recycle Bin - SHIDI_RECYCLERFULL SHIDI_RECYCLER
 [CLSID\{645FF040-5081-101B-9F08-00AA002F954E}\DefaultIcon]
 Full=%SystemRoot%\System32\imageres.dll,-54
 Empty=%SystemRoot%\System32\imageres.dll,-55
-
+    
 [Control Panel\Cursors]
 AppStarting=%SystemRoot%\cursors\aero_working.ani
 Arrow=%SystemRoot%\cursors\aero_arrow.cur
@@ -112,13 +112,13 @@ UpArrow=%SystemRoot%\cursors\aero_up.cur
 Wait=%SystemRoot%\cursors\aero_busy.ani
 DefaultValue=Windows Default
 DefaultValue.MUI=@main.cpl,-1020
-
+    
 [Control Panel\Desktop]
 Wallpaper=%SystemRoot%\web\wallpaper\DeployROSD\DeployROSD.jpg
 TileWallpaper=0
 WallpaperStyle=$WallpaperStyle
 Pattern=
-
+    
 [VisualStyles]
 Path=%ResourceDir%\Themes\Aero\Aero.msstyles
 ColorStyle=NormalColor
@@ -127,19 +127,19 @@ AutoColorization=0
 ColorizationColor=0XC40078D7
 SystemMode=$SystemMode
 AppMode=$SystemMode
-
+    
 [boot]
 SCRNSAVE.EXE=
-
+    
 [MasterThemeSelector]
 MTSM=RJSPBS
-
+    
 [Sounds]
 ; IDS_SCHEME_DEFAULT
 SchemeName=@%SystemRoot%\System32\mmres.dll,-800
-
+    
 "@
-
+    
     $StoragePath = "$env:SystemDrive\_2P\content"
     
     if ($ImageFileName){
@@ -168,44 +168,70 @@ SchemeName=@%SystemRoot%\System32\mmres.dll,-800
     else {$TargetPath = "C:"}
     # STEP 2: Configure background
     if (Test-Path -Path "$StoragePath\Background.jpg"){
-    Write-Host "Setting up OSD theme"
-    Write-Host "Confirmed Background.jpg exists, proceeding to set as background via Theme."
-    New-Item -Path "$TargetPath\Windows\Resources\OEM Themes" -ItemType Directory -Force | Out-Null
-    Write-Host "Creating DeployROSD.theme file in $TargetPath\Windows\Resources\OEM Themes"
-    $ThemeFile | Out-File -FilePath "$TargetPath\Windows\Resources\OEM Themes\DeployROSD.theme" -Force -Encoding UTF8
-    New-Item -Path  "$TargetPath\Windows\web\wallpaper\DeployROSD" -ItemType Directory -Force | Out-Null
-    Write-Host "Copying Background.jpg to $TargetPath\Windows\web\wallpaper\DeployROSD\DeployROSD.jpg"
-    Copy-Item "$StoragePath\Background.jpg" "$TargetPath\Windows\web\wallpaper\DeployROSD\DeployROSD.jpg" -Force
-    if (Test-Path -Path "$TargetPath\Windows\Web\Wallpaper\DeployROSD\DeployROSD.jpg"){
-        Write-Host "Background Image successfully copied to Wallpaper folder."
-    }
-    else{
-        Write-Output "Failed to copy Background Image to Wallpaper folder."
-    }
-    Write-Host "Setting DeployROSD theme as the new user default"
-    
-    [GC]::Collect()
-    start-sleep -Milliseconds 500
-    Write-Host " Mounting Default User Registry Hive (REG LOAD HKLM\Default $TargetPath\Users\Default\NTUSER.DAT)"
-    REG LOAD HKLM\Default "$TargetPath\Users\Default\NTUSER.DAT"
-    $reg = New-ItemProperty -Path "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Themes" -Name "InstallTheme" -Value "%SystemRoot%\resources\OEM Themes\DeployROSD.theme" -PropertyType String -Force | Out-Null
-    $reg = New-ItemProperty -Path "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Themes" -Name "CurrentTheme" -Value "%SystemRoot%\resources\OEM Themes\DeployROSD.theme" -PropertyType String -Force | Out-Null
-
-    #& reg.exe add "HKLM\TempUser\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes" /v InstallTheme /t REG_EXPAND_SZ /d "%SystemRoot%\resources\OEM Themes\DeployROSD.theme" /f /reg:64 2>&1 | Out-Null
-    #& reg.exe add "HKLM\TempUser\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes" /v CurrentTheme /t REG_EXPAND_SZ /d "%SystemRoot%\resources\OEM Themes\DeployROSD.theme" /f /reg:64 2>&1 | Out-Null
-    
-    [GC]::Collect()
-    start-sleep -Milliseconds 500
-    Write-Host " Unmounting Default User Registry Hive (REG UNLOAD HKLM\Default)"
-    REG UNLOAD HKLM\Default
-
+        Write-Host "Setting up OSD theme"
+        Write-Host "Confirmed Background.jpg exists, proceeding to set as background via Theme."
+        New-Item -Path "$TargetPath\Windows\Resources\OEM Themes" -ItemType Directory -Force | Out-Null
+        Write-Host "Creating DeployROSD.theme file in $TargetPath\Windows\Resources\OEM Themes"
+        $ThemeFile | Out-File -FilePath "$TargetPath\Windows\Resources\OEM Themes\DeployROSD.theme" -Force -Encoding UTF8
+        New-Item -Path  "$TargetPath\Windows\web\wallpaper\DeployROSD" -ItemType Directory -Force | Out-Null
+        Write-Host "Copying Background.jpg to $TargetPath\Windows\web\wallpaper\DeployROSD\DeployROSD.jpg"
+        Copy-Item "$StoragePath\Background.jpg" "$TargetPath\Windows\web\wallpaper\DeployROSD\DeployROSD.jpg" -Force
+        if (Test-Path -Path "$TargetPath\Windows\Web\Wallpaper\DeployROSD\DeployROSD.jpg"){
+            Write-Host "Background Image successfully copied to Wallpaper folder."
+        }
+        else{
+            Write-Output "Failed to copy Background Image to Wallpaper folder."
+        }
+        Write-Host "Setting DeployROSD theme as the new user default"
+        
+        [GC]::Collect()
+        start-sleep -Milliseconds 500
+        Write-Host " Mounting Default User Registry Hive (REG LOAD HKLM\Default $TargetPath\Users\Default\NTUSER.DAT)"
+        REG LOAD HKLM\Default "$TargetPath\Users\Default\NTUSER.DAT"
+        $reg = New-ItemProperty -Path "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Themes" -Name "InstallTheme" -Value "%SystemRoot%\resources\OEM Themes\DeployROSD.theme" -PropertyType String -Force | Out-Null
+        $reg = New-ItemProperty -Path "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Themes" -Name "CurrentTheme" -Value "%SystemRoot%\resources\OEM Themes\DeployROSD.theme" -PropertyType String -Force | Out-Null
+        
+        #& reg.exe add "HKLM\TempUser\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes" /v InstallTheme /t REG_EXPAND_SZ /d "%SystemRoot%\resources\OEM Themes\DeployROSD.theme" /f /reg:64 2>&1 | Out-Null
+        #& reg.exe add "HKLM\TempUser\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes" /v CurrentTheme /t REG_EXPAND_SZ /d "%SystemRoot%\resources\OEM Themes\DeployROSD.theme" /f /reg:64 2>&1 | Out-Null
+        
+        [GC]::Collect()
+        start-sleep -Milliseconds 500
+        Write-Host " Unmounting Default User Registry Hive (REG UNLOAD HKLM\Default)"
+        REG UNLOAD HKLM\Default
+        
     }
     else{
         Write-Output "Did not find Background.jpg in temp folder - Please confirm URL or ImageFileName is correct."
     }
 }
 
-
+function Set-Wallpaper {
+    param(
+    [string]$Path,
+    [int]$Style = 6          # 6 = Fit (what you asked for)
+    )
+    
+    # Write the settings to registry (makes it stick)
+    Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "Wallpaper"       -Value $Path -Force
+    Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "WallpaperStyle" -Value $Style.ToString() -Force
+    Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name "TileWallpaper"  -Value "0" -Force
+    
+    # Apply immediately via Windows API
+    Add-Type -TypeDefinition @"
+    using System;
+    using System.Runtime.InteropServices;
+    public class Wallpaper {
+        [DllImport("user32.dll", CharSet=CharSet.Auto)]
+        public static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
+    }
+"@ -ErrorAction SilentlyContinue
+    
+    $SPI_SETDESKWALLPAPER = 0x0014
+    $SPIF_UPDATEINIFILE   = 0x0001
+    $SPIF_SENDCHANGE      = 0x0002
+    
+    [Wallpaper]::SystemParametersInfo($SPI_SETDESKWALLPAPER, 0, $Path, $SPIF_UPDATEINIFILE -bor $SPIF_SENDCHANGE)
+}
 
 if ($URL -ne ""){
     Write-Output "Background Image URL is set to $URL"
@@ -221,3 +247,29 @@ if ($ImageFileContentItem -ne ""){
     Set-BackgroundImage -ImageFileName $ImageFileName -ImageFileContentItem $ImageFileContentItem -SystemMode $SystemMode
 }
 
+if ($IsWinPE -eq $false){
+    #if Running Not as System:
+    if ($env:USERNAME -ne "SYSTEM"){
+        Write-Host "Running as user: $env:USERNAME, proceeding to set wallpaper for current user context."
+        # =============================================
+        # Force-apply wallpaper + style
+        # =============================================
+        
+        $WallpaperPath = "$env:SystemRoot\web\wallpaper\DeployROSD\DeployROSD.jpg"
+        
+        # Safety check
+        if (-not (Test-Path $WallpaperPath)) {
+            Write-Warning "Wallpaper file NOT found at: $WallpaperPath"
+            Write-Host "Make sure the DeployROSD.jpg file exists in that folder."
+            return
+        }
+        
+        # Apply it
+        Set-Wallpaper -Path $WallpaperPath -Style $BrandingBackgroundImageWallpaperStyle
+        
+        # Final desktop refresh
+        rundll32.exe user32.dll,UpdatePerUserSystemParameters
+        
+        Write-Host "Wallpaper set to 'Fit' using DeployROSD.jpg" -ForegroundColor Green
+    }
+}
