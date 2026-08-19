@@ -142,7 +142,7 @@ if ($ComputerFQDN -eq "214-DEPLOYR.2p.garytown.com") {
 #Adding Azure Server for Backups
 if ($ComputerFQDN -eq "dr.2PintLabs.com") {
     $EnableBackup2GitHub = $true
-    $EnableBackup2GitHubTS = $true
+    $EnableBackup2GitHubTS = $false
     $EnableBackup2GitHubStepDefs = $true
     
 }
