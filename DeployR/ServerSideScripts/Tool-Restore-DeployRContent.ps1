@@ -25,6 +25,16 @@ selects the newest DeployRBackup_* child if a set is not specified.
 Author: Gary Blok
 Date: January 9, 2026
 Requires: DeployR.Utility module
+
+CHANGE LOG
+2026-08-14 20:39:29 -07:00
+- Fixed content version restore logic to handle Export-DeployRContentItem ID wrapper folders and use nested version folders.
+- Updated content item messaging to friendlier restore status text (found/imported from backup).
+- Updated task sequence messaging to treat expected "already exists, trying to update" behavior as informational instead of warning.
+- Updated step definition messaging to treat expected "already exists, trying to update" behavior as informational instead of warning.
+- Added post-update success output for content versions including reported content size when available.
+
+
 #>
 
 [CmdletBinding()]
@@ -117,8 +127,29 @@ function Import-StepDefinitions {
 
         Write-Host "Importing step definition from: $($definitionFile.FullName)" -ForegroundColor Cyan
         try {
-            Import-DeployRStepDefinition -SourceFile $definitionFile.FullName -Force -ErrorAction Stop | Out-Null
-            $results += [PSCustomObject]@{ Name = $_.Name; Type = "StepDefinition"; Path = $definitionFile.FullName; Success = $true }
+            $stepWarningMessages = @()
+            Import-DeployRStepDefinition -SourceFile $definitionFile.FullName -Force -WarningAction SilentlyContinue -WarningVariable stepWarningMessages -ErrorAction Stop | Out-Null
+
+            $usedUpdateFallback = $false
+            foreach ($warningMessage in $stepWarningMessages) {
+                if ($warningMessage -match 'Unable to create step definition .*trying to update') {
+                    $usedUpdateFallback = $true
+                }
+                else {
+                    Write-Host "  DeployR note: $warningMessage" -ForegroundColor DarkYellow
+                }
+            }
+
+            if ($usedUpdateFallback) {
+                Write-Host "  Already exists. Great - applying the backup update to keep this step definition current." -ForegroundColor Yellow
+                $action = "Update"
+            }
+            else {
+                Write-Host "  Imported step definition from backup." -ForegroundColor Green
+                $action = "Import"
+            }
+
+            $results += [PSCustomObject]@{ Name = $_.Name; Type = "StepDefinition"; Path = $definitionFile.FullName; Success = $true; Action = $action }
         }
         catch {
             Write-Warning "Failed to import step definition $($definitionFile.FullName): $($_.Exception.Message)"
@@ -129,6 +160,25 @@ function Import-StepDefinitions {
     return $results
 }
 
+function Format-ContentSize {
+    param(
+    [Parameter(Mandatory)]
+    [double]$Bytes
+    )
+
+    if ($Bytes -ge 1GB) {
+        return ('{0:N2} GB' -f ($Bytes / 1GB))
+    }
+    elseif ($Bytes -ge 1MB) {
+        return ('{0:N2} MB' -f ($Bytes / 1MB))
+    }
+    elseif ($Bytes -ge 1KB) {
+        return ('{0:N2} KB' -f ($Bytes / 1KB))
+    }
+
+    return ('{0:N0} B' -f $Bytes)
+}
+
 function Update-ContentVersions {
     param(
     [Parameter(Mandatory)]
@@ -137,11 +187,50 @@ function Update-ContentVersions {
     [string]$ItemFolder
     )
 
-    $versionFolders = Get-ChildItem -Path $ItemFolder -Directory
+    $topLevelFolders = Get-ChildItem -Path $ItemFolder -Directory
+    $versionFolders = @()
+
+    foreach ($folder in $topLevelFolders) {
+        if ($folder.Name -eq $ContentId) {
+            # Export-DeployRContentItem creates an ID wrapper folder.
+            # The actual content versions are nested inside it.
+            $nestedVersionFolders = Get-ChildItem -Path $folder.FullName -Directory -ErrorAction SilentlyContinue
+            if ($nestedVersionFolders) {
+                $versionFolders += $nestedVersionFolders
+            }
+            continue
+        }
+
+        $versionFolders += $folder
+    }
+
     foreach ($version in $versionFolders) {
         try {
             Write-Host "  Updating content version $($version.Name)" -ForegroundColor DarkGray
-            Update-DeployRContentItemContent -ContentId $ContentId -SourceFolder $version.FullName -ContentVersion $version.Name -ErrorAction Stop | Out-Null
+            $updateResult = Update-DeployRContentItemContent -ContentId $ContentId -SourceFolder $version.FullName -ContentVersion $version.Name -ErrorAction Stop
+
+            $sizeBytes = $null
+            if ($updateResult -and ($updateResult.PSObject.Properties.Name -contains 'contentSize')) {
+                $sizeBytes = [double]$updateResult.contentSize
+            }
+
+            if ($null -eq $sizeBytes) {
+                $contentItemMetadata = Get-DeployRContentItem -Id $ContentId -ErrorAction SilentlyContinue
+                if ($contentItemMetadata -and $contentItemMetadata.versions) {
+                    $matchedVersion = $contentItemMetadata.versions | Where-Object { "$($_.versionNo)" -eq "$($version.Name)" } | Select-Object -First 1
+                    if ($matchedVersion -and $matchedVersion.contentSize) {
+                        $sizeBytes = [double]$matchedVersion.contentSize
+                    }
+                }
+            }
+
+            if ($null -ne $sizeBytes) {
+                $sizeDisplay = Format-ContentSize -Bytes $sizeBytes
+                Write-Host "  Successfully updated content version $($version.Name). Size: $sizeDisplay" -ForegroundColor Green
+            }
+            else {
+                Write-Host "  Successfully updated content version $($version.Name). Size: (not reported by API)" -ForegroundColor Green
+            }
         }
         catch {
             Write-Warning "  Failed to update version $($version.Name) for $ContentId : $($_.Exception.Message)"
@@ -182,12 +271,12 @@ function Import-ContentItems {
 
         try {
             if ($exists) {
-                Write-Host "  Content item exists, updating versions" -ForegroundColor Yellow
+                Write-Host "  Found content item, updating with content from backup." -ForegroundColor Yellow
                 Update-ContentVersions -ContentId $contentId -ItemFolder $itemFolder
                 $action = "Update"
             }
             else {
-                Write-Host "  Importing new content item" -ForegroundColor Green
+                Write-Host "  Content item not found, importing from backup." -ForegroundColor Green
                 Import-DeployRContentItem -SourceFile $contentFile.FullName -Force -ErrorAction Stop | Out-Null
                 Update-ContentVersions -ContentId $contentId -ItemFolder $itemFolder
                 $action = "Import"
@@ -225,8 +314,29 @@ function Import-TaskSequences {
 
         Write-Host "[Task Sequence] $tsName | $tsId" -ForegroundColor Cyan
         try {
-            Import-DeployRTaskSequence -SourceFile $tsFile.FullName -Force -ErrorAction Stop | Out-Null
-            $results += [PSCustomObject]@{ Name = $tsName; Id = $tsId; Type = "TaskSequence"; Path = $tsFolder; Success = $true }
+            $tsWarningMessages = @()
+            Import-DeployRTaskSequence -SourceFile $tsFile.FullName -Force -WarningAction SilentlyContinue -WarningVariable tsWarningMessages -ErrorAction Stop | Out-Null
+
+            $usedUpdateFallback = $false
+            foreach ($warningMessage in $tsWarningMessages) {
+                if ($warningMessage -match 'Unable to create task sequence .*trying to update') {
+                    $usedUpdateFallback = $true
+                }
+                else {
+                    Write-Host "  DeployR note: $warningMessage" -ForegroundColor DarkYellow
+                }
+            }
+
+            if ($usedUpdateFallback) {
+                Write-Host "  Already exists. Great - applying the backup update to keep this task sequence current." -ForegroundColor Yellow
+                $action = "Update"
+            }
+            else {
+                Write-Host "  Imported task sequence." -ForegroundColor Green
+                $action = "Import"
+            }
+
+            $results += [PSCustomObject]@{ Name = $tsName; Id = $tsId; Type = "TaskSequence"; Path = $tsFolder; Success = $true; Action = $action }
         }
         catch {
             Write-Warning "  Failed to import task sequence $tsName ($tsId): $($_.Exception.Message)"

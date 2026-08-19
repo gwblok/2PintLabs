@@ -527,9 +527,8 @@ using System.Runtime.InteropServices;
     #region CPU Details
     if ($DebugLogging) {Write-Host "Getting CPU Details"}
     #try {
-        $cpuDetails = Get-CimInstance -ClassName Win32_Processor
-        #$cpuDetails = @(Get-CimInstance -ClassName Win32_Processor)[0]
-        if ($null -eq $cpuDetails) {
+        $cpuDetails = @(Get-CimInstance -ClassName Win32_Processor)
+        if ($null -eq $cpuDetails -or $cpuDetails.Count -eq 0) {
             UpdateReturnCode -ReturnCode 1
             $exitCode = 1
             $outObject.returnReason += $logFormatReturnReason -f $PROCESSOR_STRING
@@ -538,10 +537,18 @@ using System.Runtime.InteropServices;
             if ($DebugLogging) {Write-Host "CpuDetails is null"}
         }
         else {
+            $primaryCpu = $cpuDetails[0]
+            $totalLogicalProcessors = ($cpuDetails | Measure-Object -Property NumberOfLogicalProcessors -Sum).Sum
+            if ($null -eq $totalLogicalProcessors) { $totalLogicalProcessors = 0 }
+
+            if ($DebugLogging -and $cpuDetails.Count -gt 1) {
+                Write-Host "Multiple CPU objects detected ($($cpuDetails.Count)); using primary CPU properties for architecture/family checks and summed logical processors."
+            }
+
             $processorCheckFailed = $false
             
             # AddressWidth
-            if ($null -eq $cpuDetails.AddressWidth -or $cpuDetails.AddressWidth -ne $RequiredAddressWidth) {
+            if ($null -eq $primaryCpu.AddressWidth -or $primaryCpu.AddressWidth -ne $RequiredAddressWidth) {
                 UpdateReturnCode -ReturnCode 1
                 $processorCheckFailed = $true
                 $exitCode = 1
@@ -550,7 +557,7 @@ using System.Runtime.InteropServices;
             }
             
             # ClockSpeed is in MHz
-            if ($null -eq $cpuDetails.MaxClockSpeed -or $cpuDetails.MaxClockSpeed -le $MinClockSpeedMHz) {
+            if ($null -eq $primaryCpu.MaxClockSpeed -or $primaryCpu.MaxClockSpeed -le $MinClockSpeedMHz) {
                 UpdateReturnCode -ReturnCode 1;
                 $processorCheckFailed = $true
                 $exitCode = 1
@@ -559,7 +566,7 @@ using System.Runtime.InteropServices;
             }
             
             # Number of Logical Cores
-            if ($null -eq $cpuDetails.NumberOfLogicalProcessors -or $cpuDetails.NumberOfLogicalProcessors -lt $MinLogicalCores) {
+            if ($totalLogicalProcessors -lt $MinLogicalCores) {
                 UpdateReturnCode -ReturnCode 1
                 $processorCheckFailed = $true
                 $exitCode = 1
@@ -568,9 +575,9 @@ using System.Runtime.InteropServices;
             
             # CPU Family
             Add-Type -TypeDefinition $Source
-            $cpuFamilyResult = [CpuFamily]::Validate([String]$cpuDetails.Manufacturer, [uint16]$cpuDetails.Architecture)
+            $cpuFamilyResult = [CpuFamily]::Validate([String]$primaryCpu.Manufacturer, [uint16]$primaryCpu.Architecture)
             
-            $cpuDetailsLog = "{AddressWidth=$($cpuDetails.AddressWidth); MaxClockSpeed=$($cpuDetails.MaxClockSpeed); NumberOfLogicalCores=$($cpuDetails.NumberOfLogicalProcessors); Manufacturer=$($cpuDetails.Manufacturer); Caption=$($cpuDetails.Caption); $($cpuFamilyResult.Message)}"
+            $cpuDetailsLog = "{CpuObjectCount=$($cpuDetails.Count); AddressWidth=$($primaryCpu.AddressWidth); MaxClockSpeed=$($primaryCpu.MaxClockSpeed); NumberOfLogicalCores=$totalLogicalProcessors; Manufacturer=$($primaryCpu.Manufacturer); Caption=$($primaryCpu.Caption); $($cpuFamilyResult.Message)}"
             
             if (!$cpuFamilyResult.IsValid) {
                 UpdateReturnCode -ReturnCode 1
