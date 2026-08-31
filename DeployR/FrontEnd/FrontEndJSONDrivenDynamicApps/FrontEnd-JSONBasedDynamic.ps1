@@ -1901,6 +1901,7 @@ if ((Get-Module -name "DeployR.Utility") -and (-not (test-path -path "HKLM:\SOFT
     if (($FormResults.WorkplaceJoin) -eq "Autopilot"){
         if ($FormResults.AutopilotGroupTag) {
             ${TSEnv:AutopilotGroupTag} = $FormResults.AutopilotGroupTag
+            ${TSEnv:GROUPTAG} = $FormResults.AutopilotGroupTag
             ${TSEnv:FINISHACTION} = "RESEAL"
         }
     }
