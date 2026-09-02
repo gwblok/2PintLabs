@@ -1,22 +1,29 @@
 #Gary Blok
 
-
+write-Host "========================================================================================"
+Write-Host "Starting IntuneWinCreator-SRC-StifleRClient-2PintDemo.ps1" -ForegroundColor Green
+write-Host "This will point the client at deployr.2PintDemo.com" -ForegroundColor Magenta
+write-Host "========================================================================================"
 
 #Build App Intune Installer
 $IntuneAppRootPath = "\\src\src$\Intune"
 
 #Path to App Folder you want to Convert
 $SourceAppPathRoot = "\\src\src$\Apps\"
+$SourceAppSettingsFile = "\\src\src$\Apps\2pint\Agent\Configs-2PintDemo\settings.2psImport"
 
 #++++++++++++++++++++++++++
 #!!!Change These!!!
 $CustomAppNameManf = "2Pint"
 $SourceAppPath = "$SourceAppPathRoot\$CustomAppNameManf\Agent\"
-$LatestSourceAppPath = Get-ChildItem -Path $SourceAppPath | Where-Object {$_.Attributes -eq "Directory"} | sort-object -Property LastWriteTime -Descending | Select-Object -First 1
+$LatestSourceAppPath = Get-ChildItem -Path $SourceAppPath -Directory |
+    Where-Object { $_.Name -match '^\d+(\.\d+)+$' } |
+    Sort-Object -Property @{ Expression = { [version]$_.Name } } -Descending |
+    Select-Object -First 1
 $SourceAppPath = ($LatestSourceAppPath).FullName
 #++++++++++++++++++++++++++
 
-$OutputAppPath = $SourceAppPath.Replace("Agent","AgentIntune")
+$OutputAppPath = $SourceAppPath.Replace("Agent","AgentIntune2PintDemo")
 $IntuneUtilFolderPath = "$IntuneAppRootPath\Microsoft-Win32-Content-Prep-Tool"
 $IntuneUtilPath = "$IntuneUtilFolderPath\IntuneWinAppUtil.exe"
 $IntuneUtilURL = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/raw/master/IntuneWinAppUtil.exe"
@@ -58,7 +65,7 @@ else{
     Write-Host "Using IntuneWinAppUtil: $IntuneUtilPath" -ForegroundColor Green
 }
 
-$MSI = Get-ChildItem -Path $App.FullName -Filter *.msi
+$MSI = Get-ChildItem -Path $SourceAppPath -Filter *.msi
 if ($MSI) {
     $WindowsInstaller = New-Object -ComObject WindowsInstaller.Installer
     $Database = $WindowsInstaller.OpenDatabase($MSI.FullName, 0)
@@ -73,6 +80,13 @@ if ($MSI) {
     }
     $View.Close()
     [System.Runtime.Interopservices.Marshal]::ReleaseComObject($WindowsInstaller) | Out-Null
+
+    #Copy settings.2psImport to the SourceAppPath
+    write-Host "========================================================================================"
+    Write-Host "Copying settings.2psImport for 2PintDemo.com to $SourceAppPath" -ForegroundColor Green
+    write-Host "========================================================================================"
+    Copy-Item -Path $SourceAppSettingsFile -Destination $SourceAppPath -Force
+
 } else {
     Write-Output "No MSI file found."
 }
