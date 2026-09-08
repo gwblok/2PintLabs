@@ -39,8 +39,8 @@ else {
 
 $LogPath = "$env:SystemDrive\_2P\Logs"
 
-#As of DCU 5.7, it needed 8.0, not 10 (which is in DeployR 1.3+)
-$WindowsDesktopRuntimeVerRequired = "8.0"
+#As of DCU 5.7.1, it needs 10.0 (which is in DeployR 1.3+)
+$WindowsDesktopRuntimeVerRequired = "10.0"
 
 [String]$MakeAlias = ${TSEnv:MakeAlias}
 if ($MakeAlias -ne "Dell") {
