@@ -7,6 +7,11 @@
 
 
 #>
+[CmdletBinding()]
+param(
+    [string]$AvaloniaPath
+)
+
 $ScriptVersion = '26.7.6.8.55'
 
 
@@ -14,8 +19,9 @@ $ScriptVersion = '26.7.6.8.55'
 # Helper function to stop transcription
 function Stop-FrontendTranscription {
     try {
-        if ((Get-Command Stop-Transcript -ErrorAction SilentlyContinue) -and (Get-Variable -Name transcript -Scope Global -ErrorAction SilentlyContinue)) {
+        if ($Global:FrontendTranscriptStarted -and (Get-Command Stop-Transcript -ErrorAction SilentlyContinue)) {
             Stop-Transcript -ErrorAction SilentlyContinue
+            $Global:FrontendTranscriptStarted = $false
             Write-CMTraceLog -Message "Stopped PowerShell transcription" -Type "Info" -Component "Main"
         }
     } catch {}
@@ -25,10 +31,10 @@ Function Get-InputFormData {
     
     <#
 .SYNOPSIS
-    Creates a WPF form to collect user input including computer naming strategy and user role selection.
+    Creates an Avalonia form to collect user input including computer naming strategy and user role selection.
     
 .DESCRIPTION
-    This script displays a Windows Presentation Foundation (WPF) form with:
+    This script displays an Avalonia form with:
     - Radio buttons to select computer naming strategy:
     * Do not set computer name
     * Use custom computer name (manual entry, max 15 characters)
@@ -50,7 +56,50 @@ Function Get-InputFormData {
     Date: October 20, 2025
     #>
     
-    Add-Type -AssemblyName PresentationFramework
+    # Load the Avalonia assemblies shipped with the DeployR client.
+    $deployRoot = ${TSEnv:DEPLOYRROOT}
+    if ([string]::IsNullOrWhiteSpace($AvaloniaPath)) {
+        $AvaloniaPath = if ($deployRoot) { Join-Path $deployRoot 'Client' } else { $null }
+    }
+    $avaloniaPath = $AvaloniaPath
+    if (-not $avaloniaPath -or -not (Test-Path (Join-Path $avaloniaPath 'Avalonia.Base.dll'))) {
+        $avaloniaPath = Join-Path ${env:ProgramFiles} '2Pint Software\DeployR\Client'
+    }
+    $avaloniaAssemblies = @(
+        'Avalonia.Base.dll', 'Avalonia.dll', 'Avalonia.Controls.dll',
+        'Avalonia.Desktop.dll', 'Avalonia.Dialogs.dll', 'Avalonia.Markup.dll',
+        'Avalonia.Markup.Xaml.dll', 'Avalonia.Markup.Xaml.Loader.dll',
+        'Avalonia.Metal.dll', 'Avalonia.MicroCom.dll', 'Avalonia.OpenGL.dll',
+        'Avalonia.Remote.Protocol.dll', 'Avalonia.Skia.dll',
+        'Avalonia.Themes.Fluent.dll', 'Avalonia.Vulkan.dll', 'Avalonia.Win32.dll',
+        'SkiaSharp.dll', 'HarfBuzzSharp.dll', 'MicroCom.Runtime.dll'
+    )
+    $nativePath = if ([Environment]::Is64BitProcess) {
+        Join-Path $avaloniaPath 'runtimes\win-x64\native'
+    } else {
+        Join-Path $avaloniaPath 'runtimes\win-x86\native'
+    }
+    $runtimePaths = @($avaloniaPath)
+    if (Test-Path $nativePath) { $runtimePaths += $nativePath }
+    $env:PATH = (($runtimePaths -join ';') + ";$env:PATH")
+    foreach ($assemblyName in $avaloniaAssemblies) {
+        $assemblyPath = Join-Path $avaloniaPath $assemblyName
+        if (Test-Path $assemblyPath) {
+            try { [System.Reflection.Assembly]::LoadFrom($assemblyPath) | Out-Null } catch {}
+        }
+    }
+    if (-not ([System.Management.Automation.PSTypeName]'Avalonia.AppBuilder').Type) {
+        throw "Avalonia assemblies were not found in '$avaloniaPath'. Install the DeployR Avalonia client files first."
+    }
+    if ($null -eq [Avalonia.Application]::Current) {
+        $avaloniaBuilder = [Avalonia.AppBuilder]::Configure[Avalonia.Application]()
+        [Avalonia.AppBuilderDesktopExtensions]::UsePlatformDetect($avaloniaBuilder)
+        $avaloniaBuilder.SetupWithoutStarting() | Out-Null
+        [Avalonia.Application]::Current.Styles.Add([Avalonia.Themes.Fluent.FluentTheme]::new())
+    }
+    else {
+        Write-Host "Reusing Avalonia application initialized by DeployR." -ForegroundColor Cyan
+    }
     
     
     # If no explicit LogoPath was provided earlier, try to use Logo-blue.png located
@@ -77,46 +126,36 @@ Function Get-InputFormData {
     }
     
     # Load FrontEndConfig.json from the script directory into $JSONConfig
-    $JSONFallbackConfigURL = 'https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/FrontEnd/FrontEndJSONDrivenDynamicApps/FrontEndConfig.json'
+    $JSONFallbackConfigURL = 'https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/FrontEnd/FrontEndJSONDrivenDynamicAppsAvalonia/FrontEndConfig.json'
     $JSONConfig = $null
-    try {
-        if ($scriptDir) {
-            Write-Host "Attempting to load FrontEndConfig.json from script directory: $scriptDir" -ForegroundColor Cyan
-            $configPath = Join-Path -Path $scriptDir -ChildPath 'FrontEndConfig.json'
-            if (Test-Path -Path $configPath) {
+    $configPath = $null
+    if ($scriptDir) {
+        $configPath = Join-Path -Path $scriptDir -ChildPath 'FrontEndConfig.json'
+        Write-Host "Attempting to load FrontEndConfig.json from script directory: $scriptDir" -ForegroundColor Cyan
+        if (Test-Path -Path $configPath) {
+            try {
                 Write-Host "Found FrontEndConfig.json at $configPath" -ForegroundColor Green
                 $JSONConfig = Get-Content -Path $configPath -Raw | ConvertFrom-Json -ErrorAction Stop
                 try { Write-CMTraceLog -Message "Loaded FrontEndConfig.json from $configPath" -Type "Info" -Component "Config" } catch {}
             }
-        }
-        $configPath = Join-Path -Path $scriptDir -ChildPath 'FrontEndConfig.json' -ErrorAction SilentlyContinue
-        
-        if (-not $JSONConfig) {
-            Write-Verbose "FrontEndConfig.json not found at $configPath"
-            try { Write-CMTraceLog -Message "FrontEndConfig.json not found at $configPath" -Type "Warning" -Component "Config" } catch {}
-            # Attempt to load JSON config from fallback URL. Use Invoke-RestMethod first
-            # (it returns a parsed object). If that fails, fetch raw content and
-            # ConvertFrom-Json explicitly.
-            try {
-                Write-Host "Attempting to load FrontEndConfig.json from fallback URL: $JSONFallbackConfigURL" -ForegroundColor Cyan
-                try {
-                    $JSONConfig = Invoke-RestMethod -Uri $JSONFallbackConfigURL -ErrorAction Stop
-                } catch {
-                    # Fallback to raw content parsing
-                    $content = (Invoke-WebRequest -Uri $JSONFallbackConfigURL -ErrorAction Stop).Content
-                    $JSONConfig = $content | ConvertFrom-Json -ErrorAction Stop
-                }
-                Write-Host "Successfully loaded FrontEndConfig.json from fallback URL" -ForegroundColor Green
-                try { Write-CMTraceLog -Message "Loaded FrontEndConfig.json from fallback URL: $JSONFallbackConfigURL" -Type "Info" -Component "Config" } catch {}
-            } catch {
-                Write-Warning "Failed to load FrontEndConfig.json from fallback URL: $_"
-                try { Write-CMTraceLog -Message "Failed to load FrontEndConfig.json from fallback URL: $_" -Type "Warning" -Component "Config" } catch {}
+            catch {
+                Write-Warning "Failed to load local FrontEndConfig.json: $($_.Exception.Message). Trying online fallback."
             }
         }
     }
-    catch {
-        Write-Warning "Failed to load or parse FrontEndConfig.json: $_"
-        try { Write-CMTraceLog -Message "Failed to load or parse FrontEndConfig.json: $_" -Type "Warning" -Component "Config" } catch {}
+
+    if (-not $JSONConfig) {
+        Write-Host "Attempting to load FrontEndConfig.json from fallback URL: $JSONFallbackConfigURL" -ForegroundColor Cyan
+        try {
+            $content = (Invoke-WebRequest -Uri $JSONFallbackConfigURL -UseBasicParsing -ErrorAction Stop).Content
+            $JSONConfig = $content | ConvertFrom-Json -ErrorAction Stop
+            Write-Host "Successfully loaded FrontEndConfig.json from fallback URL" -ForegroundColor Green
+            try { Write-CMTraceLog -Message "Loaded FrontEndConfig.json from fallback URL: $JSONFallbackConfigURL" -Type "Info" -Component "Config" } catch {}
+        }
+        catch {
+            Write-Warning "Failed to load FrontEndConfig.json from local path or fallback URL: $($_.Exception.Message)"
+            try { Write-CMTraceLog -Message "Failed to load FrontEndConfig.json from local path or fallback URL: $($_.Exception.Message)" -Type "Error" -Component "Config" } catch {}
+        }
     }
     ###########################################
     #Build Data from JSON
@@ -191,9 +230,6 @@ Function Get-InputFormData {
     $JSONConfig.Roles | ForEach-Object {
         $RoleOptions += $_
     }
-    
-    #Finish Action Options
-    $FinishActionOptions = @('Shutdown', 'Restart', 'Reseal', 'Log Off', 'Nothing')
     
     # Software options - try to pull dynamically from DeployR, fall back to static list if unavailable
     # Try to get apps dynamically from DeployR
@@ -439,16 +475,16 @@ Function Get-InputFormData {
     
     # XAML Form Definition
     [xml]$XAML = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="$WindowTitle" 
-    Height="700" 
-        Width="540"
-        MinHeight="400"
-        MinWidth="520"
+    Height="820" 
+        Width="900"
+        MinHeight="650"
+        MinWidth="820"
         WindowStartupLocation="CenterScreen"
     Topmost="True"
-        ResizeMode="CanResize">
+        CanResize="True">
     <Grid Margin="15">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
@@ -459,12 +495,19 @@ Function Get-InputFormData {
         <DockPanel Grid.Row="0">
             <Image Name="imgLogo"
                    Stretch="Uniform"
-                   MaxHeight="80"
+                   MaxHeight="90"
                    Margin="0,0,0,15"
                    HorizontalAlignment="Center"
                    DockPanel.Dock="Top"/>
             <!-- Tabs for content -->
-            <TabControl Margin="0,0,0,10">
+            <TabControl Margin="0,0,0,10"
+                        HorizontalContentAlignment="Stretch"
+                        VerticalContentAlignment="Stretch">
+                <TabControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" />
+                    </ItemsPanelTemplate>
+                </TabControl.ItemsPanel>
             <TabItem Header="General">
                 <!-- ScrollViewer for main content -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto" 
@@ -480,6 +523,12 @@ Function Get-InputFormData {
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
+
+                <Border Grid.Row="0"
+                        Height="2"
+                        Background="#FF1688D4"
+                        HorizontalAlignment="Stretch"
+                        Margin="0,0,0,12"/>
                 
                 <!-- Header -->
                 <TextBlock Grid.Row="1" 
@@ -549,7 +598,7 @@ Function Get-InputFormData {
                     <TextBox Name="txtDomainSuffix" 
                              Height="25" 
                              FontSize="12"
-                             ToolTip="Optional: Enter domain suffix (e.g., contoso.local) to display full FQDN in preview"/>
+                             ToolTip.Tip="Optional: Enter domain suffix (e.g., contoso.local) to display full FQDN in preview"/>
                 </StackPanel>
                 
                 <!-- Preview -->
@@ -558,6 +607,7 @@ Function Get-InputFormData {
                         <TextBlock Text="Computer Name Preview:" 
                                    FontSize="11" 
                                    FontWeight="Bold"
+                                   Foreground="#FF202020"
                                    Margin="0,0,0,3"/>
                         <TextBlock Name="txtPreview" 
                                    Text="(Not set)" 
@@ -569,14 +619,6 @@ Function Get-InputFormData {
             </StackPanel>
         </GroupBox>
         
-        <!-- Enable P2P Checkbox -->
-        <CheckBox Name="chkEnableP2P"
-                  Grid.Row="3"
-                  Content="Enable P2P for rest of the task sequence"
-                  FontSize="12"
-                  IsChecked="True"
-                  Margin="0,10,0,0"/>
-
         <!-- Workplace Join has been moved to its own tab (see below) -->
         
                 <!-- User Role dropdown moved to the 'Roles' tab to avoid duplicate UI in General -->
@@ -589,6 +631,7 @@ Function Get-InputFormData {
             <TabItem Header="Workplace Join">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8">
                     <StackPanel Margin="0,6,0,0">
+                        <Border Height="2" Background="#FF1688D4" HorizontalAlignment="Stretch" Margin="0,0,0,12"/>
                         <GroupBox Header="Workplace Join" FontSize="13" FontWeight="Bold" Margin="0,0,0,15" Padding="10">
                             <StackPanel>
                                 <RadioButton Name="rbWorkgroup" 
@@ -607,7 +650,7 @@ Function Get-InputFormData {
                                              Margin="0,0,0,8"/>
                                 
                                 <!-- Primary User UPN field (shown when EntraID is selected) -->
-                                <StackPanel Name="spEntraIDOptions" Visibility="Collapsed" Margin="20,0,0,8">
+                                <StackPanel Name="spEntraIDOptions" IsVisible="False" Margin="20,0,0,8">
                                     <TextBlock Text="Primary User UPN:" FontSize="11" Margin="0,0,0,3"/>
                                     <TextBox Name="txtPrimaryUserUPN" Height="24" FontSize="11"/>
                                 </StackPanel>
@@ -644,11 +687,11 @@ Function Get-InputFormData {
                                    FontSize="13" 
                                    FontWeight="Bold"
                                    Margin="0,10,0,5"
-                                   Visibility="Collapsed"/>
+                                   IsVisible="False"/>
                         <ComboBox Name="cmbOptionOU"
                                   Height="28"
                                   FontSize="12"
-                                  Visibility="Collapsed"/>
+                                  IsVisible="False"/>
     
                         <!-- Finish Action GroupBox -->
                         <GroupBox Header="Finish Action" FontSize="13" FontWeight="Bold" Margin="0,15,0,0" Padding="10">
@@ -664,6 +707,7 @@ Function Get-InputFormData {
             <TabItem Header="Roles">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8">
                     <StackPanel Margin="0,6,0,0">
+                        <Border Height="2" Background="#FF1688D4" HorizontalAlignment="Stretch" Margin="0,0,0,12"/>
                         <TextBlock Text="Select User's Role:" FontSize="13" FontWeight="Bold" Margin="0,0,0,5" />
                         <ComboBox Name="cmbUserRole" Height="28" FontSize="12"/>
                         <TextBlock Name="txtRoleSource" Text="" FontSize="10" Foreground="Gray" Margin="0,8,0,0" TextWrapping="Wrap"/>
@@ -674,11 +718,12 @@ Function Get-InputFormData {
             <TabItem Header="Software">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8">
                     <StackPanel Margin="0,6,0,0">
+                        <Border Height="2" Background="#FF1688D4" HorizontalAlignment="Stretch" Margin="0,0,0,12"/>
                         <TextBlock Text="Select software to install:" FontSize="13" FontWeight="Bold" Margin="0,0,0,8"/>
                         <!-- Dynamic software list populated from SoftwareList.json -->
                                 <StackPanel Name="spSoftwareList" Margin="6,4,0,0" />
                                 <!-- Warning displayed when dynamic retrieval fails and static list is used -->
-                                <TextBlock Name="txtSoftwareFallback" Text="" FontSize="11" Foreground="OrangeRed" Visibility="Collapsed" Margin="6,8,0,0" TextWrapping="Wrap"/>
+                                <TextBlock Name="txtSoftwareFallback" Text="" FontSize="11" Foreground="OrangeRed" IsVisible="False" Margin="6,8,0,0" TextWrapping="Wrap"/>
                                 <TextBlock Name="txtSoftwareTagInfo" Text="" FontSize="11" Foreground="Gray" Margin="6,10,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                 </ScrollViewer>
@@ -687,6 +732,7 @@ Function Get-InputFormData {
             <TabItem Header="Hardware">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="8">
                     <StackPanel Margin="0,6,0,0">
+                        <Border Height="2" Background="#FF1688D4" HorizontalAlignment="Stretch" Margin="0,0,0,12"/>
                         <TextBlock Text="Hardware Information" FontSize="13" FontWeight="Bold" Margin="0,0,0,12"/>
                         
                         <Grid>
@@ -756,8 +802,19 @@ Function Get-InputFormData {
         </Grid.ColumnDefinitions>
     
         <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Center" Margin="0,0,12,0">
-            <TextBlock Name="txtWarning" Text="" FontSize="12" Foreground="OrangeRed" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,0,0,2"/>
+            <TextBlock Name="txtWarning" Text="" FontSize="12" Foreground="OrangeRed" IsVisible="False" TextWrapping="Wrap" Margin="0,0,0,2"/>
             <TextBlock Name="txtStatus" Text="" FontSize="11" Foreground="OrangeRed" TextWrapping="Wrap"/>
+            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <ToggleSwitch Name="chkEnableP2P"
+                              Content="Enable P2P for rest of the task sequence"
+                              IsChecked="True"
+                              FontSize="11"
+                              Margin="0,0,24,0"/>
+                <ToggleSwitch Name="tglThemeMode"
+                              Content="Dark mode"
+                              IsChecked="True"
+                              FontSize="11"/>
+            </StackPanel>
         </StackPanel>
     
         <StackPanel Grid.Column="1"
@@ -780,52 +837,100 @@ Function Get-InputFormData {
 </Window>
 "@
     
-    # Load XAML
-    $reader = New-Object System.Xml.XmlNodeReader $XAML
-    $Window = [Windows.Markup.XamlReader]::Load($reader)
+    # Load XAML and resolve controls through Avalonia's name scope.
+    $xamlText = $XAML.OuterXml -replace '\sName="', ' x:Name="'
+    $Window = [Avalonia.Markup.Xaml.AvaloniaRuntimeXamlLoader]::Parse[Avalonia.Controls.Window](
+        $xamlText,
+        [Avalonia.Controls.Window].Assembly
+    )
+    $windowIconBase64 = [string]$JSONConfig.WindowIconBase64
+    $windowIconStream = [System.IO.MemoryStream]::new([Convert]::FromBase64String($windowIconBase64))
+    try { $Window.Icon = [Avalonia.Controls.WindowIcon]::new($windowIconStream) } catch { Write-Warning "Unable to load embedded window icon: $($_.Exception.Message)" }
+    function Get-AvaloniaControl {
+        param($Root, [string]$Name)
+        $scope = [Avalonia.Controls.NameScope]::GetNameScope($Root)
+        if ($null -eq $scope) { throw "Avalonia name scope was not created for '$Name'." }
+        $control = $scope.Find($Name)
+        if ($null -eq $control) { throw "Avalonia control '$Name' was not found." }
+        return $control
+    }
     
     # Get Form Controls
-    $imgLogo = $Window.FindName("imgLogo")
-    $rbNoName = $Window.FindName("rbNoName")
-    $rbManualName = $Window.FindName("rbManualName")
-    $rbHardwareName = $Window.FindName("rbHardwareName")
-    $txtManualName = $Window.FindName("txtManualName")
-    $txtPrefix = $Window.FindName("txtPrefix")
-    $cmbHardwareId = $Window.FindName("cmbHardwareId")
-    $txtDomainSuffix = $Window.FindName("txtDomainSuffix")
-    $txtPreview = $Window.FindName("txtPreview")
-    $chkEnableP2P = $Window.FindName("chkEnableP2P")
-    $rbWorkgroup = $Window.FindName("rbWorkgroup")
-    $rbEntraID = $Window.FindName("rbEntraID")
-    $rbAutopilot = $Window.FindName("rbAutopilot")
+    $imgLogo = Get-AvaloniaControl $Window "imgLogo"
+    $rbNoName = Get-AvaloniaControl $Window "rbNoName"
+    $rbManualName = Get-AvaloniaControl $Window "rbManualName"
+    $rbHardwareName = Get-AvaloniaControl $Window "rbHardwareName"
+    $txtManualName = Get-AvaloniaControl $Window "txtManualName"
+    $txtPrefix = Get-AvaloniaControl $Window "txtPrefix"
+    $cmbHardwareId = Get-AvaloniaControl $Window "cmbHardwareId"
+    $txtDomainSuffix = Get-AvaloniaControl $Window "txtDomainSuffix"
+    $txtPreview = Get-AvaloniaControl $Window "txtPreview"
+    $chkEnableP2P = Get-AvaloniaControl $Window "chkEnableP2P"
+    $rbWorkgroup = Get-AvaloniaControl $Window "rbWorkgroup"
+    $rbEntraID = Get-AvaloniaControl $Window "rbEntraID"
+    $rbAutopilot = Get-AvaloniaControl $Window "rbAutopilot"
     # rbOnlineDomainJoin removed - no FindName required
-    $rbDomainJoin = $Window.FindName("rbDomainJoin")
-    $spEntraIDOptions = $Window.FindName("spEntraIDOptions")
-    $txtPrimaryUserUPN = $Window.FindName("txtPrimaryUserUPN")
-    $cmbUserRole = $Window.FindName("cmbUserRole")
-    $txtRoleSource = $Window.FindName("txtRoleSource")
-    $cmbAutopilotGroupTag = $Window.FindName("cmbAutopilotGroupTag")
-    $txtAutopilotLabel = $Window.FindName("txtAutopilotLabel")
-    $txtOptionOULabel = $Window.FindName("txtOptionOULabel")
-    $cmbOptionOU = $Window.FindName("cmbOptionOU")
-    $txtStatus = $Window.FindName("txtStatus")
-    $txtWarning = $Window.FindName("txtWarning")
-    $btnOK = $Window.FindName("btnOK")
-    $btnCancel = $Window.FindName("btnCancel")
-    $spSoftwareList = $Window.FindName("spSoftwareList")
-    $txtSoftwareFallback = $Window.FindName("txtSoftwareFallback")
-    $txtSoftwareTagInfo = $Window.FindName("txtSoftwareTagInfo")
+    $rbDomainJoin = Get-AvaloniaControl $Window "rbDomainJoin"
+    $spEntraIDOptions = Get-AvaloniaControl $Window "spEntraIDOptions"
+    $txtPrimaryUserUPN = Get-AvaloniaControl $Window "txtPrimaryUserUPN"
+    $cmbUserRole = Get-AvaloniaControl $Window "cmbUserRole"
+    $txtRoleSource = Get-AvaloniaControl $Window "txtRoleSource"
+    $cmbAutopilotGroupTag = Get-AvaloniaControl $Window "cmbAutopilotGroupTag"
+    $txtAutopilotLabel = Get-AvaloniaControl $Window "txtAutopilotLabel"
+    $txtOptionOULabel = Get-AvaloniaControl $Window "txtOptionOULabel"
+    $cmbOptionOU = Get-AvaloniaControl $Window "cmbOptionOU"
+    $txtStatus = Get-AvaloniaControl $Window "txtStatus"
+    $tglThemeMode = Get-AvaloniaControl $Window "tglThemeMode"
+    $txtWarning = Get-AvaloniaControl $Window "txtWarning"
+    $btnOK = Get-AvaloniaControl $Window "btnOK"
+    $btnCancel = Get-AvaloniaControl $Window "btnCancel"
+    $spSoftwareList = Get-AvaloniaControl $Window "spSoftwareList"
+    $txtSoftwareFallback = Get-AvaloniaControl $Window "txtSoftwareFallback"
+    $txtSoftwareTagInfo = Get-AvaloniaControl $Window "txtSoftwareTagInfo"
     
     # Hardware tab controls
-    $txtHwMake = $Window.FindName("txtHwMake")
-    $txtHwModel = $Window.FindName("txtHwModel")
-    $txtHwSystem = $Window.FindName("txtHwSystem")
-    $txtHwSerial = $Window.FindName("txtHwSerial")
-    $txtHwMemory = $Window.FindName("txtHwMemory")
-    $txtHwMacList = $Window.FindName("txtHwMacList")
-    $txtHwIpList = $Window.FindName("txtHwIpList")
-    $txtHwGwList = $Window.FindName("txtHwGwList")
-    $txtHwAssetTag = $Window.FindName("txtHwAssetTag")
+    $txtHwMake = Get-AvaloniaControl $Window "txtHwMake"
+    $txtHwModel = Get-AvaloniaControl $Window "txtHwModel"
+    $txtHwSystem = Get-AvaloniaControl $Window "txtHwSystem"
+    $txtHwSerial = Get-AvaloniaControl $Window "txtHwSerial"
+    $txtHwMemory = Get-AvaloniaControl $Window "txtHwMemory"
+    $txtHwMacList = Get-AvaloniaControl $Window "txtHwMacList"
+    $txtHwIpList = Get-AvaloniaControl $Window "txtHwIpList"
+    $txtHwGwList = Get-AvaloniaControl $Window "txtHwGwList"
+    $txtHwAssetTag = Get-AvaloniaControl $Window "txtHwAssetTag"
+
+    $darkModeDefault = [bool]$JSONConfig.DarkModeDefault
+    $tglThemeMode.IsChecked = $darkModeDefault
+    [Avalonia.Application]::Current.RequestedThemeVariant = if ($darkModeDefault) {
+        [Avalonia.Styling.ThemeVariant]::Dark
+    } else {
+        [Avalonia.Styling.ThemeVariant]::Light
+    }
+
+    $enableP2PDefault = if ($null -ne $JSONConfig.EnableP2PDefault) { [bool]$JSONConfig.EnableP2PDefault } else { $true }
+    $chkEnableP2P.IsChecked = $enableP2PDefault
+
+    $validationBrush = [Avalonia.Media.Brush]::Parse('#FFC02626')
+    $previewGrayBrush = [Avalonia.Media.Brush]::Parse('#FF6E6E6E')
+    $previewGreenBrush = [Avalonia.Media.Brush]::Parse('#FF1E7B34')
+    $previewRedBrush = [Avalonia.Media.Brush]::Parse('#FFC02626')
+    function Show-ValidationError {
+        param([string]$Message)
+        $txtStatus.Foreground = $validationBrush
+        $txtStatus.Text = $Message
+    }
+
+    $tglThemeMode.add_IsCheckedChanged({
+        try {
+            [Avalonia.Application]::Current.RequestedThemeVariant = if ($tglThemeMode.IsChecked) {
+                [Avalonia.Styling.ThemeVariant]::Dark
+            } else {
+                [Avalonia.Styling.ThemeVariant]::Light
+            }
+        } catch {
+            Write-Warning "Avalonia theme switch failed: $($_.Exception.Message)"
+        }
+    })
     
     # Populate hardware information
     $txtHwMake.Text = if ($MakeAlias) { $MakeAlias } else { "N/A" }
@@ -846,7 +951,7 @@ Function Get-InputFormData {
     $existingPeering = ${TSEnv:Peering}
     if (-not [string]::IsNullOrWhiteSpace($existingPeering) -and $existingPeering -ieq 'False') {
         $chkEnableP2P.IsChecked = $false
-    } else {
+    } elseif (-not [string]::IsNullOrWhiteSpace($existingPeering) -and $existingPeering -ieq 'True') {
         $chkEnableP2P.IsChecked = $true
     }
     
@@ -856,27 +961,27 @@ Function Get-InputFormData {
         [bool]$Enabled
         )
         if ($Enabled) {
-            $txtAutopilotLabel.Visibility = 'Visible'
+            $txtAutopilotLabel.IsVisible = $true
             $cmbAutopilotGroupTag.IsEnabled = $true
-            $cmbAutopilotGroupTag.Visibility = 'Visible'
+            $cmbAutopilotGroupTag.IsVisible = $true
         }
         else {
-            $txtAutopilotLabel.Visibility = 'Collapsed'
+            $txtAutopilotLabel.IsVisible = $false
             $cmbAutopilotGroupTag.IsEnabled = $false
-            $cmbAutopilotGroupTag.Visibility = 'Collapsed'
+            $cmbAutopilotGroupTag.IsVisible = $false
         }
     }
     
     function Set-DomainJoinControlsState {
         param([bool]$Enabled)
         if ($Enabled) {
-            $txtOptionOULabel.Visibility = 'Visible'
-            $cmbOptionOU.Visibility = 'Visible'
+            $txtOptionOULabel.IsVisible = $true
+            $cmbOptionOU.IsVisible = $true
             $cmbOptionOU.IsEnabled = $true
         }
         else {
-            $txtOptionOULabel.Visibility = 'Collapsed'
-            $cmbOptionOU.Visibility = 'Collapsed'
+            $txtOptionOULabel.IsVisible = $false
+            $cmbOptionOU.IsVisible = $false
             $cmbOptionOU.IsEnabled = $false
         }
     }
@@ -884,11 +989,23 @@ Function Get-InputFormData {
     function Set-EntraIDOptionsState {
         param([bool]$Enabled)
         if ($Enabled) {
-            $spEntraIDOptions.Visibility = 'Visible'
+            $spEntraIDOptions.IsVisible = $true
         }
         else {
-            $spEntraIDOptions.Visibility = 'Collapsed'
+            $spEntraIDOptions.IsVisible = $false
         }
+    }
+
+    function Register-AvaloniaCheckedHandler {
+        param(
+            [Avalonia.Controls.Primitives.ToggleButton]$Control,
+            [scriptblock]$Action
+        )
+        $handler = [System.EventHandler[Avalonia.Interactivity.RoutedEventArgs]]{
+            param($sender, $eventArgs)
+            try { $Action.Invoke() } catch { Write-Warning "Avalonia radio event failed: $($_.Exception.Message)" }
+        }.GetNewClosure()
+        $Control.add_IsCheckedChanged($handler)
     }
     
     function Update-FinishActionOptions {
@@ -949,17 +1066,7 @@ Function Get-InputFormData {
     # Load Logo from file path
     if (!$logoLoaded -and ![string]::IsNullOrWhiteSpace($LogoPath) -and (Test-Path $LogoPath)) {
         try {
-            # Use FileStream + BitmapImage with explicit stream to avoid WindowsBase assembly
-            # issues in WinPE where WindowsBase v8.0.0.0 may not be present.
-            $stream = [System.IO.File]::OpenRead($LogoPath)
-            $bitmap = New-Object System.Windows.Media.Imaging.BitmapImage
-            $bitmap.BeginInit()
-            $bitmap.StreamSource = $stream
-            $bitmap.CacheOption = [System.Windows.Media.Imaging.BitmapCacheOption]::OnLoad
-            $bitmap.EndInit()
-            $bitmap.Freeze()
-            $stream.Close()
-            $stream.Dispose()
+            $bitmap = [Avalonia.Media.Imaging.Bitmap]::new($LogoPath)
             $imgLogo.Source = $bitmap
             $logoLoaded = $true
         }
@@ -975,12 +1082,12 @@ Function Get-InputFormData {
     
     # Hide the logo control if nothing loaded
     if (!$logoLoaded) {
-        $imgLogo.Visibility = "Collapsed"
+        $imgLogo.IsVisible = $false
     }
     
     # Populate User Role ComboBox from $RoleOptions
     foreach ($role in $RoleOptions) {
-        $comboItem = New-Object System.Windows.Controls.ComboBoxItem
+        $comboItem = [Avalonia.Controls.ComboBoxItem]::new()
         $comboItem.Content = $role.DisplayName
         $comboItem.Tag = $role.Value
         $cmbUserRole.Items.Add($comboItem) | Out-Null
@@ -1005,7 +1112,7 @@ Function Get-InputFormData {
     $cmbOptionOU.SelectedIndex = 0
     
     # Populate Finish Action ComboBox - Initial load based on default Workgroup selection
-    $cmbFinishAction = $Window.FindName("cmbFinishAction")
+    $cmbFinishAction = Get-AvaloniaControl $Window "cmbFinishAction"
     # Start with the default workplace join type (Local Workgroup)
     Update-FinishActionOptions -WorkplaceJoinType 'Workgroup'
     
@@ -1045,10 +1152,10 @@ Function Get-InputFormData {
     if ($SoftwareOptions -and $SoftwareOptions.Count -gt 0) {
         foreach ($item in $SoftwareOptions) {
             try {
-                $cb = New-Object System.Windows.Controls.CheckBox
+                $cb = [Avalonia.Controls.CheckBox]::new()
                 $cb.Content = $item.DisplayName
                 $cb.Tag = $item.Id
-                $cb.Margin = '6,4,0,4'
+                $cb.Margin = [Avalonia.Thickness]::new(6, 4, 0, 4)
                 $cb.FontSize = 12
                 $spSoftwareList.Children.Add($cb) | Out-Null
             } catch {
@@ -1067,7 +1174,7 @@ Function Get-InputFormData {
     try {
         if ($UseDeployRSoftwareList -eq "True" -and $DeployRRetrievalFailed) {
             $txtSoftwareFallback.Text = "Warning: Could not retrieve software list from DeployR - using built-in static list."
-            $txtSoftwareFallback.Visibility = 'Visible'
+            $txtSoftwareFallback.IsVisible = $true
         }
     } catch {}
     
@@ -1107,7 +1214,7 @@ Function Get-InputFormData {
     
     # Function to update preview
     function Update-Preview {
-        $domainSuffix = $txtDomainSuffix.Text.Trim()
+        $domainSuffix = if ($null -ne $txtDomainSuffix.Text) { $txtDomainSuffix.Text.Trim() } else { '' }
         # Ignore the default placeholder value
         if ($domainSuffix -eq "contoso.local") {
             $domainSuffix = ""
@@ -1115,13 +1222,13 @@ Function Get-InputFormData {
         
         if ($rbNoName.IsChecked) {
             $txtPreview.Text = "(Not set)"
-            $txtPreview.Foreground = "Gray"
+            $txtPreview.Foreground = $previewGrayBrush
         }
         elseif ($rbManualName.IsChecked) {
             $name = $txtManualName.Text.Trim()
             if ([string]::IsNullOrWhiteSpace($name)) {
                 $txtPreview.Text = "(Enter a name)"
-                $txtPreview.Foreground = "Gray"
+                $txtPreview.Foreground = $previewGrayBrush
             }
             else {
                 # Validate computer name characters
@@ -1132,30 +1239,32 @@ Function Get-InputFormData {
                         $displayName = "$displayName.$domainSuffix"
                     }
                     $txtPreview.Text = $displayName
-                    $txtPreview.Foreground = "DarkGreen"
+                    $txtPreview.Foreground = $previewGreenBrush
                     $txtStatus.Text = ""
                 }
                 else {
                     $txtPreview.Text = $name.ToUpper() + " (Invalid characters)"
-                    $txtPreview.Foreground = "Red"
+                    $txtPreview.Foreground = $previewRedBrush
                     $txtStatus.Text = "Only letters, numbers, and hyphens are allowed"
                 }
             }
         }
         elseif ($rbHardwareName.IsChecked) {
-            $prefix = $txtPrefix.Text.Trim().ToUpper()
-            $hwType = $cmbHardwareId.SelectedItem
+            $prefix = if ($null -ne $txtPrefix.Text) { $txtPrefix.Text.Trim().ToUpper() } else { '' }
+            $hwType = [string]$cmbHardwareId.SelectedItem
+            if ([string]::IsNullOrWhiteSpace($hwType)) { $hwType = 'Serial Number' }
             $hwId = Get-HardwareId -Type $hwType
+            if ([string]::IsNullOrWhiteSpace($hwId)) { $hwId = 'UNKNOWN' }
             
             # If Asset Tag selected but not available, show a warning in the status area
             if ($hwType -eq "Asset Tag" -and ([string]::IsNullOrWhiteSpace($hwId) -or $hwId -eq "UNKNOWN")) {
                 $txtWarning.Text = "Warning: Asset Tag not available - generated name may be invalid"
-                $txtWarning.Visibility = 'Visible'
-                $txtPreview.Foreground = "Red"
+                $txtWarning.IsVisible = $true
+                $txtPreview.Foreground = $previewRedBrush
             }
             else {
                 # Clear any previous warning
-                try { $txtWarning.Text = ""; $txtWarning.Visibility = 'Collapsed' } catch {}
+                try { $txtWarning.Text = ""; $txtWarning.IsVisible = $false } catch {}
             }
             
             if ([string]::IsNullOrWhiteSpace($prefix)) {
@@ -1189,7 +1298,7 @@ Function Get-InputFormData {
                 }
                 else {
                     $txtPreview.Text = "$prefix-$hwId (Invalid prefix)"
-                    $txtPreview.Foreground = "Red"
+                    $txtPreview.Foreground = $previewRedBrush
                     $txtStatus.Text = "Prefix can only contain letters, numbers, and hyphens"
                     return
                 }
@@ -1207,7 +1316,7 @@ Function Get-InputFormData {
                 $displayName = "$displayName.$domainSuffix"
             }
             $txtPreview.Text = $displayName
-            $txtPreview.Foreground = "DarkGreen"
+            $txtPreview.Foreground = $previewGreenBrush
             if (-not $txtStatus.Text) { $txtStatus.Text = "" }
         }
     }
@@ -1229,64 +1338,36 @@ Function Get-InputFormData {
         try { $lblHardwareIdType.Opacity = (if ($hardwareSelected) { 1.0 } else { 0.5 }) } catch {}
     }
     
-    $rbNoName.Add_Checked({
-        # No-name: disable manual and hardware panels
-        $txtManualName.IsEnabled = $false
-        $txtPrefix.IsEnabled = $false
-        $cmbHardwareId.IsEnabled = $false
-        # Clear any asset-tag warnings
-        try { $txtWarning.Text = ""; $txtWarning.Visibility = 'Collapsed' } catch {}
-        Set-PanelVisualState -noNameSelected $true -manualSelected $false -hardwareSelected $false
+    function Update-AvaloniaSelectionState {
+        $manualSelected = [bool]$rbManualName.IsChecked
+        $hardwareSelected = [bool]$rbHardwareName.IsChecked
+        $workplaceType = if ($rbEntraID.IsChecked) { 'EntraID' } elseif ($rbAutopilot.IsChecked) { 'Autopilot' } elseif ($rbDomainJoin.IsChecked) { 'ODJ' } else { 'Workgroup' }
+
+        $txtManualName.IsEnabled = $manualSelected
+        $txtPrefix.IsEnabled = $hardwareSelected
+        $cmbHardwareId.IsEnabled = $hardwareSelected
+        try { $txtWarning.Text = ''; $txtWarning.IsVisible = $false } catch {}
+        Set-PanelVisualState -noNameSelected (-not $manualSelected -and -not $hardwareSelected) -manualSelected $manualSelected -hardwareSelected $hardwareSelected
+        Set-AutopilotControlsState -Enabled:([bool]$rbAutopilot.IsChecked)
+        Set-DomainJoinControlsState -Enabled:([bool]$rbDomainJoin.IsChecked)
+        Set-EntraIDOptionsState -Enabled:([bool]$rbEntraID.IsChecked)
+        if ($null -ne $cmbFinishAction) { Update-FinishActionOptions -WorkplaceJoinType $workplaceType }
         Update-Preview
-    })
-    
-    $rbManualName.Add_Checked({
-        # Manual name selected: enable manual controls, disable hardware controls
-        $txtManualName.IsEnabled = $true
-        $txtPrefix.IsEnabled = $false
-        $cmbHardwareId.IsEnabled = $false
-        # Clear any asset-tag warnings
-        try { $txtWarning.Text = ""; $txtWarning.Visibility = 'Collapsed' } catch {}
-        $txtManualName.Focus()
-        Set-PanelVisualState -noNameSelected $false -manualSelected $true -hardwareSelected $false
-        Update-Preview
-    })
-    
-    $rbHardwareName.Add_Checked({
-        # Hardware name selected: enable hardware controls, disable manual controls
-        $txtManualName.IsEnabled = $false
-        $txtPrefix.IsEnabled = $true
-        $cmbHardwareId.IsEnabled = $true
-        # Clear any previous warning; Update-Preview will re-evaluate and show if still missing
-        try { $txtWarning.Text = ""; $txtWarning.Visibility = 'Collapsed' } catch {}
-        Set-PanelVisualState -noNameSelected $false -manualSelected $false -hardwareSelected $true
-        Update-Preview
-    })
-    
-    # Wire Workplace Join radio buttons to toggle Autopilot controls
-    $rbWorkgroup.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
-    $rbEntraID.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
-    $rbAutopilot.Add_Checked({ Set-AutopilotControlsState -Enabled:$true })
-    $rbDomainJoin.Add_Checked({ Set-AutopilotControlsState -Enabled:$false })
-    # Wire Domain Join radio handlers (Offline Domain Join uses the OU controls)
-    $rbWorkgroup.Add_Checked({ Set-DomainJoinControlsState -Enabled:$false })
-    $rbEntraID.Add_Checked({ Set-DomainJoinControlsState -Enabled:$false })
-    $rbAutopilot.Add_Checked({ Set-DomainJoinControlsState -Enabled:$false })
-    # Show the Domain Join OU controls when Domain Join (ODJ) is selected
-    $rbDomainJoin.Add_Checked({ Set-DomainJoinControlsState -Enabled:$true })
-    
-    # Wire EntraID options visibility
-    $rbWorkgroup.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
-    $rbEntraID.Add_Checked({ Set-EntraIDOptionsState -Enabled:$true })
-    $rbAutopilot.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
-    # Online Domain Join removed - EntraID options handled by other radio handlers
-    $rbDomainJoin.Add_Checked({ Set-EntraIDOptionsState -Enabled:$false })
-    
-    # Wire Workplace Join radio buttons to update Finish Action dropdown options
-    $rbWorkgroup.Add_Checked({ Update-FinishActionOptions -WorkplaceJoinType 'Workgroup' })
-    $rbEntraID.Add_Checked({ Update-FinishActionOptions -WorkplaceJoinType 'EntraID' })
-    $rbAutopilot.Add_Checked({ Update-FinishActionOptions -WorkplaceJoinType 'Autopilot' })
-    $rbDomainJoin.Add_Checked({ Update-FinishActionOptions -WorkplaceJoinType 'ODJ' })
+        if ($manualSelected) { try { $txtManualName.Focus() | Out-Null } catch {} }
+    }
+
+    $updateSelectionStateAction = ${function:Update-AvaloniaSelectionState}.GetNewClosure()
+
+    Register-AvaloniaCheckedHandler $rbNoName $updateSelectionStateAction
+    Register-AvaloniaCheckedHandler $rbManualName $updateSelectionStateAction
+    Register-AvaloniaCheckedHandler $rbHardwareName $updateSelectionStateAction
+    Register-AvaloniaCheckedHandler $rbWorkgroup $updateSelectionStateAction
+    Register-AvaloniaCheckedHandler $rbEntraID $updateSelectionStateAction
+    Register-AvaloniaCheckedHandler $rbAutopilot $updateSelectionStateAction
+    Register-AvaloniaCheckedHandler $rbDomainJoin $updateSelectionStateAction
+
+    # Apply the current radio selection after all controls and dropdown values exist.
+    Update-AvaloniaSelectionState
     
     # Ensure Online Domain Join also turns off Autopilot controls when selected
     # Online Domain Join removed - Autopilot controls handled by other radio handlers
@@ -1300,9 +1381,7 @@ Function Get-InputFormData {
         Update-Preview
     })
     
-    $cmbHardwareId.Add_SelectionChanged({
-        Update-Preview
-    })
+    $cmbHardwareId.add_SelectionChanged({ Update-Preview })
     
     $txtDomainSuffix.Add_TextChanged({
         Update-Preview
@@ -1321,32 +1400,17 @@ Function Get-InputFormData {
             
             # Validate manual name
             if ([string]::IsNullOrWhiteSpace($manualName)) {
-                [System.Windows.MessageBox]::Show(
-                "Please enter a computer name or select a different naming strategy.",
-                "Validation Error",
-                [System.Windows.MessageBoxButton]::OK,
-                [System.Windows.MessageBoxImage]::Warning
-                )
+                Show-ValidationError "Please enter a computer name or select a different naming strategy."
                 return
             }
             
             if ($manualName -notmatch '^[a-zA-Z0-9-]+$') {
-                [System.Windows.MessageBox]::Show(
-                "Computer name can only contain letters, numbers, and hyphens.",
-                "Validation Error",
-                [System.Windows.MessageBoxButton]::OK,
-                [System.Windows.MessageBoxImage]::Warning
-                )
+                Show-ValidationError "Computer name can only contain letters, numbers, and hyphens."
                 return
             }
             
             if ($manualName.Length -gt 15) {
-                [System.Windows.MessageBox]::Show(
-                "Computer name cannot exceed 15 characters.",
-                "Validation Error",
-                [System.Windows.MessageBoxButton]::OK,
-                [System.Windows.MessageBoxImage]::Warning
-                )
+                Show-ValidationError "Computer name cannot exceed 15 characters."
                 return
             }
             
@@ -1361,12 +1425,7 @@ Function Get-InputFormData {
             
             # Validate prefix if provided
             if (![string]::IsNullOrWhiteSpace($prefix) -and $prefix -notmatch '^[a-zA-Z0-9-]+$') {
-                [System.Windows.MessageBox]::Show(
-                "Prefix can only contain letters, numbers, and hyphens.",
-                "Validation Error",
-                [System.Windows.MessageBoxButton]::OK,
-                [System.Windows.MessageBoxImage]::Warning
-                )
+                Show-ValidationError "Prefix can only contain letters, numbers, and hyphens."
                 return
             }
             
@@ -1426,9 +1485,9 @@ Function Get-InputFormData {
             $script:OptionOU = $cmbOptionOU.SelectedItem
         }
         
-        # Store user role - use ComboBoxItem.Tag (Value)
+        # Store user role - use the Avalonia ComboBoxItem Tag value.
         $selectedItem = $cmbUserRole.SelectedItem
-        if ($selectedItem -is [System.Windows.Controls.ComboBoxItem]) {
+        if ($selectedItem -is [Avalonia.Controls.ComboBoxItem]) {
             $script:SelectedUserRole = $selectedItem.Tag
         } else {
             # Fallback if something unexpected happened
@@ -1489,35 +1548,29 @@ Function Get-InputFormData {
             if ($selectedHwType -eq "Asset Tag") {
                 $selectedHwId = Get-HardwareId -Type $selectedHwType
                 if ([string]::IsNullOrWhiteSpace($selectedHwId) -or $selectedHwId -eq "UNKNOWN") {
-                    [System.Windows.MessageBox]::Show(
-                    "Asset Tag was selected as the Hardware ID Type but no Asset Tag was found. Please choose a different Hardware ID Type or ensure the device has an Asset Tag.",
-                    "Validation Error",
-                    [System.Windows.MessageBoxButton]::OK,
-                    [System.Windows.MessageBoxImage]::Warning
-                    )
+                    Show-ValidationError "Asset Tag was selected as the Hardware ID Type but no Asset Tag was found. Please choose a different Hardware ID Type or ensure the device has an Asset Tag."
                     return
                 }
             }
         }
         
-        # Stop auto-close timer (if running), then set dialog result and close
+        # Stop auto-close timer (if running), then record the result and close.
         try { if ($script:AutoCloseTimer) { $script:AutoCloseTimer.Stop() } } catch {}
-        # Set dialog result and close
-        $Window.DialogResult = $true
+        $script:FormAccepted = $true
         $Window.Close()
     })
     
     # Cancel Button Click Event
     $btnCancel.Add_Click({
         try { if ($script:AutoCloseTimer) { $script:AutoCloseTimer.Stop() } } catch {}
-        $Window.DialogResult = $false
+        $script:FormAccepted = $false
         $Window.Close()
     })
     
     # Auto-close timer: close the window after 5 minutes (300 seconds)
     # Uses a DispatcherTimer so UI thread updates are safe. Updates txtStatus with countdown.
     $timeoutSeconds = 300
-    $script:AutoCloseTimer = New-Object System.Windows.Threading.DispatcherTimer
+    $script:AutoCloseTimer = [Avalonia.Threading.DispatcherTimer]::new()
     $script:AutoCloseTimer.Interval = [TimeSpan]::FromSeconds(1)
     $script:AutoCloseRemaining = [int]$timeoutSeconds
     $txtStatus.Text = "Auto-close in {0}m {1}s" -f ([math]::Floor($script:AutoCloseRemaining/60)), ($script:AutoCloseRemaining%60)
@@ -1526,7 +1579,7 @@ Function Get-InputFormData {
             $script:AutoCloseRemaining = $script:AutoCloseRemaining - 1
             if ($script:AutoCloseRemaining -lt 0) {
                 try { $script:AutoCloseTimer.Stop() } catch {}
-                try { $Window.DialogResult = $false } catch {}
+                $script:FormAccepted = $false
                 try { $Window.Close() } catch {}
                 return
             }
@@ -1540,8 +1593,25 @@ Function Get-InputFormData {
     # Apply initial visual state for radios and labels
     try { Set-PanelVisualState -noNameSelected ([bool]$rbNoName.IsChecked) -manualSelected ([bool]$rbManualName.IsChecked) -hardwareSelected ([bool]$rbHardwareName.IsChecked) } catch {}
     
-    # Show the form
-    $result = $Window.ShowDialog()
+    # Show the form and drive Avalonia's dispatcher until it closes.
+    $script:FormAccepted = $false
+    $cancellationSource = [System.Threading.CancellationTokenSource]::new()
+    $Window.Add_Closed({
+        [Avalonia.Threading.Dispatcher]::UIThread.Post(
+            [System.Action]{ $cancellationSource.Cancel() },
+            [Avalonia.Threading.DispatcherPriority]::Background
+        )
+    })
+    $Window.Show()
+    try {
+        $dispatcher = [Avalonia.Threading.Dispatcher]::UIThread
+        if ($null -eq $dispatcher) { throw 'Avalonia UI dispatcher was not initialized.' }
+        $dispatcher.MainLoop($cancellationSource.Token)
+    }
+    catch [System.OperationCanceledException] {}
+    catch { Write-Warning "Avalonia UI loop failed: $($_.Exception.Message)" }
+    try { [Avalonia.Threading.Dispatcher]::UIThread.RunJobs() } catch {}
+    $result = $script:FormAccepted
     
     # Capture Finish Action selection before form closes
     $script:FinishAction = $cmbFinishAction.SelectedItem
@@ -1812,7 +1882,7 @@ if ($ModuleImported) {
         Write-Host "Running in TS: $TSName" -ForegroundColor Green
         $Global:IsRunningTS = $true
     } else {
-        Write-Host "Dam, This is not running in a TS, Sorry Brah" -ForegroundColor Yellow
+        Write-Host "Dang, This is not running in a TS, Sorry Brah" -ForegroundColor Yellow
         $Global:IsRunningTS = $false
     }
 }
@@ -1843,11 +1913,13 @@ if (!($Global:LogFolderPath)) {
     }
 }
 # Start a PowerShell transcription to capture verbose output in a separate file
+$Global:FrontendTranscriptStarted = $false
 try {
     if ($Global:LogFolderPath) {
         if (!(Test-Path -Path $Global:LogFolderPath)) { New-Item -ItemType Directory -Path $Global:LogFolderPath -Force | Out-Null }
-        $transcriptPath = "$Global:LogFolderPath\FrontendTranscription.log"
-        Start-Transcript -Path $transcriptPath -Force -ErrorAction SilentlyContinue
+        $transcriptPath = Join-Path $Global:LogFolderPath "FrontendTranscription-$PID.log"
+        Start-Transcript -Path $transcriptPath -Force -ErrorAction Stop
+        $Global:FrontendTranscriptStarted = $true
         Write-CMTraceLog -Message "Started PowerShell transcription to $transcriptPath" -Type "Info" -Component "Main"
     } else {
         Write-Warning "Transcript not started: LogFolderPath is not set."
@@ -2043,5 +2115,8 @@ else{
     write-Host "AutopilotGroupTag = $($env:AutopilotGroupTag)" -ForegroundColor Green
     write-Host "SelectedSoftwareCsv = $($env:SelectedSoftwareCsv)" -ForegroundColor Green
 }
-Stop-Transcript
+if ($Global:FrontendTranscriptStarted) {
+    Stop-FrontendTranscription
+}
+
 
