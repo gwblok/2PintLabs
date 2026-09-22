@@ -1365,6 +1365,9 @@ Function Get-InputFormData {
     Register-AvaloniaCheckedHandler $rbEntraID $updateSelectionStateAction
     Register-AvaloniaCheckedHandler $rbAutopilot $updateSelectionStateAction
     Register-AvaloniaCheckedHandler $rbDomainJoin $updateSelectionStateAction
+
+    # Apply the current radio selection after all controls and dropdown values exist.
+    Update-AvaloniaSelectionState
     
     # Ensure Online Domain Join also turns off Autopilot controls when selected
     # Online Domain Join removed - Autopilot controls handled by other radio handlers
