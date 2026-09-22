@@ -899,6 +899,17 @@ Function Get-InputFormData {
     $txtHwGwList = Get-AvaloniaControl $Window "txtHwGwList"
     $txtHwAssetTag = Get-AvaloniaControl $Window "txtHwAssetTag"
 
+    $darkModeDefault = [bool]$JSONConfig.DarkModeDefault
+    $tglThemeMode.IsChecked = $darkModeDefault
+    [Avalonia.Application]::Current.RequestedThemeVariant = if ($darkModeDefault) {
+        [Avalonia.Styling.ThemeVariant]::Dark
+    } else {
+        [Avalonia.Styling.ThemeVariant]::Light
+    }
+
+    $enableP2PDefault = if ($null -ne $JSONConfig.EnableP2PDefault) { [bool]$JSONConfig.EnableP2PDefault } else { $true }
+    $chkEnableP2P.IsChecked = $enableP2PDefault
+
     $validationBrush = [Avalonia.Media.Brush]::Parse('#FFC02626')
     $previewGrayBrush = [Avalonia.Media.Brush]::Parse('#FF6E6E6E')
     $previewGreenBrush = [Avalonia.Media.Brush]::Parse('#FF1E7B34')
@@ -940,7 +951,7 @@ Function Get-InputFormData {
     $existingPeering = ${TSEnv:Peering}
     if (-not [string]::IsNullOrWhiteSpace($existingPeering) -and $existingPeering -ieq 'False') {
         $chkEnableP2P.IsChecked = $false
-    } else {
+    } elseif (-not [string]::IsNullOrWhiteSpace($existingPeering) -and $existingPeering -ieq 'True') {
         $chkEnableP2P.IsChecked = $true
     }
     

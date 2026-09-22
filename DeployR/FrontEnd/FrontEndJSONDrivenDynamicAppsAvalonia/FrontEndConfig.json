@@ -5,6 +5,12 @@
   "//Usage": "ConfigMgr or 2Pint DeployR",
   "Usage": "DeployR",
 
+  "//DarkModeDefault": "Start the frontend in dark mode when true",
+  "DarkModeDefault": true,
+
+  "//EnableP2PDefault": "Start with P2P enabled when true unless TSEnv:Peering explicitly overrides it",
+  "EnableP2PDefault": true,
+
   "//DomainSuffix": "Default domain suffix displayed in the computer naming preview (optional)",
   "DomainSuffix": "2p.garytown.com",
   
