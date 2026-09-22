@@ -91,10 +91,15 @@ Function Get-InputFormData {
     if (-not ([System.Management.Automation.PSTypeName]'Avalonia.AppBuilder').Type) {
         throw "Avalonia assemblies were not found in '$avaloniaPath'. Install the DeployR Avalonia client files first."
     }
-    $avaloniaBuilder = [Avalonia.AppBuilder]::Configure[Avalonia.Application]()
-    [Avalonia.AppBuilderDesktopExtensions]::UsePlatformDetect($avaloniaBuilder)
-    $avaloniaBuilder.SetupWithoutStarting() | Out-Null
-    [Avalonia.Application]::Current.Styles.Add([Avalonia.Themes.Fluent.FluentTheme]::new())
+    if ($null -eq [Avalonia.Application]::Current) {
+        $avaloniaBuilder = [Avalonia.AppBuilder]::Configure[Avalonia.Application]()
+        [Avalonia.AppBuilderDesktopExtensions]::UsePlatformDetect($avaloniaBuilder)
+        $avaloniaBuilder.SetupWithoutStarting() | Out-Null
+        [Avalonia.Application]::Current.Styles.Add([Avalonia.Themes.Fluent.FluentTheme]::new())
+    }
+    else {
+        Write-Host "Reusing Avalonia application initialized by DeployR." -ForegroundColor Cyan
+    }
     
     
     # If no explicit LogoPath was provided earlier, try to use Logo-blue.png located
