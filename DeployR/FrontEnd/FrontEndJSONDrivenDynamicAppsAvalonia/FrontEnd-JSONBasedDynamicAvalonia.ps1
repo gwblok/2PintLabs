@@ -123,44 +123,34 @@ Function Get-InputFormData {
     # Load FrontEndConfig.json from the script directory into $JSONConfig
     $JSONFallbackConfigURL = 'https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/DeployR/FrontEnd/FrontEndJSONDrivenDynamicAppsAvalonia/FrontEndConfig.json'
     $JSONConfig = $null
-    try {
-        if ($scriptDir) {
-            Write-Host "Attempting to load FrontEndConfig.json from script directory: $scriptDir" -ForegroundColor Cyan
-            $configPath = Join-Path -Path $scriptDir -ChildPath 'FrontEndConfig.json'
-            if (Test-Path -Path $configPath) {
+    $configPath = $null
+    if ($scriptDir) {
+        $configPath = Join-Path -Path $scriptDir -ChildPath 'FrontEndConfig.json'
+        Write-Host "Attempting to load FrontEndConfig.json from script directory: $scriptDir" -ForegroundColor Cyan
+        if (Test-Path -Path $configPath) {
+            try {
                 Write-Host "Found FrontEndConfig.json at $configPath" -ForegroundColor Green
                 $JSONConfig = Get-Content -Path $configPath -Raw | ConvertFrom-Json -ErrorAction Stop
                 try { Write-CMTraceLog -Message "Loaded FrontEndConfig.json from $configPath" -Type "Info" -Component "Config" } catch {}
             }
-        }
-        $configPath = Join-Path -Path $scriptDir -ChildPath 'FrontEndConfig.json' -ErrorAction SilentlyContinue
-        
-        if (-not $JSONConfig) {
-            Write-Verbose "FrontEndConfig.json not found at $configPath"
-            try { Write-CMTraceLog -Message "FrontEndConfig.json not found at $configPath" -Type "Warning" -Component "Config" } catch {}
-            # Attempt to load JSON config from fallback URL. Use Invoke-RestMethod first
-            # (it returns a parsed object). If that fails, fetch raw content and
-            # ConvertFrom-Json explicitly.
-            try {
-                Write-Host "Attempting to load FrontEndConfig.json from fallback URL: $JSONFallbackConfigURL" -ForegroundColor Cyan
-                try {
-                    $JSONConfig = Invoke-RestMethod -Uri $JSONFallbackConfigURL -ErrorAction Stop
-                } catch {
-                    # Fallback to raw content parsing
-                    $content = (Invoke-WebRequest -Uri $JSONFallbackConfigURL -ErrorAction Stop).Content
-                    $JSONConfig = $content | ConvertFrom-Json -ErrorAction Stop
-                }
-                Write-Host "Successfully loaded FrontEndConfig.json from fallback URL" -ForegroundColor Green
-                try { Write-CMTraceLog -Message "Loaded FrontEndConfig.json from fallback URL: $JSONFallbackConfigURL" -Type "Info" -Component "Config" } catch {}
-            } catch {
-                Write-Warning "Failed to load FrontEndConfig.json from fallback URL: $_"
-                try { Write-CMTraceLog -Message "Failed to load FrontEndConfig.json from fallback URL: $_" -Type "Warning" -Component "Config" } catch {}
+            catch {
+                Write-Warning "Failed to load local FrontEndConfig.json: $($_.Exception.Message). Trying online fallback."
             }
         }
     }
-    catch {
-        Write-Warning "Failed to load or parse FrontEndConfig.json: $_"
-        try { Write-CMTraceLog -Message "Failed to load or parse FrontEndConfig.json: $_" -Type "Warning" -Component "Config" } catch {}
+
+    if (-not $JSONConfig) {
+        Write-Host "Attempting to load FrontEndConfig.json from fallback URL: $JSONFallbackConfigURL" -ForegroundColor Cyan
+        try {
+            $content = (Invoke-WebRequest -Uri $JSONFallbackConfigURL -UseBasicParsing -ErrorAction Stop).Content
+            $JSONConfig = $content | ConvertFrom-Json -ErrorAction Stop
+            Write-Host "Successfully loaded FrontEndConfig.json from fallback URL" -ForegroundColor Green
+            try { Write-CMTraceLog -Message "Loaded FrontEndConfig.json from fallback URL: $JSONFallbackConfigURL" -Type "Info" -Component "Config" } catch {}
+        }
+        catch {
+            Write-Warning "Failed to load FrontEndConfig.json from local path or fallback URL: $($_.Exception.Message)"
+            try { Write-CMTraceLog -Message "Failed to load FrontEndConfig.json from local path or fallback URL: $($_.Exception.Message)" -Type "Error" -Component "Config" } catch {}
+        }
     }
     ###########################################
     #Build Data from JSON
