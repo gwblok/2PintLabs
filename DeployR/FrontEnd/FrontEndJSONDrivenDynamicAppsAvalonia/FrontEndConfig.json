@@ -10,7 +10,9 @@
   
   "//LogoFileName": "Logo image file name (must be in same directory as script)",
   "LogoFileName": "Logo.png",
-  
+
+  "//WindowIconBase64": "Base64-encoded title-bar icon used by the Avalonia frontend",
+  "WindowIconBase64": "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAAgACADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD9Af2g/ihP8LPhvqWq6bPapq0bWqqJoGu3t4ZbmKB7kW0bCScRiXIRCCxAXPNfO938WPC2nKLnVf2kPFmg+Lpmb7Qmo6amkWm7nYFsb62KRRx4XhX3OMh3OcjG+IeladrHx3+PniB4Ib7UrHWfA+g21653m2t3uLWaa3Q/wBpNhYDuRmvGfit/wUvtPiF4A1zw74i8B3unapdabe2STafepPbGaSNoxlZArKASMgbjWtOFzKcrH0RrvxvttM1CSDWP2iNSt/ErFWudD8KeHbW5iWNow0IgjNvcSITlXLO7lw2AFG0j2b9mH4v6h8UvBdzJr93bz6taapd2EExsW06e/hgKqZ2s5GZ4iHZkYdMpnADAD87W/a2n/ZcsPEHhWLw5feLdYtdXktr/AF9yNN02W5itoIvJiVPMbKRRR5DMGJyxAzivXfCN1bavqHwh+Ic+nxaRrE/xcktTdq53W9vfacZpbUycbkaZ8YI5I9SaqcI8uhMZO+p3v/CK2fg7TP2u/Buk5ttF0S4sfFVgrndJDeSWaXrnefmYedboyhiducDivzpu9F0+9/azvbO6gDaVa+I7u9ngHQwW7y3LJ9CsRX8a/YD4sfs66Trep/EDxHYah4isNT8beHX8O6pa6YVmtZW8spBeNCcfvYlJUEMAVYjHevirVv2O/jRf6zcySaR4HN7frJBe+MLXwzcw6s0cqlJ5AgzEJXRnBYAcseRnNOnd6oVSy0Z8bXnjWSGDx74X8Q213c694o1jzdSvFmV4Y5VlLr5cLDCuZXfdNneI/kXAZyf0avvDtn4g/Z9+DHha6AOjeMfilJHq0aYDyxxXd7Isat1Tm1hXK4OFwDzXh3xU/wCCb/jfxh8XfEHiDw9fPp+h6lftfW63+mXH2q23tuKEINrbTnBDDIx0r7U+Cn7LNhpWkfDCTxNrHiXW9S8Afap7ZNQUWtndX1zLLI948ALFpE851UluAckEmnUTSTYoO7sf/9k=",
   "//SoftwareFromDeployR": "Set to 'True' to retrieve software list dynamically from DeployR API, 'False' to use static Software list below",
   "SoftwareFromDeployR": "True",
   "SoftwareFromDeployRTag": "FrontEnd",
@@ -57,3 +59,5 @@
   "//Apps": "Reserved for future use",
   "Apps": []
 }
+
+
