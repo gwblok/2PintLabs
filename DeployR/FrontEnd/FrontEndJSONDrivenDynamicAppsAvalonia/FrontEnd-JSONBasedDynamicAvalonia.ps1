@@ -1868,7 +1868,7 @@ if ($ModuleImported) {
         Write-Host "Running in TS: $TSName" -ForegroundColor Green
         $Global:IsRunningTS = $true
     } else {
-        Write-Host "Dam, This is not running in a TS, Sorry Brah" -ForegroundColor Yellow
+        Write-Host "Dang, This is not running in a TS, Sorry Brah" -ForegroundColor Yellow
         $Global:IsRunningTS = $false
     }
 }
