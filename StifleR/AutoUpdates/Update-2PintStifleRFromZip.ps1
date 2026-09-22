@@ -20,7 +20,13 @@ function Get-InstalledApps
     }
     
     # Get all installed apps, filter out those without InstallDate, and keep only the latest version of each
-    $allApps = Get-ItemProperty $regpath | .{process{if($_.DisplayName -and $_.UninstallString) { $_ } }} | 
+    $allApps = Get-ItemProperty -Path $regpath -ErrorAction SilentlyContinue |
+    Where-Object {
+        $_.PSObject.Properties['DisplayName'] -and
+        $_.PSObject.Properties['UninstallString'] -and
+        $_.DisplayName -and
+        $_.UninstallString
+    } |
     Select DisplayName, Publisher, InstallDate, DisplayVersion, UninstallString, InstallLocation
     
     # Filter out apps without InstallDate and group by DisplayName to keep only the latest
@@ -30,7 +36,7 @@ function Get-InstalledApps
         $_.Group | Sort-Object -Property InstallDate -Descending | Select-Object -First 1
     }
     
-    return $allApps | Sort-Object DisplayName
+    return $filteredApps | Sort-Object DisplayName
 }
 
 #endregion Functions
@@ -48,7 +54,7 @@ if (!(Test-Path -Path $targetFolder)) {
 Get-ChildItem -Path $sourceFolder -Filter *.zip | Unblock-File
 
 #Extract each zip file to the target folder, creating a subfolder for each zip file based on its name
-$StifleRZipFiles = Get-ChildItem -Path $sourceFolder -Filter StifleR*.zip
+$StifleRZipFiles = @(Get-ChildItem -Path $sourceFolder -Filter StifleR*.zip)
 if ($StifleRZipFiles.Count -eq 0) {
     Write-Host "No StifleR zip files found in source folder: $sourceFolder"
     exit
