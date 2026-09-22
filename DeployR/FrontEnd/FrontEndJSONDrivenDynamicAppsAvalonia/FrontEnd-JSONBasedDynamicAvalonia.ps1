@@ -981,11 +981,14 @@ Function Get-InputFormData {
     }
 
     function Register-AvaloniaCheckedHandler {
-        param([Avalonia.Controls.Primitives.ToggleButton]$Control)
+        param(
+            [Avalonia.Controls.Primitives.ToggleButton]$Control,
+            [scriptblock]$Action
+        )
         $handler = [System.EventHandler[Avalonia.Interactivity.RoutedEventArgs]]{
             param($sender, $eventArgs)
-            try { Update-AvaloniaSelectionState } catch { Write-Warning "Avalonia radio event failed: $($_.Exception.Message)" }
-        }
+            try { $Action.Invoke() } catch { Write-Warning "Avalonia radio event failed: $($_.Exception.Message)" }
+        }.GetNewClosure()
         $Control.add_IsCheckedChanged($handler)
     }
     
@@ -1337,13 +1340,15 @@ Function Get-InputFormData {
         if ($manualSelected) { try { $txtManualName.Focus() | Out-Null } catch {} }
     }
 
-    Register-AvaloniaCheckedHandler $rbNoName
-    Register-AvaloniaCheckedHandler $rbManualName
-    Register-AvaloniaCheckedHandler $rbHardwareName
-    Register-AvaloniaCheckedHandler $rbWorkgroup
-    Register-AvaloniaCheckedHandler $rbEntraID
-    Register-AvaloniaCheckedHandler $rbAutopilot
-    Register-AvaloniaCheckedHandler $rbDomainJoin
+    $updateSelectionStateAction = ${function:Update-AvaloniaSelectionState}.GetNewClosure()
+
+    Register-AvaloniaCheckedHandler $rbNoName $updateSelectionStateAction
+    Register-AvaloniaCheckedHandler $rbManualName $updateSelectionStateAction
+    Register-AvaloniaCheckedHandler $rbHardwareName $updateSelectionStateAction
+    Register-AvaloniaCheckedHandler $rbWorkgroup $updateSelectionStateAction
+    Register-AvaloniaCheckedHandler $rbEntraID $updateSelectionStateAction
+    Register-AvaloniaCheckedHandler $rbAutopilot $updateSelectionStateAction
+    Register-AvaloniaCheckedHandler $rbDomainJoin $updateSelectionStateAction
     
     # Ensure Online Domain Join also turns off Autopilot controls when selected
     # Online Domain Join removed - Autopilot controls handled by other radio handlers
