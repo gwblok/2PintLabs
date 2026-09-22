@@ -67,6 +67,19 @@ function Test-Url {
         Write-Output "URL is not accessible: $Url - Error: $_"
     }
 }
+function Stop-StifleRClientInstall {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Message,
+        [int]$ExitCode = 1
+    )
+
+    Write-Error $Message
+    $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    if ($currentSid -eq 'S-1-5-18') {
+        exit $ExitCode
+    }
+}
 function Get-StifleRServerFromClientInstallation {
     #Get Server for 3.0 Installs
     if (Test-Path -Path 'HKLM:\SOFTWARE\2Pint Software\StifleR\Client\SettingsOptions') {
@@ -319,8 +332,8 @@ if (Test-Path -Path $packagePath){
     Write-Host -ForegroundColor Cyan "Extracting package to $tempDir"
 }
 else {
-    Write-Host -ForegroundColor Red "Package not found at $packagePath"
-    exit 1
+    Stop-StifleRClientInstall -Message "Package not found at $packagePath"
+    return
 }
 Expand-Archive -Path $packagePath -DestinationPath $tempDir -Force
 
@@ -329,8 +342,8 @@ if (Test-Path -Path $tempDir){
     $MSI = (Get-ChildItem -Path $tempDir -Filter *.msi -Recurse).FullName
 }
 else {
-    Write-Host -ForegroundColor Red "Download or extraction failed."
-    exit 1
+    Stop-StifleRClientInstall -Message 'Download or extraction failed.'
+    return
 }
 if (Test-Path -Path $MSI){
     Write-Host -ForegroundColor Green "MSI found: $MSI"
