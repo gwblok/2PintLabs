@@ -23,18 +23,26 @@
     h2 { margin: 0 0 4px; font-size: 19px; line-height: 1.2; }
     p { margin: 0; }
     .muted { color: var(--muted); }
-    .layout { display: grid; grid-template-columns: 165px minmax(0, 1fr); gap: 16px; height: 100%; min-height: 0; }
+    .layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 16px; height: 100%; min-height: 0; }
     .sidebar { display: flex; flex-direction: column; min-height: 0; }
     .steps { border-left: 2px solid var(--line); align-self: start; }
     .step { display: flex; width: 100%; align-items: center; gap: 10px; padding: 9px 10px 9px 14px; border: 0; border-left: 3px solid transparent; margin-left: -2px; text-align: left; background: transparent; color: var(--muted); }
     .step[aria-current="step"] { color: var(--green-dark); border-left-color: var(--green); font-weight: 700; background: #e1f0e7; }
     .step-number { display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid currentColor; border-radius: 50%; font-size: 12px; flex: none; }
-    .system-info { margin-top: 8px; padding: 0 8px 0 10px; overflow-y: auto; font-size: 11px; line-height: 1.25; }
-    .system-info h3 { margin: 8px 0 4px; padding-top: 5px; border-top: 1px solid var(--line); font-size: 11px; color: var(--green-dark); }
+    .system-info { margin-top: 4px; padding: 0 8px 0 10px; overflow-y: auto; font-size: 12px; line-height: 1.2; }
+    .system-info h3 { margin: 7px 0 3px; padding-top: 4px; border-top: 1px solid var(--line); font-size: 12px; color: var(--green-dark); }
     .system-info dl { margin: 0; }
-    .system-info .fact { display: grid; grid-template-columns: 53px minmax(0, 1fr); gap: 3px; margin: 2px 0; }
+    .system-info .fact { display: grid; grid-template-columns: 57px minmax(0, 1fr); gap: 3px; margin: 2px 0; }
     .system-info dt { color: var(--muted); }
     .system-info dd { margin: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fact-value { display: block; width: 100%; padding: 0; border: 0; background: transparent; color: var(--ink); font-size: inherit; font-weight: 600; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: underline dotted var(--line); text-underline-offset: 2px; }
+    .fact-value:hover { color: var(--blue-dark); }
+    .inventory-dialog { width: min(430px, calc(100vw - 40px)); padding: 18px 20px; border: 1px solid var(--line); border-left: 4px solid var(--green); border-radius: 4px; color: var(--ink); box-shadow: 0 12px 30px #14281c33; }
+    .inventory-dialog::backdrop { background: #10271980; }
+    .inventory-dialog h2 { font-size: 17px; }
+    .inventory-dialog p { margin: 12px 0 18px; overflow-wrap: anywhere; }
+    .inventory-dialog form { text-align: right; }
+    .inventory-dialog form button { min-height: 34px; padding: 5px 16px; border: 1px solid var(--green); border-radius: 4px; background: var(--green); color: #fff; }
     .content { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px 22px 12px; }
     .panel { flex: 1; min-height: 0; overflow-y: auto; }
     .panel[hidden], [hidden] { display: none !important; }
@@ -61,9 +69,16 @@
     .app-list label { display: flex; align-items: center; gap: 10px; margin: 0; padding: 11px; border: 1px solid var(--line); border-radius: 4px; font-weight: 500; overflow-wrap: anywhere; }
     .notice { border-left: 3px solid var(--orange); background: #fff5ee; color: #66371c; padding: 11px 13px; margin: 15px 0; }
     .error { color: #a62f20; margin: 13px 0; font-weight: 650; }
-    .summary { display: grid; grid-template-columns: minmax(110px, 150px) minmax(0, 1fr); gap: 5px 14px; margin: 8px 0 12px; }
+    .review-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; margin: 12px 0; }
+    .review-group { min-width: 0; border-top: 1px solid var(--line); padding-top: 7px; }
+    .review-group:last-child { grid-column: 1 / -1; }
+    .review-group h3, .deployment-choice h3 { margin: 0 0 7px; font-size: 12px; color: var(--green-dark); }
+    .summary { display: grid; grid-template-columns: minmax(85px, 105px) minmax(0, 1fr); gap: 4px 8px; margin: 0; font-size: 13px; }
     .summary dt { color: var(--muted); }
     .summary dd { margin: 0; overflow-wrap: anywhere; font-weight: 600; }
+    .deployment-choice { border-left: 3px solid var(--green); background: #eff6f1; padding: 10px 12px 8px; }
+    .deployment-choice .field { margin: 0; }
+    .deployment-choice select { max-width: none; font-weight: 650; }
     .actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; flex: none; }
     .actions button { min-height: 34px; padding: 5px 16px; border-radius: 4px; font-weight: 650; }
     .secondary { background: white; color: var(--blue-dark); border: 1px solid var(--blue); }
@@ -78,7 +93,7 @@
       .step { display: grid; justify-items: center; gap: 4px; padding: 8px 2px; margin: 0 0 -2px; border-left: 0; border-bottom: 3px solid transparent; text-align: center; font-size: 12px; }
       .step[aria-current="step"] { border-left: 0; border-bottom-color: var(--green); }
       .content { padding: 14px 12px; }
-      .grid, .app-list, .device-grid { grid-template-columns: minmax(0, 1fr); }
+      .grid, .app-list, .device-grid, .review-groups { grid-template-columns: minmax(0, 1fr); }
       .topbar { background: linear-gradient(103deg, #fff 0 40%, var(--green-dark) 40.2% 100%); }
       .topbar-inner { grid-template-columns: 38% minmax(0, 1fr); }
       .brand-image { width: 108px; }
@@ -100,24 +115,24 @@
         <aside class="system-info" aria-label="Device information">
           <h3>System</h3>
           <dl>
-            <div class="fact"><dt>Name</dt><dd data-query="hostname">NA</dd></div>
-            <div class="fact"><dt>StifleR</dt><dd data-query="stiflerversion">NA</dd></div>
-            <div class="fact"><dt>TPM</dt><dd data-query="tpmversion">NA</dd></div>
-            <div class="fact"><dt>Secure</dt><dd data-query="securebootstatus">NA</dd></div>
-            <div class="fact"><dt>Disk</dt><dd data-query="diskmodel">NA</dd></div>
-            <div class="fact"><dt>Type</dt><dd data-query="disktype">NA</dd></div>
-            <div class="fact"><dt>Size GB</dt><dd data-query="disksizegb">NA</dd></div>
-            <div class="fact"><dt>Disks</dt><dd data-query="diskcount">NA</dd></div>
+            <div class="fact"><dt>Name</dt><dd><button type="button" class="fact-value" data-query="hostname">NA</button></dd></div>
+            <div class="fact"><dt>StifleR</dt><dd><button type="button" class="fact-value" data-query="stiflerversion">NA</button></dd></div>
+            <div class="fact"><dt>TPM</dt><dd><button type="button" class="fact-value" data-query="tpmversion">NA</button></dd></div>
+            <div class="fact"><dt>Secure</dt><dd><button type="button" class="fact-value" data-query="securebootstatus">NA</button></dd></div>
+            <div class="fact"><dt>Disk</dt><dd><button type="button" class="fact-value" data-query="diskmodel">NA</button></dd></div>
+            <div class="fact"><dt>Type</dt><dd><button type="button" class="fact-value" data-query="disktype">NA</button></dd></div>
+            <div class="fact"><dt>Size GB</dt><dd><button type="button" class="fact-value" data-query="disksizegb">NA</button></dd></div>
+            <div class="fact"><dt>Disks</dt><dd><button type="button" class="fact-value" data-query="diskcount">NA</button></dd></div>
           </dl>
           <h3>Network</h3>
           <dl>
-            <div class="fact"><dt>Adapter</dt><dd data-query="networkadapter">NA</dd></div>
-            <div class="fact"><dt>IP</dt><dd data-query="networkipaddress">NA</dd></div>
-            <div class="fact"><dt>Subnet</dt><dd data-query="networksubnetmask">NA</dd></div>
-            <div class="fact"><dt>DHCP</dt><dd data-query="networkdhcp">NA</dd></div>
-            <div class="fact"><dt>Gateway</dt><dd data-query="networkgateway">NA</dd></div>
-            <div class="fact"><dt>DNS</dt><dd data-query="networkdnsservers">NA</dd></div>
-            <div class="fact"><dt>MAC</dt><dd data-query="networkmacaddress">NA</dd></div>
+            <div class="fact"><dt>Adapter</dt><dd><button type="button" class="fact-value" data-query="networkadapter">NA</button></dd></div>
+            <div class="fact"><dt>IP</dt><dd><button type="button" class="fact-value" data-query="networkipaddress">NA</button></dd></div>
+            <div class="fact"><dt>Subnet</dt><dd><button type="button" class="fact-value" data-query="networksubnetmask">NA</button></dd></div>
+            <div class="fact"><dt>DHCP</dt><dd><button type="button" class="fact-value" data-query="networkdhcp">NA</button></dd></div>
+            <div class="fact"><dt>Gateway</dt><dd><button type="button" class="fact-value" data-query="networkgateway">NA</button></dd></div>
+            <div class="fact"><dt>DNS</dt><dd><button type="button" class="fact-value" data-query="networkdnsservers">NA</button></dd></div>
+            <div class="fact"><dt>MAC</dt><dd><button type="button" class="fact-value" data-query="networkmacaddress">NA</button></dd></div>
           </dl>
         </aside>
       </div>
@@ -168,8 +183,8 @@
         </section>
         <section class="panel" data-panel="3" aria-labelledby="review-heading" hidden>
           <div class="intro"><h2 id="review-heading">Review</h2><p class="muted">Check your selections before continuing to DeployR.</p></div>
-          <dl id="summary" class="summary"></dl>
-          <div class="field"><label for="tsid">Task sequence</label><select id="tsid"><option value="">Use DeployR selection prompt</option></select><p class="help">Selecting a task sequence skips the built-in prompt.</p></div>
+          <div id="summary" class="review-groups"></div>
+          <div class="deployment-choice"><div class="field"><label for="tsid">Task sequence</label><select id="tsid"><option value="">Use DeployR selection prompt</option></select><p class="help">Selecting a task sequence skips the built-in prompt.</p></div></div>
           <p id="ts-message" class="notice" hidden></p>
         </section>
         <p id="error" class="error" role="alert" hidden></p>
@@ -177,6 +192,11 @@
       </form>
     </div>
   </main>
+  <dialog class="inventory-dialog" id="inventory-dialog" aria-labelledby="inventory-title">
+    <h2 id="inventory-title"></h2>
+    <p id="inventory-value"></p>
+    <form method="dialog"><button type="submit">Close</button></form>
+  </dialog>
   <script>
     (() => {
       const $ = (id) => document.getElementById(id);
@@ -280,18 +300,38 @@
 
       function review() {
         const labels = { NamingStrategy: 'Naming', ComputerName: 'Computer name', DomainSuffix: 'Domain suffix', HardwareIdType: 'Hardware ID', WorkplaceJoin: 'Join', EntraIDUserUPN: 'Primary user', DomainJoinOU: 'Domain join OU', AutopilotGroupTag: 'Group tag', SelectedUserRole: 'Role', FINISHACTION: 'Finish action', Peering: 'P2P', SelectedApplicationIds: 'Applications' };
+        const displayValues = {
+          NamingStrategy: { None: 'Keep existing name', Manual: 'Enter a name', HardwareBased: 'Generate from hardware' },
+          WorkplaceJoin: { Workgroup: 'Local workgroup', EntraID: 'Entra ID', Autopilot: 'Autopilot registration', ODJ: 'Offline domain join' },
+          Peering: { True: 'Enabled', False: 'Disabled' }
+        };
+        const sections = [
+          { title: 'Device', keys: ['NamingStrategy', 'ComputerName', 'HardwareIdType', 'DomainSuffix', 'Peering'] },
+          { title: 'Join', keys: ['WorkplaceJoin', 'EntraIDUserUPN', 'DomainJoinOU', 'AutopilotGroupTag', 'SelectedUserRole'] },
+          { title: 'Deployment', keys: ['FINISHACTION', 'SelectedApplicationIds'] }
+        ];
         const summary = $('summary');
         summary.replaceChildren();
         const result = values();
-        for (const [key, label] of Object.entries(labels)) {
-          if (!result[key]) continue;
-          const title = document.createElement('dt');
-          const value = document.createElement('dd');
-          title.textContent = label;
-          value.textContent = key === 'SelectedApplicationIds'
-            ? apps.filter((app) => result[key].split(',').includes(app.id)).map((app) => app.displayName).join(', ')
-            : result[key];
-          summary.append(title, value);
+        for (const group of sections) {
+          const section = document.createElement('section');
+          section.className = 'review-group';
+          const heading = document.createElement('h3');
+          heading.textContent = group.title;
+          const details = document.createElement('dl');
+          details.className = 'summary';
+          for (const key of group.keys) {
+            if (!result[key]) continue;
+            const title = document.createElement('dt');
+            const value = document.createElement('dd');
+            title.textContent = labels[key];
+            value.textContent = key === 'SelectedApplicationIds'
+              ? apps.filter((app) => result[key].split(',').includes(app.id)).map((app) => app.displayName).join(', ')
+              : (displayValues[key]?.[result[key]] || result[key]);
+            details.append(title, value);
+          }
+          section.append(heading, details);
+          summary.append(section);
         }
       }
 
@@ -413,6 +453,13 @@
         if (event.target.name === 'join-choice') updateJoin();
         if (event.target.name === 'naming-choice' || event.target.id === 'hardware-id') updateName();
         error('');
+      });
+      document.querySelector('.system-info').addEventListener('click', (event) => {
+        const button = event.target.closest('.fact-value');
+        if (!button) return;
+        $('inventory-title').textContent = button.closest('.fact').querySelector('dt').textContent;
+        $('inventory-value').textContent = button.textContent;
+        $('inventory-dialog').showModal();
       });
       $('next').addEventListener('click', () => { const message = validate(step); if (message) error(message); else showStep(step + 1); });
       $('back').addEventListener('click', () => showStep(step - 1));
