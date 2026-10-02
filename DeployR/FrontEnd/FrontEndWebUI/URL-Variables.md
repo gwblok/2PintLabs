@@ -3,7 +3,7 @@
 Host `WebUI.html`, `config.json`, `Logo.png`, and `DeployR-Icon.png` together over HTTPS. Serve them as `text/html`, `application/json`, and `image/png`, respectively. Set `CustomWebUrl` in `Bootstrap.json` (or inject it through 2PXE/iPXE). For the current deployment, use:
 
 ```text
-https://deployr.2p.garytown.com/WebUI/WebUI.html?make=%MAKEALIAS%&model=%MODELALIAS%&macaddress=%MACADDRESS001%&serialnumber=%SERIALNUMBER%
+https://deployr.2p.garytown.com/WebUI/WebUI.html?make=%MAKEALIAS%&model=%MODELALIAS%&macaddress=%MACADDRESS001%&serialnumber=%SERIALNUMBER%&stiflerversion=%PA_STIFLERVERSION%&networkdhcp=%PA_NETWORKDHCP%&networkgateway=%PA_NETWORKGATEWAY%&networkdnsservers=%PA_NETWORKDNSSERVERS%&diskmodel=%PA_DISKMODEL%&disktype=%PA_DISKTYPE%&networkmacaddress=%PA_NETWORKMACADDRESS%&hostname=%PA_HOSTNAME%&securebootstatus=%PA_SECUREBOOTSTATUS%&tpmversion=%PA_TPMVERSION%&networkadapter=%PA_NETWORKADAPTER%&networkipaddress=%PA_NETWORKIPADDRESS%&networksubnetmask=%PA_NETWORKSUBNETMASK%&diskcount=%PA_DISKCOUNT%&disksizegb=%PA_DISKSIZEGB%
 ```
 
 For example, the `Variables` section of `Bootstrap.json` can contain:
@@ -11,12 +11,12 @@ For example, the `Variables` section of `Bootstrap.json` can contain:
 ```json
 {
   "Variables": {
-    "CustomWebUrl": "https://deployr.2p.garytown.com/WebUI/WebUI.html?make=%MAKEALIAS%&model=%MODELALIAS%&macaddress=%MACADDRESS001%&serialnumber=%SERIALNUMBER%"
+    "CustomWebUrl": "https://deployr.2p.garytown.com/WebUI/WebUI.html?make=%MAKEALIAS%&model=%MODELALIAS%&macaddress=%MACADDRESS001%&serialnumber=%SERIALNUMBER%&stiflerversion=%PA_STIFLERVERSION%&networkdhcp=%PA_NETWORKDHCP%&networkgateway=%PA_NETWORKGATEWAY%&networkdnsservers=%PA_NETWORKDNSSERVERS%&diskmodel=%PA_DISKMODEL%&disktype=%PA_DISKTYPE%&networkmacaddress=%PA_NETWORKMACADDRESS%&hostname=%PA_HOSTNAME%&securebootstatus=%PA_SECUREBOOTSTATUS%&tpmversion=%PA_TPMVERSION%&networkadapter=%PA_NETWORKADAPTER%&networkipaddress=%PA_NETWORKIPADDRESS%&networksubnetmask=%PA_NETWORKSUBNETMASK%&diskcount=%PA_DISKCOUNT%&disksizegb=%PA_DISKSIZEGB%"
   }
 }
 ```
 
-DeployR substitutes the `%...%` task-sequence variables before loading the page. Encode values for a URL if your injection mechanism does not do so; characters such as `&` in a value must not split the query string. Test substitutions on the target DeployR build.
+DeployR substitutes the `%...%` task-sequence variables before loading the page. Run `Create-ExtraVariables.ps1` early enough for the `PA_` variables to exist **before** `CustomWebUrl` is expanded. Encode values for a URL if your injection mechanism does not do so; characters such as `&` or `#` in adapter or disk names must not split the query string. Test substitutions on the target DeployR build.
 
 ## Optional URL inputs
 
@@ -25,9 +25,12 @@ The page recognizes these query keys. **Only add a `%VARIABLE%` placeholder if y
 | Query key | Use |
 | --- | --- |
 | `make`, `model` | Display-only hardware identification from `%MAKEALIAS%` and `%MODELALIAS%`. |
-| `hostname` | Optional, only if an upstream boot mechanism can supply the current name. `%HOSTNAME%` has not been verified as an available DeployR variable. Without it, the preview says "Current name unavailable"; no replacement `ComputerName` is posted. |
+| `hostname` | WinPE hostname from `%PA_HOSTNAME%`, if populated before the page opens. Also updates the Keep existing name preview. With no usable value, that preview says "Current name unavailable"; no replacement `ComputerName` is posted. |
 | `macaddress` | Valid 12-digit MAC (with or without colon/hyphen separators) pre-fills Enter a name as `PC-` plus the MAC and enables MAC-based naming. |
 | `serialnumber` | Enables serial-based naming. Hardware-generated names default to prefix `PC` and keep the rightmost characters of the identifier within the 15-character name limit. |
+| `stiflerversion`, `tpmversion`, `securebootstatus` | Read-only System details from `PA_STIFLERVERSION`, `PA_TPMVERSION`, and `PA_SECUREBOOTSTATUS`. |
+| `diskmodel`, `disktype`, `disksizegb`, `diskcount` | Read-only physical disk details from the corresponding `PA_` variables. |
+| `networkadapter`, `networkipaddress`, `networksubnetmask`, `networkdhcp`, `networkgateway`, `networkdnsservers`, `networkmacaddress` | Read-only Network details from the corresponding `PA_` variables. |
 | `peering` | Initial P2P setting (`true` or `false`); defaults to enabled when absent. |
 | `tsid` | Optional override for `taskSequenceId` in `config.json`. The ID is preselected only if it appears in the `FrontEnd`-tagged `tasksequences.json` list. Choose "Use DeployR selection prompt" to leave `TSID` unset. |
 
@@ -39,7 +42,7 @@ For an environment that also supplies the optional P2P and task-sequence values,
 
 Verify each `%VARIABLE%` substitution in your DeployR build, and omit keys whose values are unavailable. All the configuration choices below are **POST variables**, not URL parameters; no credentials should be placed in either URL or client-side configuration.
 
-Browser JavaScript cannot read the client computer name from Windows or WinPE. `location.hostname` is the web server's host, not the device's. If the current name is required, ask DeployR whether it exposes a pre-wizard computer-name variable or supply the name through your 2PXE/iPXE boot flow. Do not substitute an unverified `%HOSTNAME%` token.
+Browser JavaScript cannot read the client computer name or hardware from Windows or WinPE. `location.hostname` is the web server's host, not the device's. The sidebar displays URL values as text only and shows `NA` for missing or unexpanded placeholders. The inventory URL parameters are not posted back by the form.
 
 ## Posted TS variables
 

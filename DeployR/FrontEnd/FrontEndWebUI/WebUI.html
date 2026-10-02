@@ -24,10 +24,17 @@
     p { margin: 0; }
     .muted { color: var(--muted); }
     .layout { display: grid; grid-template-columns: 165px minmax(0, 1fr); gap: 16px; height: 100%; min-height: 0; }
+    .sidebar { display: flex; flex-direction: column; min-height: 0; }
     .steps { border-left: 2px solid var(--line); align-self: start; }
     .step { display: flex; width: 100%; align-items: center; gap: 10px; padding: 9px 10px 9px 14px; border: 0; border-left: 3px solid transparent; margin-left: -2px; text-align: left; background: transparent; color: var(--muted); }
     .step[aria-current="step"] { color: var(--green-dark); border-left-color: var(--green); font-weight: 700; background: #e1f0e7; }
     .step-number { display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid currentColor; border-radius: 50%; font-size: 12px; flex: none; }
+    .system-info { margin-top: 8px; padding: 0 8px 0 10px; overflow-y: auto; font-size: 11px; line-height: 1.25; }
+    .system-info h3 { margin: 8px 0 4px; padding-top: 5px; border-top: 1px solid var(--line); font-size: 11px; color: var(--green-dark); }
+    .system-info dl { margin: 0; }
+    .system-info .fact { display: grid; grid-template-columns: 53px minmax(0, 1fr); gap: 3px; margin: 2px 0; }
+    .system-info dt { color: var(--muted); }
+    .system-info dd { margin: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .content { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px 22px 12px; }
     .panel { flex: 1; min-height: 0; overflow-y: auto; }
     .panel[hidden], [hidden] { display: none !important; }
@@ -65,6 +72,8 @@
     @media (max-width: 700px) {
       .topbar-inner, .shell { padding-left: 12px; padding-right: 12px; }
       .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 8px; }
+      .sidebar { gap: 3px; }
+      .system-info { display: none; }
       .steps { display: grid; grid-template-columns: repeat(4, 1fr); border-left: 0; border-bottom: 2px solid var(--line); }
       .step { display: grid; justify-items: center; gap: 4px; padding: 8px 2px; margin: 0 0 -2px; border-left: 0; border-bottom: 3px solid transparent; text-align: center; font-size: 12px; }
       .step[aria-current="step"] { border-left: 0; border-bottom-color: var(--green); }
@@ -81,12 +90,37 @@
   <header class="topbar"><div class="topbar-inner"><img class="brand-image" src="Logo.png" alt="2Pint"><div class="product-brand"><img class="product-icon" src="DeployR-Icon.png" alt=""><span class="product-name">DeployR</span></div><div class="top-meta" id="device-title">Device preparation</div></div></header>
   <main class="shell">
     <div class="layout">
-      <nav class="steps" aria-label="Setup steps">
-        <button type="button" class="step" data-step="0" aria-current="step"><span class="step-number">1</span>Device</button>
-        <button type="button" class="step" data-step="1"><span class="step-number">2</span>Join</button>
-        <button type="button" class="step" data-step="2"><span class="step-number">3</span>Software</button>
-        <button type="button" class="step" data-step="3"><span class="step-number">4</span>Review</button>
-      </nav>
+      <div class="sidebar">
+        <nav class="steps" aria-label="Setup steps">
+          <button type="button" class="step" data-step="0" aria-current="step"><span class="step-number">1</span>Device</button>
+          <button type="button" class="step" data-step="1"><span class="step-number">2</span>Join</button>
+          <button type="button" class="step" data-step="2"><span class="step-number">3</span>Software</button>
+          <button type="button" class="step" data-step="3"><span class="step-number">4</span>Review</button>
+        </nav>
+        <aside class="system-info" aria-label="Device information">
+          <h3>System</h3>
+          <dl>
+            <div class="fact"><dt>Name</dt><dd data-query="hostname">NA</dd></div>
+            <div class="fact"><dt>StifleR</dt><dd data-query="stiflerversion">NA</dd></div>
+            <div class="fact"><dt>TPM</dt><dd data-query="tpmversion">NA</dd></div>
+            <div class="fact"><dt>Secure</dt><dd data-query="securebootstatus">NA</dd></div>
+            <div class="fact"><dt>Disk</dt><dd data-query="diskmodel">NA</dd></div>
+            <div class="fact"><dt>Type</dt><dd data-query="disktype">NA</dd></div>
+            <div class="fact"><dt>Size GB</dt><dd data-query="disksizegb">NA</dd></div>
+            <div class="fact"><dt>Disks</dt><dd data-query="diskcount">NA</dd></div>
+          </dl>
+          <h3>Network</h3>
+          <dl>
+            <div class="fact"><dt>Adapter</dt><dd data-query="networkadapter">NA</dd></div>
+            <div class="fact"><dt>IP</dt><dd data-query="networkipaddress">NA</dd></div>
+            <div class="fact"><dt>Subnet</dt><dd data-query="networksubnetmask">NA</dd></div>
+            <div class="fact"><dt>DHCP</dt><dd data-query="networkdhcp">NA</dd></div>
+            <div class="fact"><dt>Gateway</dt><dd data-query="networkgateway">NA</dd></div>
+            <div class="fact"><dt>DNS</dt><dd data-query="networkdnsservers">NA</dd></div>
+            <div class="fact"><dt>MAC</dt><dd data-query="networkmacaddress">NA</dd></div>
+          </dl>
+        </aside>
+      </div>
       <form id="setup-form" class="content" method="post" action="deployr://submit">
         <section class="panel" data-panel="0" aria-labelledby="device-heading">
           <div class="intro"><h2 id="device-heading">Device</h2><p class="muted">Choose a name and network settings.</p></div>
@@ -148,7 +182,11 @@
       const $ = (id) => document.getElementById(id);
       const form = $('setup-form');
       const query = new URLSearchParams(location.search);
-      const hostname = query.get('hostname')?.trim() || '';
+      const queryValue = (key) => {
+        const value = query.get(key)?.trim() || '';
+        return value && !/^%[^%]+%$/.test(value) ? value : '';
+      };
+      const hostname = queryValue('hostname');
       let config;
       let step = 0;
       let apps = [];
@@ -310,6 +348,10 @@
       }
 
       async function init() {
+        for (const item of document.querySelectorAll('.system-info [data-query]')) {
+          item.textContent = queryValue(item.dataset.query) || 'NA';
+          item.title = item.textContent;
+        }
         const response = await fetch('config.json', { cache: 'no-store' });
         if (!response.ok) throw new Error(`Configuration unavailable (${response.status}).`);
         config = await response.json();

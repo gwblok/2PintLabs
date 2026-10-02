@@ -28,21 +28,11 @@ The generated `applications.json` and `tasksequences.json` files are not checked
    ```
 
    Each script writes its JSON file beside itself by default. If stored elsewhere, pass `-OutputPath 'C:\inetpub\wwwroot\WebUI\applications.json'` or the corresponding task-sequence path. `-Tag` defaults to `FrontEnd`. Run both once before opening the page; schedule them on the server if the tagged catalogs change. They do not set task-sequence variables.
-4. Set `CustomWebUrl` in DeployR's `Bootstrap.json` (or supply it through 2PXE/iPXE). Example:
-
-   ```json
-   {
-     "Variables": {
-       "CustomWebUrl": "https://deployr.2p.garytown.com/WebUI/WebUI.html?make=%MAKEALIAS%&model=%MODELALIAS%&macaddress=%MACADDRESS001%&serialnumber=%SERIALNUMBER%"
-     }
-   }
-   ```
-
-   Verify these substitutions on your build and URL-encode values when needed. The page cannot read hardware identifiers or the client hostname directly from Windows/WinPE. See [URL-Variables.md](URL-Variables.md) for optional inputs and the full output-variable contract.
+4. Set `CustomWebUrl` in DeployR's `Bootstrap.json` (or supply it through 2PXE/iPXE) using the full example in [URL-Variables.md](URL-Variables.md). If you want the System and Network sidebar to show WinPE inventory, run `Create-ExtraVariables.ps1` before DeployR expands that URL so its `PA_` variables exist. Verify substitutions on your build and URL-encode values when needed. The page cannot read hardware identifiers or the client hostname directly from Windows/WinPE.
 
 ## Wizard and task-sequence handoff
 
-- **Device:** Keep the existing computer name (default), enter a name, or generate one from a MAC address or serial number provided in the URL. Manual naming starts with a MAC-based suggestion when available. Hardware naming keeps the rightmost identifier characters so the resulting `PC-...` name fits the 15-character limit. An optional `hostname` URL parameter can preview the current name; without it, the page says "Current name unavailable" and does not post a replacement `ComputerName` when keeping the name.
+- **Device:** Keep the existing computer name (default), enter a name, or generate one from a MAC address or serial number provided in the URL. Manual naming starts with a MAC-based suggestion when available. Hardware naming keeps the rightmost identifier characters so the resulting `PC-...` name fits the 15-character limit. The System and Network sidebar displays read-only `PA_` inventory passed in the URL, using `NA` for missing values. A populated `hostname` also updates the current-name preview; without it, the page says "Current name unavailable" and does not post a replacement `ComputerName` when keeping the name.
 - **Join:** Choose workgroup, Entra ID, Autopilot, or offline domain join. The page shows relevant UPN, group-tag, or OU inputs and limits finish actions by join type. It also collects the optional role and P2P setting.
 - **Software:** Choose from the published `FrontEnd`-tagged application catalog. If it cannot be fetched, the page warns and uses the `applications` fallback in `config.json` (empty by default).
 - **Review:** Inspect choices and select a published `FrontEnd`-tagged task sequence. `taskSequenceId` from config (or `?tsid=` from the URL) is selected only when present in the catalog. Choose **Use DeployR selection prompt** to omit `TSID` and retain DeployR's built-in task-sequence picker. If the task-sequence catalog is unavailable, the page leaves `TSID` blank.
