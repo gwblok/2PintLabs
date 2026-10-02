@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<body>
+ 
+<div id="parminfo"></div><br>
+<form method="post" action="deployr://submit">
+<label for="ComputerName">Computer name:</label><br>
+<input id="ComputerName" name="ComputerName" size="15" /><br>
+<label for="TSID">Task sequence ID:</label><br>
+<input id="TSID" name="TSID" value="04cad450-a76e-44aa-aec3-2dd266ce694a" size="36" /><br>
+<button>Go</button>
+</form>
+ 
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const make = params.get("make");
+  const model = params.get("model");
+  const pInfo = document.getElementById("parminfo");
+  pInfo.innerHTML = `<strong>Make:</strong> ${make}<br>` +
+                `<strong>Model:</strong> ${model}<br>`;
+</script>
+ 
+</body>
+</html>

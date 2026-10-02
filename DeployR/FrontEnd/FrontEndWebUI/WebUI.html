@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DeployR | Device setup</title>
+  <style>
+    :root { color-scheme: light; --ink: #192923; --muted: #52635a; --line: #cbd9d0; --blue: #0078cf; --blue-dark: #005b9c; --green: #006334; --green-dark: #004b27; --orange: #ab4d1c; --surface: #fff; --background: #ebf1ee; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--background); font: 14px/1.35 "Segoe UI", Tahoma, sans-serif; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .5; }
+    :focus-visible { outline: 3px solid #d77a3c; outline-offset: 2px; }
+    .topbar { height: 48px; background: linear-gradient(103deg, #fff 0 32.5%, var(--green-dark) 32.7% 100%); color: white; }
+    .topbar-inner { max-width: 1120px; height: 100%; margin: auto; padding: 0 20px; display: grid; grid-template-columns: 32% minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+    .brand-image { display: block; width: 124px; height: auto; max-height: 34px; }
+    .product-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .product-icon { width: 30px; height: 30px; flex: none; }
+    .product-name { font-size: 22px; font-weight: 500; line-height: 1; }
+    .top-meta { font-size: 12px; color: #d8efe1; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+    .shell { max-width: 1120px; height: calc(100vh - 48px); margin: auto; padding: 12px 20px; }
+    h2 { margin: 0 0 4px; font-size: 19px; line-height: 1.2; }
+    p { margin: 0; }
+    .muted { color: var(--muted); }
+    .layout { display: grid; grid-template-columns: 165px minmax(0, 1fr); gap: 16px; height: 100%; min-height: 0; }
+    .steps { border-left: 2px solid var(--line); align-self: start; }
+    .step { display: flex; width: 100%; align-items: center; gap: 10px; padding: 9px 10px 9px 14px; border: 0; border-left: 3px solid transparent; margin-left: -2px; text-align: left; background: transparent; color: var(--muted); }
+    .step[aria-current="step"] { color: var(--green-dark); border-left-color: var(--green); font-weight: 700; background: #e1f0e7; }
+    .step-number { display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid currentColor; border-radius: 50%; font-size: 12px; flex: none; }
+    .content { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px 22px 12px; }
+    .panel { flex: 1; min-height: 0; overflow-y: auto; }
+    .panel[hidden], [hidden] { display: none !important; }
+    .intro { margin-bottom: 12px; }
+    .field { margin-bottom: 10px; }
+    label, legend { display: block; font-weight: 650; margin-bottom: 3px; }
+    input[type="text"], select { width: 100%; max-width: 510px; min-height: 34px; padding: 5px 9px; background: white; border: 1px solid #aebec1; border-radius: 4px; color: var(--ink); }
+    input[type="checkbox"], input[type="radio"] { accent-color: var(--green); width: 17px; height: 17px; margin: 0; flex: none; }
+    .help { font-size: 12px; color: var(--muted); margin-top: 3px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+    .device-grid { display: grid; grid-template-columns: minmax(180px, .9fr) minmax(0, 1.1fr); gap: 16px; }
+    .device-extras { align-items: center; }
+    .device-extras .choice { margin: 0; }
+    #hardware-fields { grid-template-columns: minmax(0, 1fr); }
+    .choice-group { border: 0; padding: 0; margin: 0 0 10px; min-width: 0; }
+    .choice-group legend { padding: 0 0 4px; }
+    .choice { display: flex; align-items: center; gap: 8px; width: fit-content; margin: 0 0 6px; font-weight: 400; }
+    .facts { display: flex; flex-wrap: wrap; gap: 5px 20px; margin: 0 0 12px; padding: 7px 10px; background: #f0f6f8; border-left: 3px solid var(--blue); }
+    .facts span { overflow-wrap: anywhere; }
+    .facts strong { margin-right: 5px; }
+    .preview { max-width: 510px; padding: 6px 10px; border: 1px solid var(--line); background: #f3f7f6; margin: 0 0 10px; }
+    .preview strong { display: block; font-size: 17px; overflow-wrap: anywhere; }
+    .app-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; margin-top: 16px; }
+    .app-list label { display: flex; align-items: center; gap: 10px; margin: 0; padding: 11px; border: 1px solid var(--line); border-radius: 4px; font-weight: 500; overflow-wrap: anywhere; }
+    .notice { border-left: 3px solid var(--orange); background: #fff5ee; color: #66371c; padding: 11px 13px; margin: 15px 0; }
+    .error { color: #a62f20; margin: 13px 0; font-weight: 650; }
+    .summary { display: grid; grid-template-columns: minmax(110px, 150px) minmax(0, 1fr); gap: 5px 14px; margin: 8px 0 12px; }
+    .summary dt { color: var(--muted); }
+    .summary dd { margin: 0; overflow-wrap: anywhere; font-weight: 600; }
+    .actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; flex: none; }
+    .actions button { min-height: 34px; padding: 5px 16px; border-radius: 4px; font-weight: 650; }
+    .secondary { background: white; color: var(--blue-dark); border: 1px solid var(--blue); }
+    .primary { background: var(--green); color: white; border: 1px solid var(--green); }
+    .primary:hover { background: var(--green-dark); }
+    @media (max-width: 700px) {
+      .topbar-inner, .shell { padding-left: 12px; padding-right: 12px; }
+      .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 8px; }
+      .steps { display: grid; grid-template-columns: repeat(4, 1fr); border-left: 0; border-bottom: 2px solid var(--line); }
+      .step { display: grid; justify-items: center; gap: 4px; padding: 8px 2px; margin: 0 0 -2px; border-left: 0; border-bottom: 3px solid transparent; text-align: center; font-size: 12px; }
+      .step[aria-current="step"] { border-left: 0; border-bottom-color: var(--green); }
+      .content { padding: 14px 12px; }
+      .grid, .app-list, .device-grid { grid-template-columns: minmax(0, 1fr); }
+      .topbar { background: linear-gradient(103deg, #fff 0 40%, var(--green-dark) 40.2% 100%); }
+      .topbar-inner { grid-template-columns: 38% minmax(0, 1fr); }
+      .brand-image { width: 108px; }
+      .top-meta { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar"><div class="topbar-inner"><img class="brand-image" src="Logo.png" alt="2Pint"><div class="product-brand"><img class="product-icon" src="DeployR-Icon.png" alt=""><span class="product-name">DeployR</span></div><div class="top-meta" id="device-title">Device preparation</div></div></header>
+  <main class="shell">
+    <div class="layout">
+      <nav class="steps" aria-label="Setup steps">
+        <button type="button" class="step" data-step="0" aria-current="step"><span class="step-number">1</span>Device</button>
+        <button type="button" class="step" data-step="1"><span class="step-number">2</span>Join</button>
+        <button type="button" class="step" data-step="2"><span class="step-number">3</span>Software</button>
+        <button type="button" class="step" data-step="3"><span class="step-number">4</span>Review</button>
+      </nav>
+      <form id="setup-form" class="content" method="post" action="deployr://submit">
+        <section class="panel" data-panel="0" aria-labelledby="device-heading">
+          <div class="intro"><h2 id="device-heading">Device</h2><p class="muted">Choose a name and network settings.</p></div>
+          <div class="facts"><span><strong>Make</strong><span id="make">Not supplied</span></span><span><strong>Model</strong><span id="model">Not supplied</span></span></div>
+          <div class="device-grid">
+            <fieldset class="choice-group"><legend>Computer name</legend>
+              <label class="choice"><input type="radio" name="naming-choice" value="None" checked> Keep existing name</label>
+              <label class="choice"><input type="radio" name="naming-choice" value="Manual"> Enter a name</label>
+              <label class="choice" id="hardware-choice" hidden><input type="radio" name="naming-choice" value="HardwareBased"> Generate from hardware</label>
+            </fieldset>
+            <div>
+              <div id="manual-fields" class="field"><label for="computer-name">Computer name</label><input id="computer-name" type="text" maxlength="15" autocomplete="off" spellcheck="false" placeholder="e.g. HQ-LT-0042"><p class="help">Up to 15 letters, numbers, or hyphens.</p></div>
+              <div id="hardware-fields" hidden class="grid">
+                <div class="field"><label for="name-prefix">Prefix</label><input id="name-prefix" type="text" maxlength="10" value="PC" autocomplete="off" placeholder="e.g. PC"><p class="help">Optional; up to 10 characters.</p></div>
+                <div class="field"><label for="hardware-id">Hardware identifier</label><select id="hardware-id"></select></div>
+              </div>
+              <div class="preview">Name preview<strong id="name-preview">Not set</strong></div>
+            </div>
+          </div>
+          <div class="grid device-extras">
+            <div class="field"><label for="domain-suffix">Domain suffix</label><input id="domain-suffix" type="text" autocomplete="off" placeholder="Optional"></div>
+            <label class="choice"><input id="peering" type="checkbox" checked> Enable P2P for the task sequence</label>
+          </div>
+        </section>
+        <section class="panel" data-panel="1" aria-labelledby="join-heading" hidden>
+          <div class="intro"><h2 id="join-heading">Workplace join</h2><p class="muted">Select how this device should be provisioned.</p></div>
+          <fieldset class="choice-group"><legend>Join method</legend>
+            <label class="choice"><input type="radio" name="join-choice" value="Workgroup" checked> Local workgroup</label>
+            <label class="choice"><input type="radio" name="join-choice" value="EntraID"> Entra ID join</label>
+            <label class="choice"><input type="radio" name="join-choice" value="Autopilot"> Autopilot registration</label>
+            <label class="choice"><input type="radio" name="join-choice" value="ODJ"> Offline domain join</label>
+          </fieldset>
+          <div class="field" id="upn-fields" hidden><label for="upn">Primary user UPN</label><input id="upn" type="text" autocomplete="off" placeholder="user@example.com"></div>
+          <div class="field" id="group-fields" hidden><label for="group-tag">Autopilot group tag</label><select id="group-tag"></select></div>
+          <div class="field" id="ou-fields" hidden><label for="ou">Domain join OU</label><select id="ou"></select></div>
+          <div class="grid">
+            <div class="field"><label for="role">User role</label><select id="role"></select></div>
+            <div class="field"><label for="finish-action">Finish action</label><select id="finish-action"></select></div>
+          </div>
+        </section>
+        <section class="panel" data-panel="2" aria-labelledby="software-heading" hidden>
+          <div class="intro"><h2 id="software-heading">Software</h2><p class="muted">Select applications to install after the device is configured.</p></div>
+          <div id="app-message" class="notice" hidden></div>
+          <div id="app-list" class="app-list"></div>
+        </section>
+        <section class="panel" data-panel="3" aria-labelledby="review-heading" hidden>
+          <div class="intro"><h2 id="review-heading">Review</h2><p class="muted">Check your selections before continuing to DeployR.</p></div>
+          <dl id="summary" class="summary"></dl>
+          <div class="field"><label for="tsid">Task sequence</label><select id="tsid"><option value="">Use DeployR selection prompt</option></select><p class="help">Selecting a task sequence skips the built-in prompt.</p></div>
+          <p id="ts-message" class="notice" hidden></p>
+        </section>
+        <p id="error" class="error" role="alert" hidden></p>
+        <div class="actions"><button id="back" class="secondary" type="button" hidden>Back</button><button id="next" class="primary" type="button" disabled>Next</button><button id="submit" class="primary" type="submit" hidden disabled>Start deployment</button></div>
+      </form>
+    </div>
+  </main>
+  <script>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const form = $('setup-form');
+      const query = new URLSearchParams(location.search);
+      const hostname = query.get('hostname')?.trim() || '';
+      let config;
+      let step = 0;
+      let apps = [];
+      const field = (id) => $(id).value.trim();
+      const selected = (name) => form.querySelector(`input[name="${name}"]:checked`).value;
+      const error = (message) => { $('error').textContent = message; $('error').hidden = !message; };
+
+      function macAddress() {
+        const raw = query.get('macaddress') || query.get('mac') || '';
+        return /^(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}$|^[0-9a-f]{12}$/i.test(raw) ? raw.replace(/[:-]/g, '').toUpperCase() : '';
+      }
+
+      function fillSelect(id, options) {
+        const select = $(id);
+        select.replaceChildren();
+        for (const item of options) {
+          const option = document.createElement('option');
+          option.value = typeof item === 'string' ? item : item.value;
+          option.textContent = typeof item === 'string' ? item : item.displayName;
+          select.append(option);
+        }
+      }
+
+      function updateName() {
+        const mode = selected('naming-choice');
+        $('manual-fields').hidden = mode !== 'Manual';
+        $('hardware-fields').hidden = mode !== 'HardwareBased';
+        let name = '';
+        if (mode === 'Manual') name = field('computer-name').toUpperCase();
+        if (mode === 'HardwareBased') {
+          const prefix = field('name-prefix').toUpperCase();
+          const identifier = field('hardware-id').toUpperCase();
+          const remaining = 15 - (prefix ? prefix.length + 1 : 0);
+          name = (prefix ? `${prefix}-` : '') + identifier.slice(-remaining);
+        }
+        $('name-preview').textContent = mode === 'None' ? (hostname || 'Current name unavailable') : (name || 'Not set');
+        return name;
+      }
+
+      function updateJoin() {
+        const join = selected('join-choice');
+        $('upn-fields').hidden = join !== 'EntraID';
+        $('group-fields').hidden = join !== 'Autopilot';
+        $('ou-fields').hidden = join !== 'ODJ';
+        const actions = join === 'Autopilot' ? ['Reseal'] : join === 'Workgroup'
+          ? ['Restart', 'Shutdown', 'Reseal', 'Log Off', 'Nothing']
+          : ['Restart', 'Shutdown', 'Log Off', 'Nothing'];
+        const previous = field('finish-action');
+        fillSelect('finish-action', actions);
+        if (actions.includes(previous)) $('finish-action').value = previous;
+      }
+
+      function values() {
+        const mode = selected('naming-choice');
+        const join = selected('join-choice');
+        const result = { NamingStrategy: mode, WorkplaceJoin: join, FINISHACTION: field('finish-action'), Peering: $('peering').checked ? 'True' : 'False' };
+        if (mode !== 'None') result.ComputerName = updateName();
+        if (mode === 'HardwareBased') result.HardwareIdType = $('hardware-id').selectedOptions[0]?.dataset.type;
+        if (field('domain-suffix')) result.DomainSuffix = field('domain-suffix');
+        if (join === 'EntraID' && field('upn')) { result.EntraIDUserUPN = field('upn'); result.ENTRAUPN = field('upn'); }
+        if (join === 'ODJ' && field('ou')) { result.DomainJoinOU = field('ou'); result.OU = field('ou'); }
+        if (join === 'Autopilot' && field('group-tag')) {
+          result.AutopilotGroupTag = field('group-tag') === 'Hub Self Deploy' ? 'Hub' : field('group-tag');
+          result.GROUPTAG = result.AutopilotGroupTag;
+        }
+        if (field('role')) result.SelectedUserRole = field('role');
+        const checked = [...$('app-list').querySelectorAll('input:checked')].map((input) => input.value);
+        if (checked.length) result.SelectedApplicationIds = checked.join(',');
+        if (field('tsid')) result.TSID = field('tsid');
+        return result;
+      }
+
+      function validate(index) {
+        if (index === 0) {
+          const mode = selected('naming-choice');
+          if (mode === 'Manual' && !/^[a-z0-9-]{1,15}$/i.test(field('computer-name'))) return 'Enter a computer name of 1 to 15 letters, numbers, or hyphens.';
+          if (mode === 'HardwareBased') {
+            if (!/^[a-z0-9-]{0,10}$/i.test(field('name-prefix')) || field('name-prefix').endsWith('-')) return 'Use a prefix of up to 10 letters, numbers, or hyphens.';
+            if (!/^[a-z0-9-]{1,15}$/i.test(updateName())) return 'The hardware identifier cannot produce a valid computer name. Choose another identifier.';
+          }
+          if (field('domain-suffix') && !/^[a-z0-9-]+(\.[a-z0-9-]+)*$/i.test(field('domain-suffix'))) return 'Enter a valid domain suffix or leave it blank.';
+        }
+        if (index === 1) {
+          if (selected('join-choice') === 'ODJ' && !field('ou')) return 'Select a domain join OU.';
+          if (selected('join-choice') === 'Autopilot' && !field('group-tag')) return 'Select an Autopilot group tag.';
+          if (selected('join-choice') === 'EntraID' && field('upn') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field('upn'))) return 'Enter a valid primary user UPN or leave it blank.';
+        }
+        if (index === 3 && field('tsid') && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(field('tsid'))) return 'Choose a valid task sequence or use DeployR selection.';
+        return '';
+      }
+
+      function review() {
+        const labels = { NamingStrategy: 'Naming', ComputerName: 'Computer name', DomainSuffix: 'Domain suffix', HardwareIdType: 'Hardware ID', WorkplaceJoin: 'Join', EntraIDUserUPN: 'Primary user', DomainJoinOU: 'Domain join OU', AutopilotGroupTag: 'Group tag', SelectedUserRole: 'Role', FINISHACTION: 'Finish action', Peering: 'P2P', SelectedApplicationIds: 'Applications' };
+        const summary = $('summary');
+        summary.replaceChildren();
+        const result = values();
+        for (const [key, label] of Object.entries(labels)) {
+          if (!result[key]) continue;
+          const title = document.createElement('dt');
+          const value = document.createElement('dd');
+          title.textContent = label;
+          value.textContent = key === 'SelectedApplicationIds'
+            ? apps.filter((app) => result[key].split(',').includes(app.id)).map((app) => app.displayName).join(', ')
+            : result[key];
+          summary.append(title, value);
+        }
+      }
+
+      function showStep(index) {
+        step = index;
+        error('');
+        for (const panel of document.querySelectorAll('.panel')) panel.hidden = Number(panel.dataset.panel) !== step;
+        for (const button of document.querySelectorAll('.step')) {
+          if (Number(button.dataset.step) === step) button.setAttribute('aria-current', 'step');
+          else button.removeAttribute('aria-current');
+        }
+        $('back').hidden = step === 0;
+        $('next').hidden = step === 3;
+        $('submit').hidden = step !== 3;
+        if (step === 3) review();
+        document.querySelector('.panel:not([hidden]) h2').focus?.();
+      }
+
+      function renderApps(list) {
+        if (!Array.isArray(list)) throw new Error('Application list must be an array.');
+        apps = list.filter((app) => app && typeof app.id === 'string' && /^[0-9a-f-]{36}$/i.test(app.id) && typeof app.displayName === 'string');
+        $('app-list').replaceChildren();
+        for (const app of apps) {
+          const label = document.createElement('label');
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          input.value = app.id;
+          label.append(input, document.createTextNode(app.displayName));
+          $('app-list').append(label);
+        }
+        $('app-message').hidden = apps.length > 0;
+        $('app-message').textContent = apps.length ? '' : 'No applications are configured. You can continue without software selections.';
+      }
+
+      function renderTaskSequences(list) {
+        if (!Array.isArray(list)) throw new Error('Task sequence list must be an array.');
+        const select = $('tsid');
+        select.replaceChildren(new Option('Use DeployR selection prompt', ''));
+        for (const item of list) {
+          if (!item || typeof item.id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id) || typeof item.displayName !== 'string') continue;
+          select.add(new Option(item.displayName, item.id));
+        }
+        const requested = query.get('tsid') || config.taskSequenceId || '';
+        const matchingOption = [...select.options].find((option) => option.value.toLowerCase() === requested.toLowerCase());
+        if (requested && !matchingOption) {
+          $('ts-message').textContent = 'The configured task sequence is not in the FrontEnd catalog. Choose an available task sequence or use DeployR selection.';
+        } else if (select.options.length === 1) {
+          $('ts-message').textContent = 'No FrontEnd task sequences are available. DeployR selection will be used.';
+        } else {
+          $('ts-message').textContent = '';
+        }
+        $('ts-message').hidden = !$('ts-message').textContent;
+        select.value = matchingOption?.value || '';
+      }
+
+      async function init() {
+        const response = await fetch('config.json', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`Configuration unavailable (${response.status}).`);
+        config = await response.json();
+        fillSelect('ou', config.ous || []);
+        fillSelect('group-tag', config.autopilotGroupTags || []);
+        fillSelect('role', config.roles || []);
+        $('domain-suffix').value = config.domainSuffix || '';
+        $('make').textContent = query.get('make') || 'Not supplied';
+        $('model').textContent = query.get('model') || 'Not supplied';
+        $('device-title').textContent = [query.get('make'), query.get('model')].filter(Boolean).join(' / ') || 'Device preparation';
+        if (query.has('peering')) $('peering').checked = query.get('peering').toLowerCase() !== 'false';
+        const mac = macAddress();
+        if (mac) $('computer-name').value = `PC-${mac}`;
+        const identifiers = [
+          [mac, 'MAC address', 'MAC'],
+          [query.get('serialnumber') || query.get('serial'), 'Serial number', 'Serial']
+        ];
+        for (const [identifier, label, type] of identifiers) {
+          if (!identifier || !/^[a-z0-9-]+$/i.test(identifier)) continue;
+          const option = document.createElement('option');
+          option.value = identifier;
+          option.textContent = label;
+          option.dataset.type = type;
+          $('hardware-id').append(option);
+        }
+        $('hardware-choice').hidden = !$('hardware-id').options.length;
+        updateJoin();
+        updateName();
+        renderApps(config.applications || []);
+        if (config.applicationsUrl) {
+          try {
+            const appsResponse = await fetch(config.applicationsUrl, { cache: 'no-store' });
+            if (!appsResponse.ok) throw new Error(`HTTP ${appsResponse.status}`);
+            renderApps(await appsResponse.json());
+          } catch (cause) {
+            $('app-message').hidden = false;
+            $('app-message').textContent = `Application list unavailable (${cause.message}). Using configured fallback.`;
+          }
+        }
+        if (config.taskSequencesUrl) {
+          try {
+            const sequencesResponse = await fetch(config.taskSequencesUrl, { cache: 'no-store' });
+            if (!sequencesResponse.ok) throw new Error(`HTTP ${sequencesResponse.status}`);
+            renderTaskSequences(await sequencesResponse.json());
+          } catch (cause) {
+            $('ts-message').textContent = `Task sequence list unavailable (${cause.message}). DeployR selection will be used.`;
+            $('ts-message').hidden = false;
+          }
+        }
+        $('next').disabled = false;
+        $('submit').disabled = false;
+      }
+
+      form.addEventListener('input', (event) => {
+        if (event.target.closest('[data-panel="0"]')) updateName();
+        error('');
+      });
+      form.addEventListener('change', (event) => {
+        if (event.target.name === 'join-choice') updateJoin();
+        if (event.target.name === 'naming-choice' || event.target.id === 'hardware-id') updateName();
+        error('');
+      });
+      $('next').addEventListener('click', () => { const message = validate(step); if (message) error(message); else showStep(step + 1); });
+      $('back').addEventListener('click', () => showStep(step - 1));
+      for (const button of document.querySelectorAll('.step')) button.addEventListener('click', () => {
+        const target = Number(button.dataset.step);
+        for (let index = 0; index < target; index++) {
+          const message = validate(index);
+          if (message) { showStep(index); error(message); return; }
+        }
+        showStep(target);
+      });
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        for (let index = 0; index <= 3; index++) {
+          const message = validate(index);
+          if (message) { showStep(index); error(message); return; }
+        }
+        form.querySelectorAll('input[data-output]').forEach((input) => input.remove());
+        for (const [name, value] of Object.entries(values())) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = name;
+          input.value = value;
+          input.dataset.output = 'true';
+          form.append(input);
+        }
+        const radios = form.querySelectorAll('input[type="radio"]');
+        radios.forEach((input) => { input.disabled = true; });
+        HTMLFormElement.prototype.submit.call(form);
+        radios.forEach((input) => { input.disabled = false; });
+      });
+      init().catch((cause) => {
+        error(`Unable to load setup options: ${cause.message}`);
+        $('next').disabled = true;
+        $('submit').disabled = true;
+      });
+    })();
+  </script>
+</body>
+</html>
