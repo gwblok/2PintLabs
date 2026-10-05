@@ -1,6 +1,6 @@
 # DeployR WebUI URL and variables
 
-Host `WebUI.html`, `config.json`, `Logo.png`, and `DeployR-Icon.png` together over HTTPS. Serve them as `text/html`, `application/json`, and `image/png`, respectively. Set `CustomWebUrl` in `Bootstrap.json` (or inject it through 2PXE/iPXE). For the current deployment, use:
+Host `WebUI.html`, `config.json`, `locale.json`, `Logo.png`, and `DeployR-Icon.png` together over HTTPS. Serve HTML as `text/html`, JSON as `application/json`, and images as `image/png`. Set `CustomWebUrl` in `Bootstrap.json` (or inject it through 2PXE/iPXE). For the current deployment, use:
 
 ```text
 https://deployr.2p.garytown.com/WebUI/WebUI.html?make=%MAKEALIAS%&model=%MODELALIAS%&macaddress=%MACADDRESS001%&serialnumber=%SERIALNUMBER%&stiflerversion=%PA_STIFLERVERSION%&networkdhcp=%PA_NETWORKDHCP%&networkgateway=%PA_NETWORKGATEWAY%&networkdnsservers=%PA_NETWORKDNSSERVERS%&diskmodel=%PA_DISKMODEL%&disktype=%PA_DISKTYPE%&networkmacaddress=%PA_NETWORKMACADDRESS%&hostname=%PA_HOSTNAME%&securebootstatus=%PA_SECUREBOOTSTATUS%&tpmversion=%PA_TPMVERSION%&networkadapter=%PA_NETWORKADAPTER%&networkipaddress=%PA_NETWORKIPADDRESS%&networksubnetmask=%PA_NETWORKSUBNETMASK%&diskcount=%PA_DISKCOUNT%&disksizegb=%PA_DISKSIZEGB%
@@ -61,6 +61,9 @@ The form submits by native `POST` to `deployr://submit`, the mechanism in the de
 | `SelectedUserRole` | If a non-default role was chosen. |
 | `FINISHACTION` | Always: `Restart`, `Shutdown`, `Reseal`, `Log Off`, or `Nothing`, restricted by join method. |
 | `Peering` | Always: `True` or `False`. |
+| `TimeZone` | Windows time-zone ID chosen in Locale; default `Central Standard Time`. |
+| `SystemLocale`, `UserLocale`, `UILanguage` | Locale selections; default `en-US`. |
+| `InputLocale` | Windows keyboard/input-method code, not its descriptive prefix; default `0409:00000409`. |
 | `SelectedApplicationIds` | Only if apps were selected: comma-separated DeployR application GUIDs. A task-sequence step must resolve these to `TSENVLIST:Applications`. |
 | `TSID` | Submitted when an available tagged task sequence is selected; this skips DeployR's built-in selection prompt in the tested internal build. Choose the prompt option to omit it. |
 

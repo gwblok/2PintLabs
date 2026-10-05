@@ -26,7 +26,7 @@
     .layout { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 16px; height: 100%; min-height: 0; }
     .sidebar { display: flex; flex-direction: column; min-height: 0; }
     .steps { border-left: 2px solid var(--line); align-self: start; }
-    .step { display: flex; width: 100%; align-items: center; gap: 10px; padding: 9px 10px 9px 14px; border: 0; border-left: 3px solid transparent; margin-left: -2px; text-align: left; background: transparent; color: var(--muted); }
+    .step { display: flex; width: 100%; align-items: center; gap: 10px; padding: 4px 10px 4px 14px; border: 0; border-left: 3px solid transparent; margin-left: -2px; text-align: left; background: transparent; color: var(--muted); }
     .step[aria-current="step"] { color: var(--green-dark); border-left-color: var(--green); font-weight: 700; background: #e1f0e7; }
     .step-number { display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid currentColor; border-radius: 50%; font-size: 12px; flex: none; }
     .system-info { margin-top: 4px; padding: 0 8px 0 10px; overflow-y: auto; font-size: 12px; line-height: 1.2; }
@@ -69,16 +69,17 @@
     .app-list label { display: flex; align-items: center; gap: 10px; margin: 0; padding: 11px; border: 1px solid var(--line); border-radius: 4px; font-weight: 500; overflow-wrap: anywhere; }
     .notice { border-left: 3px solid var(--orange); background: #fff5ee; color: #66371c; padding: 11px 13px; margin: 15px 0; }
     .error { color: #a62f20; margin: 13px 0; font-weight: 650; }
-    .review-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; margin: 12px 0; }
+    .review-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 18px; margin: 8px 0; }
     .review-group { min-width: 0; border-top: 1px solid var(--line); padding-top: 7px; }
-    .review-group:last-child { grid-column: 1 / -1; }
-    .review-group h3, .deployment-choice h3 { margin: 0 0 7px; font-size: 12px; color: var(--green-dark); }
-    .summary { display: grid; grid-template-columns: minmax(85px, 105px) minmax(0, 1fr); gap: 4px 8px; margin: 0; font-size: 13px; }
+    .review-group h3, .deployment-choice h3 { margin: 0 0 4px; font-size: 12px; color: var(--green-dark); }
+    .summary { display: grid; grid-template-columns: minmax(75px, 95px) minmax(0, 1fr); gap: 2px 8px; margin: 0; font-size: 12px; line-height: 1.2; }
     .summary dt { color: var(--muted); }
     .summary dd { margin: 0; overflow-wrap: anywhere; font-weight: 600; }
+    .locale-summary dd { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .deployment-choice { border-left: 3px solid var(--green); background: #eff6f1; padding: 10px 12px 8px; }
     .deployment-choice .field { margin: 0; }
     .deployment-choice select { max-width: none; font-weight: 650; }
+    #ts-message { margin: 6px 0; padding: 7px 10px; font-size: 12px; }
     .actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; flex: none; }
     .actions button { min-height: 34px; padding: 5px 16px; border-radius: 4px; font-weight: 650; }
     .secondary { background: white; color: var(--blue-dark); border: 1px solid var(--blue); }
@@ -89,7 +90,7 @@
       .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 8px; }
       .sidebar { gap: 3px; }
       .system-info { display: none; }
-      .steps { display: grid; grid-template-columns: repeat(4, 1fr); border-left: 0; border-bottom: 2px solid var(--line); }
+      .steps { display: grid; grid-template-columns: repeat(5, 1fr); border-left: 0; border-bottom: 2px solid var(--line); }
       .step { display: grid; justify-items: center; gap: 4px; padding: 8px 2px; margin: 0 0 -2px; border-left: 0; border-bottom: 3px solid transparent; text-align: center; font-size: 12px; }
       .step[aria-current="step"] { border-left: 0; border-bottom-color: var(--green); }
       .content { padding: 14px 12px; }
@@ -109,8 +110,9 @@
         <nav class="steps" aria-label="Setup steps">
           <button type="button" class="step" data-step="0" aria-current="step"><span class="step-number">1</span>Device</button>
           <button type="button" class="step" data-step="1"><span class="step-number">2</span>Join</button>
-          <button type="button" class="step" data-step="2"><span class="step-number">3</span>Software</button>
-          <button type="button" class="step" data-step="3"><span class="step-number">4</span>Review</button>
+          <button type="button" class="step" data-step="2"><span class="step-number">3</span>Locale</button>
+          <button type="button" class="step" data-step="3"><span class="step-number">4</span>Software</button>
+          <button type="button" class="step" data-step="4"><span class="step-number">5</span>Review</button>
         </nav>
         <aside class="system-info" aria-label="Device information">
           <h3>System</h3>
@@ -176,12 +178,16 @@
             <div class="field"><label for="finish-action">Finish action</label><select id="finish-action"></select></div>
           </div>
         </section>
-        <section class="panel" data-panel="2" aria-labelledby="software-heading" hidden>
+        <section class="panel" data-panel="2" aria-labelledby="locale-heading" hidden>
+          <div class="intro"><h2 id="locale-heading">Locale</h2><p class="muted">Windows region, language, and keyboard settings.</p></div>
+          <div id="locale-fields" class="grid"></div>
+        </section>
+        <section class="panel" data-panel="3" aria-labelledby="software-heading" hidden>
           <div class="intro"><h2 id="software-heading">Software</h2><p class="muted">Select applications to install after the device is configured.</p></div>
           <div id="app-message" class="notice" hidden></div>
           <div id="app-list" class="app-list"></div>
         </section>
-        <section class="panel" data-panel="3" aria-labelledby="review-heading" hidden>
+        <section class="panel" data-panel="4" aria-labelledby="review-heading" hidden>
           <div class="intro"><h2 id="review-heading">Review</h2><p class="muted">Check your selections before continuing to DeployR.</p></div>
           <div id="summary" class="review-groups"></div>
           <div class="deployment-choice"><div class="field"><label for="tsid">Task sequence</label><select id="tsid"><option value="">Use DeployR selection prompt</option></select><p class="help">Selecting a task sequence skips the built-in prompt.</p></div></div>
@@ -210,6 +216,8 @@
       let config;
       let step = 0;
       let apps = [];
+      let localeSettings = [];
+      const reviewStep = 4;
       const field = (id) => $(id).value.trim();
       const selected = (name) => form.querySelector(`input[name="${name}"]:checked`).value;
       const error = (message) => { $('error').textContent = message; $('error').hidden = !message; };
@@ -276,6 +284,7 @@
         const checked = [...$('app-list').querySelectorAll('input:checked')].map((input) => input.value);
         if (checked.length) result.SelectedApplicationIds = checked.join(',');
         if (field('tsid')) result.TSID = field('tsid');
+        for (const setting of localeSettings) result[setting.variable] = field(`locale-${setting.variable}`);
         return result;
       }
 
@@ -294,7 +303,12 @@
           if (selected('join-choice') === 'Autopilot' && !field('group-tag')) return 'Select an Autopilot group tag.';
           if (selected('join-choice') === 'EntraID' && field('upn') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field('upn'))) return 'Enter a valid primary user UPN or leave it blank.';
         }
-        if (index === 3 && field('tsid') && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(field('tsid'))) return 'Choose a valid task sequence or use DeployR selection.';
+        if (index === 2) {
+          for (const setting of localeSettings) {
+            if (!setting.options.some((option) => option.value === field(`locale-${setting.variable}`))) return `Choose a valid ${setting.label.toLowerCase()}.`;
+          }
+        }
+        if (index === reviewStep && field('tsid') && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(field('tsid'))) return 'Choose a valid task sequence or use DeployR selection.';
         return '';
       }
 
@@ -308,6 +322,7 @@
         const sections = [
           { title: 'Device', keys: ['NamingStrategy', 'ComputerName', 'HardwareIdType', 'DomainSuffix', 'Peering'] },
           { title: 'Join', keys: ['WorkplaceJoin', 'EntraIDUserUPN', 'DomainJoinOU', 'AutopilotGroupTag', 'SelectedUserRole'] },
+          { title: 'Locale', keys: localeSettings.map((setting) => setting.variable) },
           { title: 'Deployment', keys: ['FINISHACTION', 'SelectedApplicationIds'] }
         ];
         const summary = $('summary');
@@ -324,10 +339,19 @@
             if (!result[key]) continue;
             const title = document.createElement('dt');
             const value = document.createElement('dd');
-            title.textContent = labels[key];
+            const localeLabels = { TimeZone: 'Time zone', SystemLocale: 'System', UserLocale: 'User', UILanguage: 'UI language', InputLocale: 'Keyboard' };
+            title.textContent = labels[key] || localeLabels[key];
             value.textContent = key === 'SelectedApplicationIds'
               ? apps.filter((app) => result[key].split(',').includes(app.id)).map((app) => app.displayName).join(', ')
               : (displayValues[key]?.[result[key]] || result[key]);
+            if (group.title === 'Locale') {
+              details.classList.add('locale-summary');
+              if (key === 'InputLocale') {
+                const label = $(`locale-${key}`).selectedOptions[0].textContent;
+                value.textContent = label.slice(0, label.lastIndexOf(' ('));
+              }
+              value.title = result[key];
+            }
             details.append(title, value);
           }
           section.append(heading, details);
@@ -344,9 +368,9 @@
           else button.removeAttribute('aria-current');
         }
         $('back').hidden = step === 0;
-        $('next').hidden = step === 3;
-        $('submit').hidden = step !== 3;
-        if (step === 3) review();
+        $('next').hidden = step === reviewStep;
+        $('submit').hidden = step !== reviewStep;
+        if (step === reviewStep) review();
         document.querySelector('.panel:not([hidden]) h2').focus?.();
       }
 
@@ -395,6 +419,35 @@
         const response = await fetch('config.json', { cache: 'no-store' });
         if (!response.ok) throw new Error(`Configuration unavailable (${response.status}).`);
         config = await response.json();
+        const localeResponse = await fetch('locale.json', { cache: 'no-store' });
+        if (!localeResponse.ok) throw new Error(`Locale options unavailable (${localeResponse.status}).`);
+        const localeCatalog = await localeResponse.json();
+        const localeVariables = ['TimeZone', 'SystemLocale', 'UserLocale', 'UILanguage', 'InputLocale'];
+        if (!Array.isArray(localeCatalog.settings) || localeCatalog.settings.length !== localeVariables.length) throw new Error('Locale catalog must define all five settings.');
+        localeSettings = localeVariables.map((variable) => {
+          const setting = localeCatalog.settings.find((item) => item.variable === variable);
+          if (!setting || !Array.isArray(setting.options) || !setting.options.some((item) => item.value === setting.defaultValue)) throw new Error(`Invalid locale options for ${variable}.`);
+          return setting;
+        });
+        for (const setting of localeSettings) {
+          const container = document.createElement('div');
+          container.className = 'field';
+          if (setting.variable === 'TimeZone') container.style.gridColumn = '1 / -1';
+          const label = document.createElement('label');
+          const select = document.createElement('select');
+          select.id = `locale-${setting.variable}`;
+          label.htmlFor = select.id;
+          label.textContent = setting.label;
+          container.append(label, select);
+          $('locale-fields').append(container);
+          fillSelect(select.id, setting.options);
+          select.value = setting.defaultValue;
+          if (setting.defaultDisplayName) {
+            const defaultIndex = [...select.options].findIndex((option) => option.value === setting.defaultValue && option.textContent === setting.defaultDisplayName);
+            if (defaultIndex < 0) throw new Error(`Default label missing for ${setting.variable}.`);
+            select.selectedIndex = defaultIndex;
+          }
+        }
         fillSelect('ou', config.ous || []);
         fillSelect('group-tag', config.autopilotGroupTags || []);
         fillSelect('role', config.roles || []);
@@ -473,7 +526,7 @@
       });
       form.addEventListener('submit', (event) => {
         event.preventDefault();
-        for (let index = 0; index <= 3; index++) {
+        for (let index = 0; index <= reviewStep; index++) {
           const message = validate(index);
           if (message) { showStep(index); error(message); return; }
         }
