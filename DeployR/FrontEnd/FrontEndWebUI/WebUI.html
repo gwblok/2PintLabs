@@ -15,6 +15,9 @@
     .topbar { height: 48px; background: linear-gradient(103deg, #fff 0 32.5%, var(--green-dark) 32.7% 100%); color: white; }
     .topbar-inner { max-width: 1120px; height: 100%; margin: auto; padding: 0 20px; display: grid; grid-template-columns: 32% minmax(0, 1fr) auto; align-items: center; gap: 12px; }
     .brand-image { display: block; width: 124px; height: auto; max-height: 34px; }
+    .brand-group { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .countdown { width: 124px; flex: none; color: var(--muted); font-size: 11px; line-height: 1.2; }
+    .countdown strong { display: block; margin-top: 2px; font-size: 14px; color: var(--blue-dark); font-variant-numeric: tabular-nums; }
     .product-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .product-icon { width: 30px; height: 30px; flex: none; }
     .product-name { font-size: 22px; font-weight: 500; line-height: 1; }
@@ -98,12 +101,13 @@
       .topbar { background: linear-gradient(103deg, #fff 0 40%, var(--green-dark) 40.2% 100%); }
       .topbar-inner { grid-template-columns: 38% minmax(0, 1fr); }
       .brand-image { width: 108px; }
+      .countdown { display: none; }
       .top-meta { display: none; }
     }
   </style>
 </head>
 <body>
-  <header class="topbar"><div class="topbar-inner"><img class="brand-image" src="Logo.png" alt="2Pint"><div class="product-brand"><img class="product-icon" src="DeployR-Icon.png" alt=""><span class="product-name">DeployR</span></div><div class="top-meta" id="device-title">Device preparation</div></div></header>
+  <header class="topbar"><div class="topbar-inner"><div class="brand-group"><img class="brand-image" src="Logo.png" alt="2Pint"><div class="countdown" id="countdown" role="timer" aria-live="off"><span>Automatically closing</span><strong id="countdown-time">in 5:00</strong></div></div><div class="product-brand"><img class="product-icon" src="DeployR-Icon.png" alt=""><span class="product-name">DeployR</span></div><div class="top-meta" id="device-title">Device preparation</div></div></header>
   <main class="shell">
     <div class="layout">
       <div class="sidebar">
@@ -218,6 +222,9 @@
       let apps = [];
       let localeSettings = [];
       const reviewStep = 4;
+      let setupReady = false;
+      let submitted = false;
+      let countdownTimer;
       const field = (id) => $(id).value.trim();
       const selected = (name) => form.querySelector(`input[name="${name}"]:checked`).value;
       const error = (message) => { $('error').textContent = message; $('error').hidden = !message; };
@@ -411,6 +418,24 @@
         select.value = matchingOption?.value || '';
       }
 
+      function startCountdown() {
+        const deadline = Date.now() + 300000;
+        countdownTimer = setInterval(() => {
+          const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+          $('countdown-time').textContent = `in ${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
+          if (remaining > 0) return;
+          clearInterval(countdownTimer);
+          updateName();
+          if ($('inventory-dialog').open) $('inventory-dialog').close();
+          showStep(reviewStep);
+          form.requestSubmit();
+          if (!submitted) {
+            $('countdown').querySelector('span').textContent = 'Needs attention';
+            $('countdown-time').textContent = '';
+          }
+        }, 1000);
+      }
+
       async function init() {
         for (const item of document.querySelectorAll('.system-info [data-query]')) {
           item.textContent = queryValue(item.dataset.query) || 'NA';
@@ -496,6 +521,8 @@
         }
         $('next').disabled = false;
         $('submit').disabled = false;
+        setupReady = true;
+        startCountdown();
       }
 
       form.addEventListener('input', (event) => {
@@ -526,10 +553,15 @@
       });
       form.addEventListener('submit', (event) => {
         event.preventDefault();
+        if (!setupReady || submitted) return;
         for (let index = 0; index <= reviewStep; index++) {
           const message = validate(index);
           if (message) { showStep(index); error(message); return; }
         }
+        submitted = true;
+        clearInterval(countdownTimer);
+        $('countdown').querySelector('span').textContent = 'Continuing to DeployR';
+        $('countdown-time').textContent = '';
         form.querySelectorAll('input[data-output]').forEach((input) => input.remove());
         for (const [name, value] of Object.entries(values())) {
           const input = document.createElement('input');
@@ -546,6 +578,8 @@
       });
       init().catch((cause) => {
         error(`Unable to load setup options: ${cause.message}`);
+        $('countdown').querySelector('span').textContent = 'Setup unavailable';
+        $('countdown-time').textContent = '';
         $('next').disabled = true;
         $('submit').disabled = true;
       });
