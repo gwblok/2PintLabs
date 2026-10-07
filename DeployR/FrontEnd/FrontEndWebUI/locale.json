@@ -1,0 +1,2552 @@
+{
+  "settings": [
+    {
+      "variable": "TimeZone",
+      "label": "Time Zone Drop Down",
+      "defaultValue": "Central Standard Time",
+      "options": [
+        {
+          "displayName": "(UTC-12:00) International Date Line West (Dateline Standard Time)",
+          "value": "Dateline Standard Time"
+        },
+        {
+          "displayName": "(UTC-10:00) Hawaii (Hawaiian Standard Time)",
+          "value": "Hawaiian Standard Time"
+        },
+        {
+          "displayName": "(UTC-09:00) Alaska (Alaskan Standard Time)",
+          "value": "Alaskan Standard Time"
+        },
+        {
+          "displayName": "(UTC-08:00) Pacific Time (US & Canada) (Pacific Standard Time)",
+          "value": "Pacific Standard Time"
+        },
+        {
+          "displayName": "(UTC-08:00) Coordinated Universal Time-08 (UTC-08)",
+          "value": "UTC-08"
+        },
+        {
+          "displayName": "(UTC-08:00) Pacific Time (US & Canada) (Pacific Standard Time (Mexico))",
+          "value": "Pacific Standard Time (Mexico)"
+        },
+        {
+          "displayName": "(UTC-07:00) Mountain Time (US & Canada) (Mountain Standard Time)",
+          "value": "Mountain Standard Time"
+        },
+        {
+          "displayName": "(UTC-07:00) La Paz, Mazatlan (Mountain Standard Time (Mexico))",
+          "value": "Mountain Standard Time (Mexico)"
+        },
+        {
+          "displayName": "(UTC-07:00) Arizona (US Mountain Standard Time)",
+          "value": "US Mountain Standard Time"
+        },
+        {
+          "displayName": "(UTC-06:00) Saskatchewan (Canada Central Standard Time)",
+          "value": "Canada Central Standard Time"
+        },
+        {
+          "displayName": "(UTC-06:00) Guadalajara, Mexico City, Monterrey (Central Standard Time (Mexico))",
+          "value": "Central Standard Time (Mexico)"
+        },
+        {
+          "displayName": "(UTC-06:00) Easter Island (Easter Island Standard Time)",
+          "value": "Easter Island Standard Time"
+        },
+        {
+          "displayName": "(UTC-06:00) Central Time (US & Canada) (Central Standard Time)",
+          "value": "Central Standard Time"
+        },
+        {
+          "displayName": "(UTC-06:00) Central America (Central America Standard Time)",
+          "value": "Central America Standard Time"
+        },
+        {
+          "displayName": "(UTC-05:00) Turks and Caicos (Turks And Caicos Standard Time)",
+          "value": "Turks And Caicos Standard Time"
+        },
+        {
+          "displayName": "(UTC-05:00) Indiana (East) (US Eastern Standard Time)",
+          "value": "US Eastern Standard Time"
+        },
+        {
+          "displayName": "(UTC-05:00) Havana (Cuba Standard Time)",
+          "value": "Cuba Standard Time"
+        },
+        {
+          "displayName": "(UTC-05:00) Haiti (Haiti Standard Time)",
+          "value": "Haiti Standard Time"
+        },
+        {
+          "displayName": "(UTC-05:00) Eastern Time (US & Canada) (Eastern Standard Time)",
+          "value": "Eastern Standard Time"
+        },
+        {
+          "displayName": "(UTC-05:00) Chetumal (Eastern Standard Time (Mexico))",
+          "value": "Eastern Standard Time (Mexico)"
+        },
+        {
+          "displayName": "(UTC-05:00) Bogota, Lima, Quito, Rio Branco (SA Pacific Standard Time)",
+          "value": "SA Pacific Standard Time"
+        },
+        {
+          "displayName": "(UTC-04:00) Santiago (Pacific SA Standard Time)",
+          "value": "Pacific SA Standard Time"
+        },
+        {
+          "displayName": "(UTC-04:00) Georgetown, La Paz, Manaus, San Juan (SA Western Standard Time)",
+          "value": "SA Western Standard Time"
+        },
+        {
+          "displayName": "(UTC-04:00) Cuiaba (Central Brazilian Standard Time)",
+          "value": "Central Brazilian Standard Time"
+        },
+        {
+          "displayName": "(UTC-04:00) Atlantic Time (Canada) (Atlantic Standard Time)",
+          "value": "Atlantic Standard Time"
+        },
+        {
+          "displayName": "(UTC-04:00) Asuncion (Paraguay Standard Time)",
+          "value": "Paraguay Standard Time"
+        },
+        {
+          "displayName": "(UTC-03:30) Newfoundland (Newfoundland Standard Time)",
+          "value": "Newfoundland Standard Time"
+        },
+        {
+          "displayName": "(UTC-03:00) City of Buenos Aires (Argentina Standard Time)",
+          "value": "Argentina Standard Time"
+        },
+        {
+          "displayName": "(UTC-03:00) Brasilia (E. South America Standard Time)",
+          "value": "E. South America Standard Time"
+        },
+        {
+          "displayName": "(UTC+12:00) Auckland, Wellington (New Zealand Standard Time)",
+          "value": "New Zealand Standard Time"
+        },
+        {
+          "displayName": "(UTC+10:00) Canberra, Melbourne, Sydney (AUS Eastern Standard Time)",
+          "value": "AUS Eastern Standard Time"
+        },
+        {
+          "displayName": "(UTC+10:00) Brisbane (E. Australia Standard Time)",
+          "value": "E. Australia Standard Time"
+        },
+        {
+          "displayName": "(UTC+09:30) Adelaide (Cen. Australia Standard Time)",
+          "value": "Cen. Australia Standard Time"
+        },
+        {
+          "displayName": "(UTC+09:00) Seoul (Korea Standard Time)",
+          "value": "Korea Standard Time"
+        },
+        {
+          "displayName": "(UTC+09:00) Osaka, Sapporo, Tokyo (Tokyo Standard Time)",
+          "value": "Tokyo Standard Time"
+        },
+        {
+          "displayName": "(UTC+08:00) Ulaanbaatar (Ulaanbaatar Standard Time)",
+          "value": "Ulaanbaatar Standard Time"
+        },
+        {
+          "displayName": "(UTC+08:00) Taipei (Taipei Standard Time)",
+          "value": "Taipei Standard Time"
+        },
+        {
+          "displayName": "(UTC+08:00) Perth (W. Australia Standard Time)",
+          "value": "W. Australia Standard Time"
+        },
+        {
+          "displayName": "(UTC+08:00) Kuala Lumpur, Singapore (Singapore Standard Time)",
+          "value": "Singapore Standard Time"
+        },
+        {
+          "displayName": "(UTC+08:00) Beijing, Chongqing, Hong Kong, Urumqi (China Standard Time)",
+          "value": "China Standard Time"
+        },
+        {
+          "displayName": "(UTC+07:00) Bangkok, Hanoi, Jakarta (SE Asia Standard Time)",
+          "value": "SE Asia Standard Time"
+        },
+        {
+          "displayName": "(UTC+06:00) Dhaka (Bangladesh Standard Time)",
+          "value": "Bangladesh Standard Time"
+        },
+        {
+          "displayName": "(UTC+05:45) Kathmandu (Nepal Standard Time)",
+          "value": "Nepal Standard Time"
+        },
+        {
+          "displayName": "(UTC+05:30) Sri Jayawardenepura (Sri Lanka Standard Time)",
+          "value": "Sri Lanka Standard Time"
+        },
+        {
+          "displayName": "(UTC+05:30) Chennai, Kolkata, Mumbai, New Delhi (India Standard Time)",
+          "value": "India Standard Time"
+        },
+        {
+          "displayName": "(UTC+05:00) Islamabad, Karachi (Pakistan Standard Time)",
+          "value": "Pakistan Standard Time"
+        },
+        {
+          "displayName": "(UTC+05:00) Astana (Qyzylorda Standard Time)",
+          "value": "Qyzylorda Standard Time"
+        },
+        {
+          "displayName": "(UTC+04:30) Kabul (Afghanistan Standard Time)",
+          "value": "Afghanistan Standard Time"
+        },
+        {
+          "displayName": "(UTC+04:00) Tbilisi (Georgian Standard Time)",
+          "value": "Georgian Standard Time"
+        },
+        {
+          "displayName": "(UTC+04:00) Baku (Azerbaijan Standard Time)",
+          "value": "Azerbaijan Standard Time"
+        },
+        {
+          "displayName": "(UTC+04:00) Abu Dhabi, Muscat (Arabian Standard Time)",
+          "value": "Arabian Standard Time"
+        },
+        {
+          "displayName": "(UTC+03:00) Damascus (Syria Standard Time)",
+          "value": "Syria Standard Time"
+        },
+        {
+          "displayName": "(UTC+01:00) Sarajevo, Skopje, Warsaw, Zagreb (Central European Standard Time)",
+          "value": "Central European Standard Time"
+        },
+        {
+          "displayName": "(UTC+01:00) Casablanca (Morocco Standard Time)",
+          "value": "Morocco Standard Time"
+        },
+        {
+          "displayName": "(UTC+01:00) Brussels, Copenhagen, Madrid, Paris (Romance Standard Time)",
+          "value": "Romance Standard Time"
+        },
+        {
+          "displayName": "(UTC+01:00) Belgrade, Bratislava, Budapest, Ljubljana, Prague (Central Europe Standard Time)",
+          "value": "Central Europe Standard Time"
+        },
+        {
+          "displayName": "(UTC+01:00) Amsterdam, Berlin, Bern, Rome, Stockholm, Vienna (W. Europe Standard Time)",
+          "value": "W. Europe Standard Time"
+        },
+        {
+          "displayName": "(UTC+00:00) Monrovia, Reykjavik (Greenwich Standard Time)",
+          "value": "Greenwich Standard Time"
+        },
+        {
+          "displayName": "(UTC+00:00) Dublin, Edinburgh, Lisbon, London (GMT Standard Time)",
+          "value": "GMT Standard Time"
+        },
+        {
+          "displayName": "(UTC) Coordinated Universal Time (UTC)",
+          "value": "UTC"
+        }
+      ]
+    },
+    {
+      "variable": "SystemLocale",
+      "label": "System Locale",
+      "defaultValue": "en-US",
+      "options": [
+        {
+          "displayName": "Afrikaans (South Africa) (af-ZA)",
+          "value": "af-ZA"
+        },
+        {
+          "displayName": "Albanian (Albania) (sq-AL)",
+          "value": "sq-AL"
+        },
+        {
+          "displayName": "Amharic (Ethiopia) (am-ET)",
+          "value": "am-ET"
+        },
+        {
+          "displayName": "Arabic (Saudi Arabia) (ar-SA)",
+          "value": "ar-SA"
+        },
+        {
+          "displayName": "Armenian (Armenia) (hy-AM)",
+          "value": "hy-AM"
+        },
+        {
+          "displayName": "Assamese (India) (as-IN)",
+          "value": "as-IN"
+        },
+        {
+          "displayName": "Azerbaijan (az-Latn-AZ)",
+          "value": "az-Latn-AZ"
+        },
+        {
+          "displayName": "Bangla (India) (bn-IN)",
+          "value": "bn-IN"
+        },
+        {
+          "displayName": "Basque (Basque) (eu-ES)",
+          "value": "eu-ES"
+        },
+        {
+          "displayName": "Belarusian (be-BY)",
+          "value": "be-BY"
+        },
+        {
+          "displayName": "Bosnian (Latin) (bs-Latn-BA)",
+          "value": "bs-Latn-BA"
+        },
+        {
+          "displayName": "Bulgarian (Bulgaria) (bg-BG)",
+          "value": "bg-BG"
+        },
+        {
+          "displayName": "Catalan (ca-ES)",
+          "value": "ca-ES"
+        },
+        {
+          "displayName": "Cherokee (chr-CHER-US)",
+          "value": "chr-CHER-US"
+        },
+        {
+          "displayName": "Chinese (Simplified, China) (zh-CN)",
+          "value": "zh-CN"
+        },
+        {
+          "displayName": "Chinese (Traditional, Taiwan) (zh-TW)",
+          "value": "zh-TW"
+        },
+        {
+          "displayName": "Croatian (Croatia) (hr-HR)",
+          "value": "hr-HR"
+        },
+        {
+          "displayName": "Czech (Czech Republic) (cs-CZ)",
+          "value": "cs-CZ"
+        },
+        {
+          "displayName": "Danish (Denmark) (da-DK)",
+          "value": "da-DK"
+        },
+        {
+          "displayName": "Dutch (Netherlands) (nl-NL)",
+          "value": "nl-NL"
+        },
+        {
+          "displayName": "English (United Kingdom) (en-GB)",
+          "value": "en-GB"
+        },
+        {
+          "displayName": "English (United States) (en-US)",
+          "value": "en-US"
+        },
+        {
+          "displayName": "Estonian (Estonia) (et-EE)",
+          "value": "et-EE"
+        },
+        {
+          "displayName": "Filipino (fil-PH)",
+          "value": "fil-PH"
+        },
+        {
+          "displayName": "Finnish (Finland) (fi-FI)",
+          "value": "fi-FI"
+        },
+        {
+          "displayName": "French (Canada) (fr-CA)",
+          "value": "fr-CA"
+        },
+        {
+          "displayName": "French (France) (fr-FR)",
+          "value": "fr-FR"
+        },
+        {
+          "displayName": "Galician (gl-ES)",
+          "value": "gl-ES"
+        },
+        {
+          "displayName": "Georgian (Georgia) (ka-GE)",
+          "value": "ka-GE"
+        },
+        {
+          "displayName": "German (Germany) (de-DE)",
+          "value": "de-DE"
+        },
+        {
+          "displayName": "Greek (Greece) (el-GR)",
+          "value": "el-GR"
+        },
+        {
+          "displayName": "Gujarati (India) (gu-IN)",
+          "value": "gu-IN"
+        },
+        {
+          "displayName": "Hebrew (Israel) (he-IL)",
+          "value": "he-IL"
+        },
+        {
+          "displayName": "Hindi (India) (hi-IN)",
+          "value": "hi-IN"
+        },
+        {
+          "displayName": "Hungarian (Hungary) (hu-HU)",
+          "value": "hu-HU"
+        },
+        {
+          "displayName": "Icelandic (Iceland) (is-IS)",
+          "value": "is-IS"
+        },
+        {
+          "displayName": "Indonesian (Indonesia) (id-ID)",
+          "value": "id-ID"
+        },
+        {
+          "displayName": "Irish (Ireland) (ga-IE)",
+          "value": "ga-IE"
+        },
+        {
+          "displayName": "Italian (Italy) (it-IT)",
+          "value": "it-IT"
+        },
+        {
+          "displayName": "Japanese (Japan) (ja-JP)",
+          "value": "ja-JP"
+        },
+        {
+          "displayName": "Kannada (India) (kn-IN)",
+          "value": "kn-IN"
+        },
+        {
+          "displayName": "Kazakh (Kazakhstan) (kk-KZ)",
+          "value": "kk-KZ"
+        },
+        {
+          "displayName": "Khmer (Cambodia) (km-KH)",
+          "value": "km-KH"
+        },
+        {
+          "displayName": "Konkani (India) (kok-IN)",
+          "value": "kok-IN"
+        },
+        {
+          "displayName": "Korean (Korea) (ko-KR)",
+          "value": "ko-KR"
+        },
+        {
+          "displayName": "Lao (Laos) (lo-LA)",
+          "value": "lo-LA"
+        },
+        {
+          "displayName": "Latvian (Latvia) (lv-LV)",
+          "value": "lv-LV"
+        },
+        {
+          "displayName": "Lithuanian (Lithuania) (lt-LT)",
+          "value": "lt-LT"
+        },
+        {
+          "displayName": "Luxembourgish (Luxembourg) (lb-LU)",
+          "value": "lb-LU"
+        },
+        {
+          "displayName": "Macedonian (North Macedonia) (mk-MK)",
+          "value": "mk-MK"
+        },
+        {
+          "displayName": "Malay (Malaysia, Brunei, and Singapore) (ms-MY)",
+          "value": "ms-MY"
+        },
+        {
+          "displayName": "Malayalam (India) (ml-IN)",
+          "value": "ml-IN"
+        },
+        {
+          "displayName": "Maltese (Malta) (mt-MT)",
+          "value": "mt-MT"
+        },
+        {
+          "displayName": "Maori (New Zealand) (mi-NZ)",
+          "value": "mi-NZ"
+        },
+        {
+          "displayName": "Marathi (India) (mr-IN)",
+          "value": "mr-IN"
+        },
+        {
+          "displayName": "Nepali (Federal Democratic Republic of Nepal) (ne-NP)",
+          "value": "ne-NP"
+        },
+        {
+          "displayName": "Norwegian, Bokmål (Norway) (nb-NO)",
+          "value": "nb-NO"
+        },
+        {
+          "displayName": "Norwegian, Nynorsk (Norway) (nn-NO)",
+          "value": "nn-NO"
+        },
+        {
+          "displayName": "Odia (India) (or-IN)",
+          "value": "or-IN"
+        },
+        {
+          "displayName": "Persian (fa-IR)",
+          "value": "fa-IR"
+        },
+        {
+          "displayName": "Polish (Poland) (pl-PL)",
+          "value": "pl-PL"
+        },
+        {
+          "displayName": "Portuguese (Brazil) (pt-BR)",
+          "value": "pt-BR"
+        },
+        {
+          "displayName": "Portuguese (Portugal) (pt-PT)",
+          "value": "pt-PT"
+        },
+        {
+          "displayName": "Punjabi (India) (pa-IN)",
+          "value": "pa-IN"
+        },
+        {
+          "displayName": "Quechua (Peru) (quz-PE)",
+          "value": "quz-PE"
+        },
+        {
+          "displayName": "Romanian (Romania) (ro-RO)",
+          "value": "ro-RO"
+        },
+        {
+          "displayName": "Russian (Russia) (ru-RU)",
+          "value": "ru-RU"
+        },
+        {
+          "displayName": "Scottish Gaelic (gd-GB)",
+          "value": "gd-GB"
+        },
+        {
+          "displayName": "Serbian (Cyrillic, Bosnia and Herzegovina) (sr-Cyrl-BA)",
+          "value": "sr-Cyrl-BA"
+        },
+        {
+          "displayName": "Serbian (Cyrillic, Serbia) (sr-Cyrl-RS)",
+          "value": "sr-Cyrl-RS"
+        },
+        {
+          "displayName": "Serbian (Latin, Serbia) (sr-Latn-RS)",
+          "value": "sr-Latn-RS"
+        },
+        {
+          "displayName": "Slovak (Slovakia) (sk-SK)",
+          "value": "sk-SK"
+        },
+        {
+          "displayName": "Slovenian (Slovenia) (sl-SI)",
+          "value": "sl-SI"
+        },
+        {
+          "displayName": "Spanish (Mexico) (es-MX)",
+          "value": "es-MX"
+        },
+        {
+          "displayName": "Spanish (Spain) (es-ES)",
+          "value": "es-ES"
+        },
+        {
+          "displayName": "Swedish (Sweden) (sv-SE)",
+          "value": "sv-SE"
+        },
+        {
+          "displayName": "Tamil (India) (ta-IN)",
+          "value": "ta-IN"
+        },
+        {
+          "displayName": "Tatar (Russia) (tt-RU)",
+          "value": "tt-RU"
+        },
+        {
+          "displayName": "Telugu (India) (te-IN)",
+          "value": "te-IN"
+        },
+        {
+          "displayName": "Thai (Thailand) (th-TH)",
+          "value": "th-TH"
+        },
+        {
+          "displayName": "Turkish (Türkiye) (tr-TR)",
+          "value": "tr-TR"
+        },
+        {
+          "displayName": "Ukrainian (Ukraine) (uk-UA)",
+          "value": "uk-UA"
+        },
+        {
+          "displayName": "Urdu (ur-PK)",
+          "value": "ur-PK"
+        },
+        {
+          "displayName": "Uyghur (ug-CN)",
+          "value": "ug-CN"
+        },
+        {
+          "displayName": "Uzbek (Latin) (uz-Latn-UZ)",
+          "value": "uz-Latn-UZ"
+        },
+        {
+          "displayName": "Valencian (ca-ES-valencia)",
+          "value": "ca-ES-valencia"
+        },
+        {
+          "displayName": "Vietnamese (vi-VN)",
+          "value": "vi-VN"
+        },
+        {
+          "displayName": "Welsh (Great Britain) (cy-GB)",
+          "value": "cy-GB"
+        }
+      ]
+    },
+    {
+      "variable": "UserLocale",
+      "label": "User Locale",
+      "defaultValue": "en-US",
+      "options": [
+        {
+          "displayName": "Afrikaans (South Africa) (af-ZA)",
+          "value": "af-ZA"
+        },
+        {
+          "displayName": "Albanian (Albania) (sq-AL)",
+          "value": "sq-AL"
+        },
+        {
+          "displayName": "Amharic (Ethiopia) (am-ET)",
+          "value": "am-ET"
+        },
+        {
+          "displayName": "Arabic (Saudi Arabia) (ar-SA)",
+          "value": "ar-SA"
+        },
+        {
+          "displayName": "Armenian (Armenia) (hy-AM)",
+          "value": "hy-AM"
+        },
+        {
+          "displayName": "Assamese (India) (as-IN)",
+          "value": "as-IN"
+        },
+        {
+          "displayName": "Azerbaijan (az-Latn-AZ)",
+          "value": "az-Latn-AZ"
+        },
+        {
+          "displayName": "Bangla (India) (bn-IN)",
+          "value": "bn-IN"
+        },
+        {
+          "displayName": "Basque (Basque) (eu-ES)",
+          "value": "eu-ES"
+        },
+        {
+          "displayName": "Belarusian (be-BY)",
+          "value": "be-BY"
+        },
+        {
+          "displayName": "Bosnian (Latin) (bs-Latn-BA)",
+          "value": "bs-Latn-BA"
+        },
+        {
+          "displayName": "Bulgarian (Bulgaria) (bg-BG)",
+          "value": "bg-BG"
+        },
+        {
+          "displayName": "Catalan (ca-ES)",
+          "value": "ca-ES"
+        },
+        {
+          "displayName": "Cherokee (chr-CHER-US)",
+          "value": "chr-CHER-US"
+        },
+        {
+          "displayName": "Chinese (Simplified, China) (zh-CN)",
+          "value": "zh-CN"
+        },
+        {
+          "displayName": "Chinese (Traditional, Taiwan) (zh-TW)",
+          "value": "zh-TW"
+        },
+        {
+          "displayName": "Croatian (Croatia) (hr-HR)",
+          "value": "hr-HR"
+        },
+        {
+          "displayName": "Czech (Czech Republic) (cs-CZ)",
+          "value": "cs-CZ"
+        },
+        {
+          "displayName": "Danish (Denmark) (da-DK)",
+          "value": "da-DK"
+        },
+        {
+          "displayName": "Dutch (Netherlands) (nl-NL)",
+          "value": "nl-NL"
+        },
+        {
+          "displayName": "English (United Kingdom) (en-GB)",
+          "value": "en-GB"
+        },
+        {
+          "displayName": "English (United States) (en-US)",
+          "value": "en-US"
+        },
+        {
+          "displayName": "Estonian (Estonia) (et-EE)",
+          "value": "et-EE"
+        },
+        {
+          "displayName": "Filipino (fil-PH)",
+          "value": "fil-PH"
+        },
+        {
+          "displayName": "Finnish (Finland) (fi-FI)",
+          "value": "fi-FI"
+        },
+        {
+          "displayName": "French (Canada) (fr-CA)",
+          "value": "fr-CA"
+        },
+        {
+          "displayName": "French (France) (fr-FR)",
+          "value": "fr-FR"
+        },
+        {
+          "displayName": "Galician (gl-ES)",
+          "value": "gl-ES"
+        },
+        {
+          "displayName": "Georgian (Georgia) (ka-GE)",
+          "value": "ka-GE"
+        },
+        {
+          "displayName": "German (Germany) (de-DE)",
+          "value": "de-DE"
+        },
+        {
+          "displayName": "Greek (Greece) (el-GR)",
+          "value": "el-GR"
+        },
+        {
+          "displayName": "Gujarati (India) (gu-IN)",
+          "value": "gu-IN"
+        },
+        {
+          "displayName": "Hebrew (Israel) (he-IL)",
+          "value": "he-IL"
+        },
+        {
+          "displayName": "Hindi (India) (hi-IN)",
+          "value": "hi-IN"
+        },
+        {
+          "displayName": "Hungarian (Hungary) (hu-HU)",
+          "value": "hu-HU"
+        },
+        {
+          "displayName": "Icelandic (Iceland) (is-IS)",
+          "value": "is-IS"
+        },
+        {
+          "displayName": "Indonesian (Indonesia) (id-ID)",
+          "value": "id-ID"
+        },
+        {
+          "displayName": "Irish (Ireland) (ga-IE)",
+          "value": "ga-IE"
+        },
+        {
+          "displayName": "Italian (Italy) (it-IT)",
+          "value": "it-IT"
+        },
+        {
+          "displayName": "Japanese (Japan) (ja-JP)",
+          "value": "ja-JP"
+        },
+        {
+          "displayName": "Kannada (India) (kn-IN)",
+          "value": "kn-IN"
+        },
+        {
+          "displayName": "Kazakh (Kazakhstan) (kk-KZ)",
+          "value": "kk-KZ"
+        },
+        {
+          "displayName": "Khmer (Cambodia) (km-KH)",
+          "value": "km-KH"
+        },
+        {
+          "displayName": "Konkani (India) (kok-IN)",
+          "value": "kok-IN"
+        },
+        {
+          "displayName": "Korean (Korea) (ko-KR)",
+          "value": "ko-KR"
+        },
+        {
+          "displayName": "Lao (Laos) (lo-LA)",
+          "value": "lo-LA"
+        },
+        {
+          "displayName": "Latvian (Latvia) (lv-LV)",
+          "value": "lv-LV"
+        },
+        {
+          "displayName": "Lithuanian (Lithuania) (lt-LT)",
+          "value": "lt-LT"
+        },
+        {
+          "displayName": "Luxembourgish (Luxembourg) (lb-LU)",
+          "value": "lb-LU"
+        },
+        {
+          "displayName": "Macedonian (North Macedonia) (mk-MK)",
+          "value": "mk-MK"
+        },
+        {
+          "displayName": "Malay (Malaysia, Brunei, and Singapore) (ms-MY)",
+          "value": "ms-MY"
+        },
+        {
+          "displayName": "Malayalam (India) (ml-IN)",
+          "value": "ml-IN"
+        },
+        {
+          "displayName": "Maltese (Malta) (mt-MT)",
+          "value": "mt-MT"
+        },
+        {
+          "displayName": "Maori (New Zealand) (mi-NZ)",
+          "value": "mi-NZ"
+        },
+        {
+          "displayName": "Marathi (India) (mr-IN)",
+          "value": "mr-IN"
+        },
+        {
+          "displayName": "Nepali (Federal Democratic Republic of Nepal) (ne-NP)",
+          "value": "ne-NP"
+        },
+        {
+          "displayName": "Norwegian, Bokmål (Norway) (nb-NO)",
+          "value": "nb-NO"
+        },
+        {
+          "displayName": "Norwegian, Nynorsk (Norway) (nn-NO)",
+          "value": "nn-NO"
+        },
+        {
+          "displayName": "Odia (India) (or-IN)",
+          "value": "or-IN"
+        },
+        {
+          "displayName": "Persian (fa-IR)",
+          "value": "fa-IR"
+        },
+        {
+          "displayName": "Polish (Poland) (pl-PL)",
+          "value": "pl-PL"
+        },
+        {
+          "displayName": "Portuguese (Brazil) (pt-BR)",
+          "value": "pt-BR"
+        },
+        {
+          "displayName": "Portuguese (Portugal) (pt-PT)",
+          "value": "pt-PT"
+        },
+        {
+          "displayName": "Punjabi (India) (pa-IN)",
+          "value": "pa-IN"
+        },
+        {
+          "displayName": "Quechua (Peru) (quz-PE)",
+          "value": "quz-PE"
+        },
+        {
+          "displayName": "Romanian (Romania) (ro-RO)",
+          "value": "ro-RO"
+        },
+        {
+          "displayName": "Russian (Russia) (ru-RU)",
+          "value": "ru-RU"
+        },
+        {
+          "displayName": "Scottish Gaelic (gd-GB)",
+          "value": "gd-GB"
+        },
+        {
+          "displayName": "Serbian (Cyrillic, Bosnia and Herzegovina) (sr-Cyrl-BA)",
+          "value": "sr-Cyrl-BA"
+        },
+        {
+          "displayName": "Serbian (Cyrillic, Serbia) (sr-Cyrl-RS)",
+          "value": "sr-Cyrl-RS"
+        },
+        {
+          "displayName": "Serbian (Latin, Serbia) (sr-Latn-RS)",
+          "value": "sr-Latn-RS"
+        },
+        {
+          "displayName": "Slovak (Slovakia) (sk-SK)",
+          "value": "sk-SK"
+        },
+        {
+          "displayName": "Slovenian (Slovenia) (sl-SI)",
+          "value": "sl-SI"
+        },
+        {
+          "displayName": "Spanish (Mexico) (es-MX)",
+          "value": "es-MX"
+        },
+        {
+          "displayName": "Spanish (Spain) (es-ES)",
+          "value": "es-ES"
+        },
+        {
+          "displayName": "Swedish (Sweden) (sv-SE)",
+          "value": "sv-SE"
+        },
+        {
+          "displayName": "Tamil (India) (ta-IN)",
+          "value": "ta-IN"
+        },
+        {
+          "displayName": "Tatar (Russia) (tt-RU)",
+          "value": "tt-RU"
+        },
+        {
+          "displayName": "Telugu (India) (te-IN)",
+          "value": "te-IN"
+        },
+        {
+          "displayName": "Thai (Thailand) (th-TH)",
+          "value": "th-TH"
+        },
+        {
+          "displayName": "Turkish (Türkiye) (tr-TR)",
+          "value": "tr-TR"
+        },
+        {
+          "displayName": "Ukrainian (Ukraine) (uk-UA)",
+          "value": "uk-UA"
+        },
+        {
+          "displayName": "Urdu (ur-PK)",
+          "value": "ur-PK"
+        },
+        {
+          "displayName": "Uyghur (ug-CN)",
+          "value": "ug-CN"
+        },
+        {
+          "displayName": "Uzbek (Latin) (uz-Latn-UZ)",
+          "value": "uz-Latn-UZ"
+        },
+        {
+          "displayName": "Valencian (ca-ES-valencia)",
+          "value": "ca-ES-valencia"
+        },
+        {
+          "displayName": "Vietnamese (vi-VN)",
+          "value": "vi-VN"
+        },
+        {
+          "displayName": "Welsh (Great Britain) (cy-GB)",
+          "value": "cy-GB"
+        }
+      ]
+    },
+    {
+      "variable": "UILanguage",
+      "label": "User Interface Language",
+      "defaultValue": "en-US",
+      "options": [
+        {
+          "displayName": "Arabic (Saudi Arabia) (ar-SA)",
+          "value": "ar-SA"
+        },
+        {
+          "displayName": "Basque (Basque) (eu-ES)",
+          "value": "eu-ES"
+        },
+        {
+          "displayName": "Bulgarian (Bulgaria) (bg-BG)",
+          "value": "bg-BG"
+        },
+        {
+          "displayName": "Catalan (ca-ES)",
+          "value": "ca-ES"
+        },
+        {
+          "displayName": "Chinese (Simplified, China) (zh-CN)",
+          "value": "zh-CN"
+        },
+        {
+          "displayName": "Chinese (Traditional, Taiwan) (zh-TW)",
+          "value": "zh-TW"
+        },
+        {
+          "displayName": "Croatian (Croatia) (hr-HR)",
+          "value": "hr-HR"
+        },
+        {
+          "displayName": "Czech (Czech Republic) (cs-CZ)",
+          "value": "cs-CZ"
+        },
+        {
+          "displayName": "Danish (Denmark) (da-DK)",
+          "value": "da-DK"
+        },
+        {
+          "displayName": "Dutch (Netherlands) (nl-NL)",
+          "value": "nl-NL"
+        },
+        {
+          "displayName": "English (United Kingdom) (en-GB)",
+          "value": "en-GB"
+        },
+        {
+          "displayName": "English (United States) (en-US)",
+          "value": "en-US"
+        },
+        {
+          "displayName": "Estonian (Estonia) (et-EE)",
+          "value": "et-EE"
+        },
+        {
+          "displayName": "Finnish (Finland) (fi-FI)",
+          "value": "fi-FI"
+        },
+        {
+          "displayName": "French (Canada) (fr-CA)",
+          "value": "fr-CA"
+        },
+        {
+          "displayName": "French (France) (fr-FR)",
+          "value": "fr-FR"
+        },
+        {
+          "displayName": "Galician (gl-ES)",
+          "value": "gl-ES"
+        },
+        {
+          "displayName": "German (Germany) (de-DE)",
+          "value": "de-DE"
+        },
+        {
+          "displayName": "Greek (Greece) (el-GR)",
+          "value": "el-GR"
+        },
+        {
+          "displayName": "Hebrew (Israel) (he-IL)",
+          "value": "he-IL"
+        },
+        {
+          "displayName": "Hungarian (Hungary) (hu-HU)",
+          "value": "hu-HU"
+        },
+        {
+          "displayName": "Indonesian (Indonesia) (id-ID)",
+          "value": "id-ID"
+        },
+        {
+          "displayName": "Italian (Italy) (it-IT)",
+          "value": "it-IT"
+        },
+        {
+          "displayName": "Japanese (Japan) (ja-JP)",
+          "value": "ja-JP"
+        },
+        {
+          "displayName": "Korean (Korea) (ko-KR)",
+          "value": "ko-KR"
+        },
+        {
+          "displayName": "Latvian (Latvia) (lv-LV)",
+          "value": "lv-LV"
+        },
+        {
+          "displayName": "Lithuanian (Lithuania) (lt-LT)",
+          "value": "lt-LT"
+        },
+        {
+          "displayName": "Norwegian, Bokmål (Norway) (nb-NO)",
+          "value": "nb-NO"
+        },
+        {
+          "displayName": "Polish (Poland) (pl-PL)",
+          "value": "pl-PL"
+        },
+        {
+          "displayName": "Portuguese (Brazil) (pt-BR)",
+          "value": "pt-BR"
+        },
+        {
+          "displayName": "Portuguese (Portugal) (pt-PT)",
+          "value": "pt-PT"
+        },
+        {
+          "displayName": "Romanian (Romania) (ro-RO)",
+          "value": "ro-RO"
+        },
+        {
+          "displayName": "Russian (Russia) (ru-RU)",
+          "value": "ru-RU"
+        },
+        {
+          "displayName": "Serbian (Latin, Serbia) (sr-Latn-RS)",
+          "value": "sr-Latn-RS"
+        },
+        {
+          "displayName": "Slovak (Slovakia) (sk-SK)",
+          "value": "sk-SK"
+        },
+        {
+          "displayName": "Slovenian (Slovenia) (sl-SI)",
+          "value": "sl-SI"
+        },
+        {
+          "displayName": "Spanish (Mexico) (es-MX)",
+          "value": "es-MX"
+        },
+        {
+          "displayName": "Spanish (Spain) (es-ES)",
+          "value": "es-ES"
+        },
+        {
+          "displayName": "Swedish (Sweden) (sv-SE)",
+          "value": "sv-SE"
+        },
+        {
+          "displayName": "Thai (Thailand) (th-TH)",
+          "value": "th-TH"
+        },
+        {
+          "displayName": "Turkish (Türkiye) (tr-TR)",
+          "value": "tr-TR"
+        },
+        {
+          "displayName": "Ukrainian (Ukraine) (uk-UA)",
+          "value": "uk-UA"
+        },
+        {
+          "displayName": "Vietnamese (vi-VN)",
+          "value": "vi-VN"
+        }
+      ]
+    },
+    {
+      "variable": "InputLocale",
+      "label": "Input Locale",
+      "defaultValue": "0409:00000409",
+      "defaultDisplayName": "English (0409:00000409)",
+      "options": [
+        {
+          "displayName": "Afrikaans (0436:00000409)",
+          "value": "0436:00000409"
+        },
+        {
+          "displayName": "Afrikaans (Namibia) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Albanian (041C:0000041C)",
+          "value": "041C:0000041C"
+        },
+        {
+          "displayName": "Albanian (Kosovo) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Alsatian (France) (0484:0000040C)",
+          "value": "0484:0000040C"
+        },
+        {
+          "displayName": "Amharic (045E:7C472071-36A7-4709-88CC-859513E583A9)",
+          "value": "045E:7C472071-36A7-4709-88CC-859513E583A9"
+        },
+        {
+          "displayName": "Arabic (0401:00000401)",
+          "value": "0401:00000401"
+        },
+        {
+          "displayName": "Arabic (Algeria) (1401:00020401)",
+          "value": "1401:00020401"
+        },
+        {
+          "displayName": "Arabic (Bahrain) (3C01:00000401)",
+          "value": "3C01:00000401"
+        },
+        {
+          "displayName": "Arabic (Egypt) (0C01:00000401)",
+          "value": "0C01:00000401"
+        },
+        {
+          "displayName": "Arabic (Iraq) (0801:00000401)",
+          "value": "0801:00000401"
+        },
+        {
+          "displayName": "Arabic (Jordan) (2C01:00000401)",
+          "value": "2C01:00000401"
+        },
+        {
+          "displayName": "Arabic (Kuwait) (3401:00000401)",
+          "value": "3401:00000401"
+        },
+        {
+          "displayName": "Arabic (Lebanon) (3001:00000401)",
+          "value": "3001:00000401"
+        },
+        {
+          "displayName": "Arabic (Libya) (1001:00000401)",
+          "value": "1001:00000401"
+        },
+        {
+          "displayName": "Arabic (Morocco) (1801:00020401)",
+          "value": "1801:00020401"
+        },
+        {
+          "displayName": "Arabic (Oman) (2001:00000401)",
+          "value": "2001:00000401"
+        },
+        {
+          "displayName": "Arabic (Qatar) (4001:00000401)",
+          "value": "4001:00000401"
+        },
+        {
+          "displayName": "Arabic (Syria) (2801:00000401)",
+          "value": "2801:00000401"
+        },
+        {
+          "displayName": "Arabic (Tunisia) (1C01:00020401)",
+          "value": "1C01:00020401"
+        },
+        {
+          "displayName": "Arabic (United Arab Emirates) (3801:00000401)",
+          "value": "3801:00000401"
+        },
+        {
+          "displayName": "Arabic (World) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Arabic (Yemen) (2401:00000401)",
+          "value": "2401:00000401"
+        },
+        {
+          "displayName": "Armenian (042B:0002042B)",
+          "value": "042B:0002042B"
+        },
+        {
+          "displayName": "Assamese (044D:0000044D)",
+          "value": "044D:0000044D"
+        },
+        {
+          "displayName": "Asturian (040A:0000040A)",
+          "value": "040A:0000040A"
+        },
+        {
+          "displayName": "Azerbaijani (042C:0000042C)",
+          "value": "042C:0000042C"
+        },
+        {
+          "displayName": "Azerbaijani (Cyrillic) (082C:0000082C)",
+          "value": "082C:0000082C"
+        },
+        {
+          "displayName": "Bangla (0845:00000445)",
+          "value": "0845:00000445"
+        },
+        {
+          "displayName": "Bashkir (046D:0000046D)",
+          "value": "046D:0000046D"
+        },
+        {
+          "displayName": "Basque (042D:0000040A)",
+          "value": "042D:0000040A"
+        },
+        {
+          "displayName": "Belarusian (0423:00000423)",
+          "value": "0423:00000423"
+        },
+        {
+          "displayName": "Bengali (India) (0445:00020445)",
+          "value": "0445:00020445"
+        },
+        {
+          "displayName": "Bodo (0439:00000439)",
+          "value": "0439:00000439"
+        },
+        {
+          "displayName": "Bosnian (141A:0000041A)",
+          "value": "141A:0000041A"
+        },
+        {
+          "displayName": "Bosnian (Cyrillic) (201A:0000201A)",
+          "value": "201A:0000201A"
+        },
+        {
+          "displayName": "Breton (047E:0000040C)",
+          "value": "047E:0000040C"
+        },
+        {
+          "displayName": "Bulgarian (0402:00030402)",
+          "value": "0402:00030402"
+        },
+        {
+          "displayName": "Burmese (0455:00130C00)",
+          "value": "0455:00130C00"
+        },
+        {
+          "displayName": "Catalan (0403:0000040A)",
+          "value": "0403:0000040A"
+        },
+        {
+          "displayName": "Catalan (Andorra) (040C:0000040C)",
+          "value": "040C:0000040C"
+        },
+        {
+          "displayName": "Catalan (France) (040C:0000040C)",
+          "value": "040C:0000040C"
+        },
+        {
+          "displayName": "Catalan (Italy) (0410:00000410)",
+          "value": "0410:00000410"
+        },
+        {
+          "displayName": "Central Atlas Tamazight (085F:0000085F)",
+          "value": "085F:0000085F"
+        },
+        {
+          "displayName": "Central Atlas Tamazight (Arabic) (1801:00020401)",
+          "value": "1801:00020401"
+        },
+        {
+          "displayName": "Central Atlas Tamazight (Tifinagh) (105F:0000105F)",
+          "value": "105F:0000105F"
+        },
+        {
+          "displayName": "Central Kurdish (0492:00000492)",
+          "value": "0492:00000492"
+        },
+        {
+          "displayName": "Chechen (0419:00000419)",
+          "value": "0419:00000419"
+        },
+        {
+          "displayName": "Cherokee (045C:0000045C)",
+          "value": "045C:0000045C"
+        },
+        {
+          "displayName": "Chinese (0804:81D4E9C9-1D3B-41BC-9E6C-4B40BF79E35E)",
+          "value": "0804:81D4E9C9-1D3B-41BC-9E6C-4B40BF79E35E"
+        },
+        {
+          "displayName": "Chinese (Simplified, Hong Kong SAR) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Chinese (Simplified, Macao SAR) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Chinese (Traditional) (0404:531FDEBF-9B4C-4A43-A2AA-960E8FCDC732)",
+          "value": "0404:531FDEBF-9B4C-4A43-A2AA-960E8FCDC732"
+        },
+        {
+          "displayName": "Chinese (Traditional, Taiwan) (0404:B115690A-EA02-48D5-A231-E3578D2FDF80)",
+          "value": "0404:B115690A-EA02-48D5-A231-E3578D2FDF80"
+        },
+        {
+          "displayName": "Church Slavic (0419:00000419)",
+          "value": "0419:00000419"
+        },
+        {
+          "displayName": "Colognian (0407:00000407)",
+          "value": "0407:00000407"
+        },
+        {
+          "displayName": "Cornish (0809:00000809)",
+          "value": "0809:00000809"
+        },
+        {
+          "displayName": "Corsican (0483:0000040C)",
+          "value": "0483:0000040C"
+        },
+        {
+          "displayName": "Croatian (041A:0000041A)",
+          "value": "041A:0000041A"
+        },
+        {
+          "displayName": "Croatian (Bosnia & Herzegovina) (101A:0000041A)",
+          "value": "101A:0000041A"
+        },
+        {
+          "displayName": "Czech (0405:00000405)",
+          "value": "0405:00000405"
+        },
+        {
+          "displayName": "Danish (0406:00000406)",
+          "value": "0406:00000406"
+        },
+        {
+          "displayName": "Danish (Greenland) (0406:00000406)",
+          "value": "0406:00000406"
+        },
+        {
+          "displayName": "Divehi (0465:00000465)",
+          "value": "0465:00000465"
+        },
+        {
+          "displayName": "Dutch (0413:00020409)",
+          "value": "0413:00020409"
+        },
+        {
+          "displayName": "Dutch (Aruba) (0409:00020409)",
+          "value": "0409:00020409"
+        },
+        {
+          "displayName": "Dutch (Belgium) (0813:00000813)",
+          "value": "0813:00000813"
+        },
+        {
+          "displayName": "Dutch (Bonaire, Sint Eustatius and Saba) (0409:00020409)",
+          "value": "0409:00020409"
+        },
+        {
+          "displayName": "Dutch (Curaçao) (0409:00020409)",
+          "value": "0409:00020409"
+        },
+        {
+          "displayName": "Dutch (Sint Maarten) (0409:00020409)",
+          "value": "0409:00020409"
+        },
+        {
+          "displayName": "Dutch (Suriname) (0409:00020409)",
+          "value": "0409:00020409"
+        },
+        {
+          "displayName": "Dzongkha (0C51:00000C51)",
+          "value": "0C51:00000C51"
+        },
+        {
+          "displayName": "English (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "English (Australia) (0C09:00000409)",
+          "value": "0C09:00000409"
+        },
+        {
+          "displayName": "English (Austria) (0809:00000407)",
+          "value": "0809:00000407"
+        },
+        {
+          "displayName": "English (Belgium) (080C:0000080C)",
+          "value": "080C:0000080C"
+        },
+        {
+          "displayName": "English (Belize) (2809:00000409)",
+          "value": "2809:00000409"
+        },
+        {
+          "displayName": "English (British Virgin Islands) (0809:00000809)",
+          "value": "0809:00000809"
+        },
+        {
+          "displayName": "English (Burundi) (0809:0000040C)",
+          "value": "0809:0000040C"
+        },
+        {
+          "displayName": "English (Canada) (1009:00000409)",
+          "value": "1009:00000409"
+        },
+        {
+          "displayName": "English (Caribbean) (2409:00000409)",
+          "value": "2409:00000409"
+        },
+        {
+          "displayName": "English (Denmark) (0409:00000406)",
+          "value": "0409:00000406"
+        },
+        {
+          "displayName": "English (Falkland Islands) (0809:00000809)",
+          "value": "0809:00000809"
+        },
+        {
+          "displayName": "English (Finland) (0809:0000040B)",
+          "value": "0809:0000040B"
+        },
+        {
+          "displayName": "English (Germany) (0809:00000407)",
+          "value": "0809:00000407"
+        },
+        {
+          "displayName": "English (Gibraltar) (0809:00000809)",
+          "value": "0809:00000809"
+        },
+        {
+          "displayName": "English (Guernsey) (0809:00000809)",
+          "value": "0809:00000809"
+        },
+        {
+          "displayName": "English (Hong Kong SAR) (3C09:00000409)",
+          "value": "3C09:00000409"
+        },
+        {
+          "displayName": "English (India) (4009:00004009)",
+          "value": "4009:00004009"
+        },
+        {
+          "displayName": "English (Ireland) (1809:00001809)",
+          "value": "1809:00001809"
+        },
+        {
+          "displayName": "English (Isle of Man) (0809:00000809)",
+          "value": "0809:00000809"
+        },
+        {
+          "displayName": "English (Israel) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "English (Jamaica) (2009:00000409)",
+          "value": "2009:00000409"
+        },
+        {
+          "displayName": "English (Jersey) (0809:00000809)",
+          "value": "0809:00000809"
+        },
+        {
+          "displayName": "English (Malaysia) (4409:00000409)",
+          "value": "4409:00000409"
+        },
+        {
+          "displayName": "English (Malta) (0809:00000809)",
+          "value": "0809:00000809"
+        },
+        {
+          "displayName": "English (Netherlands) (0809:00020409)",
+          "value": "0809:00020409"
+        },
+        {
+          "displayName": "English (New Zealand) (1409:00001409)",
+          "value": "1409:00001409"
+        },
+        {
+          "displayName": "English (Philippines) (3409:00000409)",
+          "value": "3409:00000409"
+        },
+        {
+          "displayName": "English (Singapore) (4809:00000409)",
+          "value": "4809:00000409"
+        },
+        {
+          "displayName": "English (Slovenia) (0809:00000424)",
+          "value": "0809:00000424"
+        },
+        {
+          "displayName": "English (South Africa) (1C09:00000409)",
+          "value": "1C09:00000409"
+        },
+        {
+          "displayName": "English (Sweden) (0809:0000041D)",
+          "value": "0809:0000041D"
+        },
+        {
+          "displayName": "English (Switzerland) (0809:00000407)",
+          "value": "0809:00000407"
+        },
+        {
+          "displayName": "English (Trinidad & Tobago) (2C09:00000409)",
+          "value": "2C09:00000409"
+        },
+        {
+          "displayName": "English (United Kingdom) (0809:00000809)",
+          "value": "0809:00000809"
+        },
+        {
+          "displayName": "English (Zimbabwe) (3009:00000409)",
+          "value": "3009:00000409"
+        },
+        {
+          "displayName": "Estonian (0425:00000425)",
+          "value": "0425:00000425"
+        },
+        {
+          "displayName": "Faroese (0438:00000406)",
+          "value": "0438:00000406"
+        },
+        {
+          "displayName": "Filipino (0464:00000409)",
+          "value": "0464:00000409"
+        },
+        {
+          "displayName": "Finnish (040B:0000040B)",
+          "value": "040B:0000040B"
+        },
+        {
+          "displayName": "French (040C:0000040C)",
+          "value": "040C:0000040C"
+        },
+        {
+          "displayName": "French (Belgium) (080C:0000080C)",
+          "value": "080C:0000080C"
+        },
+        {
+          "displayName": "French (Cameroon) (2C0C:0000040C)",
+          "value": "2C0C:0000040C"
+        },
+        {
+          "displayName": "French (Canada) (0C0C:00001009)",
+          "value": "0C0C:00001009"
+        },
+        {
+          "displayName": "French (Côte d'Ivoire) (300C:0000040C)",
+          "value": "300C:0000040C"
+        },
+        {
+          "displayName": "French (Haiti) (3C0C:0000040C)",
+          "value": "3C0C:0000040C"
+        },
+        {
+          "displayName": "French (Luxembourg) (140C:0000100C)",
+          "value": "140C:0000100C"
+        },
+        {
+          "displayName": "French (Mali) (340C:0000040C)",
+          "value": "340C:0000040C"
+        },
+        {
+          "displayName": "French (Monaco) (180C:0000040C)",
+          "value": "180C:0000040C"
+        },
+        {
+          "displayName": "French (Morocco) (380C:0000040C)",
+          "value": "380C:0000040C"
+        },
+        {
+          "displayName": "French (Réunion) (200C:0000040C)",
+          "value": "200C:0000040C"
+        },
+        {
+          "displayName": "French (Senegal) (280C:0000040C)",
+          "value": "280C:0000040C"
+        },
+        {
+          "displayName": "French (Switzerland) (100C:0000100C)",
+          "value": "100C:0000100C"
+        },
+        {
+          "displayName": "French Congo (DRC) (240C:0000040C)",
+          "value": "240C:0000040C"
+        },
+        {
+          "displayName": "Friulian (0410:00000410)",
+          "value": "0410:00000410"
+        },
+        {
+          "displayName": "Fulah (0867:00000488)",
+          "value": "0867:00000488"
+        },
+        {
+          "displayName": "Fulah (Adlam) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Fulah (Latin, Burkina Faso) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Fulah (Latin, Cameroon) (0488:00000488)",
+          "value": "0488:00000488"
+        },
+        {
+          "displayName": "Fulah (Latin, Gambia) (0488:00000488)",
+          "value": "0488:00000488"
+        },
+        {
+          "displayName": "Fulah (Latin, Ghana) (0488:00000488)",
+          "value": "0488:00000488"
+        },
+        {
+          "displayName": "Fulah (Latin, Guinea) (0488:00000488)",
+          "value": "0488:00000488"
+        },
+        {
+          "displayName": "Fulah (Latin, Guinea-Bissau) (0488:00000488)",
+          "value": "0488:00000488"
+        },
+        {
+          "displayName": "Fulah (Latin, Liberia) (0488:00000488)",
+          "value": "0488:00000488"
+        },
+        {
+          "displayName": "Fulah (Latin, Mauritania) (0488:00000488)",
+          "value": "0488:00000488"
+        },
+        {
+          "displayName": "Fulah (Latin, Niger) (0488:00000488)",
+          "value": "0488:00000488"
+        },
+        {
+          "displayName": "Fulah (Latin, Nigeria) (0488:00000488)",
+          "value": "0488:00000488"
+        },
+        {
+          "displayName": "Fulah (Latin, Sierra Leone) (0488:00000488)",
+          "value": "0488:00000488"
+        },
+        {
+          "displayName": "Galician (0456:0000040A)",
+          "value": "0456:0000040A"
+        },
+        {
+          "displayName": "Georgian (0437:00010437)",
+          "value": "0437:00010437"
+        },
+        {
+          "displayName": "German (0407:00000407)",
+          "value": "0407:00000407"
+        },
+        {
+          "displayName": "German (Austria) (0C07:00000407)",
+          "value": "0C07:00000407"
+        },
+        {
+          "displayName": "German (Belgium) (080C:0000080C)",
+          "value": "080C:0000080C"
+        },
+        {
+          "displayName": "German (Italy) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "German (Liechtenstein) (1407:00000807)",
+          "value": "1407:00000807"
+        },
+        {
+          "displayName": "German (Luxembourg) (1007:00000407)",
+          "value": "1007:00000407"
+        },
+        {
+          "displayName": "German (Switzerland) (0807:00000807)",
+          "value": "0807:00000807"
+        },
+        {
+          "displayName": "Greek (0408:00000408)",
+          "value": "0408:00000408"
+        },
+        {
+          "displayName": "Guarani (0474:00000474)",
+          "value": "0474:00000474"
+        },
+        {
+          "displayName": "Gujarati (0447:00000447)",
+          "value": "0447:00000447"
+        },
+        {
+          "displayName": "Hausa (0468:00000468)",
+          "value": "0468:00000468"
+        },
+        {
+          "displayName": "Hawaiian (0475:00000475)",
+          "value": "0475:00000475"
+        },
+        {
+          "displayName": "Hebrew (040D:0002040D)",
+          "value": "040D:0002040D"
+        },
+        {
+          "displayName": "Hindi (0439:00010439)",
+          "value": "0439:00010439"
+        },
+        {
+          "displayName": "Hungarian (040E:0000040E)",
+          "value": "040E:0000040E"
+        },
+        {
+          "displayName": "Icelandic (040F:0000040F)",
+          "value": "040F:0000040F"
+        },
+        {
+          "displayName": "Igbo (0470:00000470)",
+          "value": "0470:00000470"
+        },
+        {
+          "displayName": "Indonesian (0421:00000409)",
+          "value": "0421:00000409"
+        },
+        {
+          "displayName": "Interlingua (040C:0000040C)",
+          "value": "040C:0000040C"
+        },
+        {
+          "displayName": "Inuktitut (085D:0000085D)",
+          "value": "085D:0000085D"
+        },
+        {
+          "displayName": "Inuktitut (Syllabics) (045D:0001045D)",
+          "value": "045D:0001045D"
+        },
+        {
+          "displayName": "Irish (083C:00001809)",
+          "value": "083C:00001809"
+        },
+        {
+          "displayName": "Irish (United Kingdom) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Italian (0410:00000410)",
+          "value": "0410:00000410"
+        },
+        {
+          "displayName": "Italian (Switzerland) (0810:0000100C)",
+          "value": "0810:0000100C"
+        },
+        {
+          "displayName": "Italian (Vatican City) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Japanese (0411:03B5835F-F03C-411B-9CE2-AA23E1171E36)",
+          "value": "0411:03B5835F-F03C-411B-9CE2-AA23E1171E36"
+        },
+        {
+          "displayName": "Javanese (0C00:00000409)",
+          "value": "0C00:00000409"
+        },
+        {
+          "displayName": "Javanese (Javanese) (0C00:00110C00)",
+          "value": "0C00:00110C00"
+        },
+        {
+          "displayName": "Kalaallisut (046F:00000406)",
+          "value": "046F:00000406"
+        },
+        {
+          "displayName": "Kannada (044B:0000044B)",
+          "value": "044B:0000044B"
+        },
+        {
+          "displayName": "Kashmiri (0420:00000420)",
+          "value": "0420:00000420"
+        },
+        {
+          "displayName": "Kashmiri (Devanagari) (0439:00010439)",
+          "value": "0439:00010439"
+        },
+        {
+          "displayName": "Kazakh (043F:0000043F)",
+          "value": "043F:0000043F"
+        },
+        {
+          "displayName": "Khmer (0453:00000453)",
+          "value": "0453:00000453"
+        },
+        {
+          "displayName": "Kinyarwanda (0487:00000409)",
+          "value": "0487:00000409"
+        },
+        {
+          "displayName": "Kiswahili (0441:00000409)",
+          "value": "0441:00000409"
+        },
+        {
+          "displayName": "Kiswahili (Congo DRC) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Kiswahili (Tanzania) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Kiswahili (Uganda) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Konkani (0457:00000439)",
+          "value": "0457:00000439"
+        },
+        {
+          "displayName": "Korean (0412:A028AE76-01B1-46C2-99C4-ACD9858AE02F)",
+          "value": "0412:A028AE76-01B1-46C2-99C4-ACD9858AE02F"
+        },
+        {
+          "displayName": "Korean (North Korea) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Kyrgyz (0440:00000440)",
+          "value": "0440:00000440"
+        },
+        {
+          "displayName": "K'iche' (0486:0000080A)",
+          "value": "0486:0000080A"
+        },
+        {
+          "displayName": "Lao (0454:00000454)",
+          "value": "0454:00000454"
+        },
+        {
+          "displayName": "Latvian (0426:00020426)",
+          "value": "0426:00020426"
+        },
+        {
+          "displayName": "Lithuanian (0427:00010427)",
+          "value": "0427:00010427"
+        },
+        {
+          "displayName": "Lower Sorbian (082E:0002042E)",
+          "value": "082E:0002042E"
+        },
+        {
+          "displayName": "Luxembourgish (046E:0000046E)",
+          "value": "046E:0000046E"
+        },
+        {
+          "displayName": "Macedonian (042F:0001042F)",
+          "value": "042F:0001042F"
+        },
+        {
+          "displayName": "Malagasy (0C00:0000040C)",
+          "value": "0C00:0000040C"
+        },
+        {
+          "displayName": "Malay (043E:00000409)",
+          "value": "043E:00000409"
+        },
+        {
+          "displayName": "Malay (Brunei) (083E:00000409)",
+          "value": "083E:00000409"
+        },
+        {
+          "displayName": "Malay (Indonesia) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Malay (Singapore) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Malayalam (044C:0000044C)",
+          "value": "044C:0000044C"
+        },
+        {
+          "displayName": "Maltese (043A:0000043A)",
+          "value": "043A:0000043A"
+        },
+        {
+          "displayName": "Manipuri (4009:00004009)",
+          "value": "4009:00004009"
+        },
+        {
+          "displayName": "Manx (0809:00000809)",
+          "value": "0809:00000809"
+        },
+        {
+          "displayName": "Maori (0481:00000481)",
+          "value": "0481:00000481"
+        },
+        {
+          "displayName": "Mapuche (047A:0000080A)",
+          "value": "047A:0000080A"
+        },
+        {
+          "displayName": "Marathi (044E:0000044E)",
+          "value": "044E:0000044E"
+        },
+        {
+          "displayName": "Mazanderani (0429:00000429)",
+          "value": "0429:00000429"
+        },
+        {
+          "displayName": "Mohawk (047C:00000409)",
+          "value": "047C:00000409"
+        },
+        {
+          "displayName": "Mongolian (0450:00000450)",
+          "value": "0450:00000450"
+        },
+        {
+          "displayName": "Mongolian (Traditional Mongolian) (0850:00010850)",
+          "value": "0850:00010850"
+        },
+        {
+          "displayName": "Mongolian (Traditional Mongolian, Mongolia) (0C50:00010850)",
+          "value": "0C50:00010850"
+        },
+        {
+          "displayName": "N'ko (0C00:00090C00)",
+          "value": "0C00:00090C00"
+        },
+        {
+          "displayName": "Nepali (0461:00000461)",
+          "value": "0461:00000461"
+        },
+        {
+          "displayName": "Nepali (India) (0861:00000461)",
+          "value": "0861:00000461"
+        },
+        {
+          "displayName": "Northern Luri (0801:00000401)",
+          "value": "0801:00000401"
+        },
+        {
+          "displayName": "Northern Sami (043B:0000043B)",
+          "value": "043B:0000043B"
+        },
+        {
+          "displayName": "Norwegian (0414:00000414)",
+          "value": "0414:00000414"
+        },
+        {
+          "displayName": "Norwegian Nynorsk (0814:00000414)",
+          "value": "0814:00000414"
+        },
+        {
+          "displayName": "Occitan (0482:0000040C)",
+          "value": "0482:0000040C"
+        },
+        {
+          "displayName": "Odia (0448:00000448)",
+          "value": "0448:00000448"
+        },
+        {
+          "displayName": "Oromo (0472:00000409)",
+          "value": "0472:00000409"
+        },
+        {
+          "displayName": "Oromo (Kenya) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Ossetic (0419:00000419)",
+          "value": "0419:00000419"
+        },
+        {
+          "displayName": "Papiamento (0479:00000409)",
+          "value": "0479:00000409"
+        },
+        {
+          "displayName": "Pashto (0463:00000463)",
+          "value": "0463:00000463"
+        },
+        {
+          "displayName": "Pashto (Pakistan) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Persian (0429:00000429)",
+          "value": "0429:00000429"
+        },
+        {
+          "displayName": "Persian (Afghanistan) (048C:00050429)",
+          "value": "048C:00050429"
+        },
+        {
+          "displayName": "Polish (0415:00000415)",
+          "value": "0415:00000415"
+        },
+        {
+          "displayName": "Portuguese (0416:00000416)",
+          "value": "0416:00000416"
+        },
+        {
+          "displayName": "Portuguese (Angola) (0816:00000816)",
+          "value": "0816:00000816"
+        },
+        {
+          "displayName": "Portuguese (Cabo Verde) (0816:00000816)",
+          "value": "0816:00000816"
+        },
+        {
+          "displayName": "Portuguese (Equatorial Guinea) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Portuguese (Guinea-Bissau) (0816:00000816)",
+          "value": "0816:00000816"
+        },
+        {
+          "displayName": "Portuguese (Luxembourg) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Portuguese (Macao SAR) (0816:00000816)",
+          "value": "0816:00000816"
+        },
+        {
+          "displayName": "Portuguese (Mozambique) (0816:00000816)",
+          "value": "0816:00000816"
+        },
+        {
+          "displayName": "Portuguese (Portugal) (0816:00000816)",
+          "value": "0816:00000816"
+        },
+        {
+          "displayName": "Portuguese (Switzerland) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Portuguese (São Tomé & Príncipe) (0816:00000816)",
+          "value": "0816:00000816"
+        },
+        {
+          "displayName": "Portuguese (Timor-Leste) (0816:00000816)",
+          "value": "0816:00000816"
+        },
+        {
+          "displayName": "Prussian (0407:00000407)",
+          "value": "0407:00000407"
+        },
+        {
+          "displayName": "Punjabi (0446:00000446)",
+          "value": "0446:00000446"
+        },
+        {
+          "displayName": "Punjabi (Arabic) (0846:00000420)",
+          "value": "0846:00000420"
+        },
+        {
+          "displayName": "Quechua (046B:0000080A)",
+          "value": "046B:0000080A"
+        },
+        {
+          "displayName": "Quechua (Ecuador) (086B:0000080A)",
+          "value": "086B:0000080A"
+        },
+        {
+          "displayName": "Quechua (Peru) (0C6B:0000080A)",
+          "value": "0C6B:0000080A"
+        },
+        {
+          "displayName": "Romanian (0418:00010418)",
+          "value": "0418:00010418"
+        },
+        {
+          "displayName": "Romanian (Moldova) (0818:00010418)",
+          "value": "0818:00010418"
+        },
+        {
+          "displayName": "Romansh (0417:00000807)",
+          "value": "0417:00000807"
+        },
+        {
+          "displayName": "Russian (0419:00000419)",
+          "value": "0419:00000419"
+        },
+        {
+          "displayName": "Russian (Moldova) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Sakha (0485:00000485)",
+          "value": "0485:00000485"
+        },
+        {
+          "displayName": "Sami (Inari) (243B:0001083B)",
+          "value": "243B:0001083B"
+        },
+        {
+          "displayName": "Sami (Lule) (143B:0000083B)",
+          "value": "143B:0000083B"
+        },
+        {
+          "displayName": "Sami (Skolt) (203B:0001083B)",
+          "value": "203B:0001083B"
+        },
+        {
+          "displayName": "Sami (Southern) (1C3B:0000083B)",
+          "value": "1C3B:0000083B"
+        },
+        {
+          "displayName": "Sami, Lule (Norway) (103B:0000043B)",
+          "value": "103B:0000043B"
+        },
+        {
+          "displayName": "Sami, Northern (Finland) (0C3B:0001083B)",
+          "value": "0C3B:0001083B"
+        },
+        {
+          "displayName": "Sami, Northern (Sweden) (083B:0000083B)",
+          "value": "083B:0000083B"
+        },
+        {
+          "displayName": "Sami, Southern (Norway) (183B:0000043B)",
+          "value": "183B:0000043B"
+        },
+        {
+          "displayName": "Sanskrit (044F:00000439)",
+          "value": "044F:00000439"
+        },
+        {
+          "displayName": "Scottish Gaelic (0491:00011809)",
+          "value": "0491:00011809"
+        },
+        {
+          "displayName": "Serbian (241A:0000081A)",
+          "value": "241A:0000081A"
+        },
+        {
+          "displayName": "Serbian (Cyrillic) (281A:00000C1A)",
+          "value": "281A:00000C1A"
+        },
+        {
+          "displayName": "Serbian (Cyrillic, Bosnia and Herzegovina) (1C1A:00000C1A)",
+          "value": "1C1A:00000C1A"
+        },
+        {
+          "displayName": "Serbian (Cyrillic, Kosovo) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Serbian (Cyrillic, Montenegro) (301A:00000C1A)",
+          "value": "301A:00000C1A"
+        },
+        {
+          "displayName": "Serbian (Latin, Bosnia & Herzegovina) (181A:0000081A)",
+          "value": "181A:0000081A"
+        },
+        {
+          "displayName": "Serbian (Latin, Kosovo) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Serbian (Latin, Montenegro) (2C1A:0000081A)",
+          "value": "2C1A:0000081A"
+        },
+        {
+          "displayName": "Sesotho (0430:00000409)",
+          "value": "0430:00000409"
+        },
+        {
+          "displayName": "Sesotho (Lesotho) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Sesotho sa Leboa (046C:0000046C)",
+          "value": "046C:0000046C"
+        },
+        {
+          "displayName": "Setswana (0432:00000432)",
+          "value": "0432:00000432"
+        },
+        {
+          "displayName": "Setswana (Botswana) (0832:00000432)",
+          "value": "0832:00000432"
+        },
+        {
+          "displayName": "Shona (0C00:00000409)",
+          "value": "0C00:00000409"
+        },
+        {
+          "displayName": "Sindhi (0859:00000420)",
+          "value": "0859:00000420"
+        },
+        {
+          "displayName": "Sindhi (Devanagari) (0439:00010439)",
+          "value": "0439:00010439"
+        },
+        {
+          "displayName": "Sinhala (045B:0000045B)",
+          "value": "045B:0000045B"
+        },
+        {
+          "displayName": "Slovak (041B:0000041B)",
+          "value": "041B:0000041B"
+        },
+        {
+          "displayName": "Slovenian (0424:00000424)",
+          "value": "0424:00000424"
+        },
+        {
+          "displayName": "Somali (0477:00000409)",
+          "value": "0477:00000409"
+        },
+        {
+          "displayName": "Somali (Djibouti) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Somali (Ethiopia) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Somali (Kenya) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Spanish (0C0A:0000040A)",
+          "value": "0C0A:0000040A"
+        },
+        {
+          "displayName": "Spanish (Argentina) (2C0A:0000080A)",
+          "value": "2C0A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Belize) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Spanish (Bolivia) (400A:0000080A)",
+          "value": "400A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Brazil) (0409:00000409)",
+          "value": "0409:00000409"
+        },
+        {
+          "displayName": "Spanish (Chile) (340A:0000080A)",
+          "value": "340A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Colombia) (240A:0000080A)",
+          "value": "240A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Costa Rica) (140A:0000080A)",
+          "value": "140A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Cuba) (080A:0000080A)",
+          "value": "080A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Dominican Republic) (1C0A:0000080A)",
+          "value": "1C0A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Ecuador) (300A:0000080A)",
+          "value": "300A:0000080A"
+        },
+        {
+          "displayName": "Spanish (El Salvador) (440A:0000080A)",
+          "value": "440A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Equatorial Guinea) (080A:0000080A)",
+          "value": "080A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Guatemala) (100A:0000080A)",
+          "value": "100A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Honduras) (480A:0000080A)",
+          "value": "480A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Latin America) (580A:0000080A)",
+          "value": "580A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Mexico) (080A:0000080A)",
+          "value": "080A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Nicaragua) (4C0A:0000080A)",
+          "value": "4C0A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Panama) (180A:0000080A)",
+          "value": "180A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Paraguay) (3C0A:0000080A)",
+          "value": "3C0A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Peru) (280A:0000080A)",
+          "value": "280A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Philippines) (080A:0000080A)",
+          "value": "080A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Puerto Rico) (500A:0000080A)",
+          "value": "500A:0000080A"
+        },
+        {
+          "displayName": "Spanish (United States) (540A:0000080A)",
+          "value": "540A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Uruguay) (380A:0000080A)",
+          "value": "380A:0000080A"
+        },
+        {
+          "displayName": "Spanish (Venezuela) (200A:0000080A)",
+          "value": "200A:0000080A"
+        },
+        {
+          "displayName": "Standard Moroccan Tamazight (0C00:0000105F)",
+          "value": "0C00:0000105F"
+        },
+        {
+          "displayName": "Swedish (041D:0000041D)",
+          "value": "041D:0000041D"
+        },
+        {
+          "displayName": "Swedish (Finland) (081D:0000041D)",
+          "value": "081D:0000041D"
+        },
+        {
+          "displayName": "Swiss German (0807:00000807)",
+          "value": "0807:00000807"
+        },
+        {
+          "displayName": "Syriac (045A:0000045A)",
+          "value": "045A:0000045A"
+        },
+        {
+          "displayName": "Tachelhit (105F:0000105F)",
+          "value": "105F:0000105F"
+        },
+        {
+          "displayName": "Tachelhit (Latin) (085F:0000085F)",
+          "value": "085F:0000085F"
+        },
+        {
+          "displayName": "Tajik (0428:00000428)",
+          "value": "0428:00000428"
+        },
+        {
+          "displayName": "Tamil (0449:00020449)",
+          "value": "0449:00020449"
+        },
+        {
+          "displayName": "Tamil (Malaysia) (0449:00020449)",
+          "value": "0449:00020449"
+        },
+        {
+          "displayName": "Tamil (Singapore) (0449:00020449)",
+          "value": "0449:00020449"
+        },
+        {
+          "displayName": "Tamil (Sri Lanka) (0849:00020449)",
+          "value": "0849:00020449"
+        },
+        {
+          "displayName": "Tatar (0444:00010444)",
+          "value": "0444:00010444"
+        },
+        {
+          "displayName": "Telugu (044A:0000044A)",
+          "value": "044A:0000044A"
+        },
+        {
+          "displayName": "Thai (041E:0000041E)",
+          "value": "041E:0000041E"
+        },
+        {
+          "displayName": "Tibetan (0451:00010451)",
+          "value": "0451:00010451"
+        },
+        {
+          "displayName": "Tibetan (India) (0451:00000451)",
+          "value": "0451:00000451"
+        },
+        {
+          "displayName": "Tigrinya (0473:E429B25A-E5D3-4D1F-9BE3-0C608477E3A1)",
+          "value": "0473:E429B25A-E5D3-4D1F-9BE3-0C608477E3A1"
+        },
+        {
+          "displayName": "Turkish (041F:0000041F)",
+          "value": "041F:0000041F"
+        },
+        {
+          "displayName": "Turkmen (0442:00000442)",
+          "value": "0442:00000442"
+        },
+        {
+          "displayName": "Ukrainian (0422:00020422)",
+          "value": "0422:00020422"
+        },
+        {
+          "displayName": "Upper Sorbian (042E:0002042E)",
+          "value": "042E:0002042E"
+        },
+        {
+          "displayName": "Urdu (0420:00000420)",
+          "value": "0420:00000420"
+        },
+        {
+          "displayName": "Urdu (India) (0820:00000420)",
+          "value": "0820:00000420"
+        },
+        {
+          "displayName": "Uyghur (0480:00010480)",
+          "value": "0480:00010480"
+        },
+        {
+          "displayName": "Uzbek (0443:00000409)",
+          "value": "0443:00000409"
+        },
+        {
+          "displayName": "Uzbek (Arabic) (0463:00000463)",
+          "value": "0463:00000463"
+        },
+        {
+          "displayName": "Uzbek (Cyrillic) (0843:00000843)",
+          "value": "0843:00000843"
+        },
+        {
+          "displayName": "Valencian (Spain) (0803:0000040A)",
+          "value": "0803:0000040A"
+        },
+        {
+          "displayName": "Vietnamese (042A:C2CB2CF0-AF47-413E-9780-8BC3A3C16068)",
+          "value": "042A:C2CB2CF0-AF47-413E-9780-8BC3A3C16068"
+        },
+        {
+          "displayName": "Walser (0807:00000807)",
+          "value": "0807:00000807"
+        },
+        {
+          "displayName": "Welsh (0452:00000452)",
+          "value": "0452:00000452"
+        },
+        {
+          "displayName": "Western Frisian (0462:00020409)",
+          "value": "0462:00020409"
+        },
+        {
+          "displayName": "Wolof (0488:00000488)",
+          "value": "0488:00000488"
+        },
+        {
+          "displayName": "Xitsonga (0431:00000409)",
+          "value": "0431:00000409"
+        },
+        {
+          "displayName": "Yi (0478:E429B25A-E5D3-4D1F-9BE3-0C608477E3A1)",
+          "value": "0478:E429B25A-E5D3-4D1F-9BE3-0C608477E3A1"
+        },
+        {
+          "displayName": "Yoruba (046A:0000046A)",
+          "value": "046A:0000046A"
+        },
+        {
+          "displayName": "isiXhosa (0434:00000409)",
+          "value": "0434:00000409"
+        },
+        {
+          "displayName": "isiZulu (0435:00000409)",
+          "value": "0435:00000409"
+        }
+      ]
+    }
+  ]
+}

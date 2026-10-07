@@ -1,0 +1,23 @@
+{
+  "domainSuffix": "2p.garytown.com",
+  "taskSequenceId": "f753b708-87cd-40f6-87fd-00547c9ca8e6",
+  "taskSequencesUrl": "tasksequences.json",
+  "ous": [
+    "OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com",
+    "OU=Servers,OU=2PintTown,DC=2P,DC=garytown,DC=com",
+    "OU=InfoTech,OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com",
+    "OU=RetailPOS,OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com",
+    "OU=PeopleOps,OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com",
+    "OU=Management,OU=Workstations,OU=2PintTown,DC=2P,DC=garytown,DC=com"
+  ],
+  "autopilotGroupTags": ["APLab", "Enterprise", "Hub Self Deploy"],
+  "roles": [
+    { "displayName": "Default - None", "value": "" },
+    { "displayName": "Lab Computer - HR", "value": "HR" },
+    { "displayName": "Lab Computer - IT", "value": "IT" },
+    { "displayName": "Lab Computer - Execs", "value": "Execs" },
+    { "displayName": "Family Computer", "value": "Family" }
+  ],
+  "applications": [],
+  "applicationsUrl": "applications.json"
+}
