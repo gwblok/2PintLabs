@@ -29,7 +29,7 @@ The generated `applications.json` and `tasksequences.json` files are not checked
    ```
 
    Each script writes its JSON file beside itself by default. If stored elsewhere, pass `-OutputPath 'C:\inetpub\wwwroot\WebUI\applications.json'` or the corresponding task-sequence path. `-Tag` defaults to `FrontEnd`. Run both once before opening the page; schedule them on the server if the tagged catalogs change. They do not set task-sequence variables.
-4. Set `CustomWebUrl` in DeployR's `Bootstrap.json` (or supply it through 2PXE/iPXE) using the full example in [URL-Variables.md](URL-Variables.md). If you want the System and Network sidebar to show WinPE inventory, run `Create-ExtraVariables.ps1` before DeployR expands that URL so its `PA_` variables exist. Verify substitutions on your build and URL-encode values when needed. The page cannot read hardware identifiers or the client hostname directly from Windows/WinPE.
+4. Set `CustomWebUrl` in DeployR's `Bootstrap.json` (or supply it through 2PXE/iPXE) using the full example in [URL-Variables.md](URL-Variables.md). If you want the System and Network sidebar to show WinPE inventory, add both [`postauth.ps1` and `Create-ExtraVariables.ps1` from the DeployR WinPE folder](https://github.com/2pintsoftware/2Pint-DeployR/tree/main/WinPE) to the root of the WinPE Extra Files content item. DeployR calls `postauth.ps1` during post-authentication; it loads `Create-ExtraVariables.ps1` from the same directory to populate the `PA_` variables before the URL is expanded. Verify substitutions on your build and URL-encode values when needed. The page cannot read hardware identifiers or the client hostname directly from Windows/WinPE.
 
 ## Wizard and task-sequence handoff
 
