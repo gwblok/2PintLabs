@@ -247,4 +247,64 @@ if ($Installed_2Pint_Software_StifleR_Beacon) {
 }
 
 
-
+#Processes for DeployR
+if ($Installed_2Pint_Software_DeployR) {
+    Write-Host "DeployR is installed. Looking for the latest DeployR update..."
+    $DeployRZip = Get-ChildItem -Path $sourceFolder -Filter 'DeployR-*.zip' -File |
+        Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($DeployRZip) {
+        try {
+            Write-Host "Latest DeployR zip file found: $($DeployRZip.Name)"
+            $DeployRTargetFolder = Join-Path -Path "$env:USERPROFILE\Downloads\DeployR\Extracted" -ChildPath ([guid]::NewGuid().ToString())
+            Expand-Archive -Path $DeployRZip.FullName -DestinationPath $DeployRTargetFolder -Force -ErrorAction Stop
+            $DeployRNestedZips = @(Get-ChildItem -Path $DeployRTargetFolder -Filter '*.zip' -File -Recurse)
+            foreach ($DeployRNestedZip in $DeployRNestedZips) {
+                $DeployRNestedDestination = Join-Path -Path $DeployRNestedZip.DirectoryName -ChildPath $DeployRNestedZip.BaseName
+                Expand-Archive -Path $DeployRNestedZip.FullName -DestinationPath $DeployRNestedDestination -Force -ErrorAction Stop
+            }
+            $DeployRInstallers = @(Get-ChildItem -Path $DeployRTargetFolder -Filter '*DeployR*.msi' -File -Recurse |
+                Where-Object { $_.Name -notmatch 'Community|Client' })
+            if ($DeployRInstallers.Count -ne 1) {
+                throw "Expected one DeployR server MSI in the selected archive; found $($DeployRInstallers.Count)."
+            }
+            $DeployRInstaller = $DeployRInstallers[0]
+            Unblock-File -Path $DeployRInstaller.FullName -ErrorAction Stop
+            Write-Host "Closing other PowerShell consoles and Event Viewer before installing DeployR. Unsaved work may be lost." -ForegroundColor Yellow
+            $DeployRBlockingProcesses = @(Get-Process -Name 'pwsh', 'powershell' -ErrorAction SilentlyContinue |
+                Where-Object { $_.Id -ne $PID })
+            foreach ($DeployRBlockingProcess in $DeployRBlockingProcesses) {
+                Write-Host "Closing $($DeployRBlockingProcess.ProcessName) (PID $($DeployRBlockingProcess.Id))" -ForegroundColor DarkGray
+                Stop-Process -Id $DeployRBlockingProcess.Id -Force -ErrorAction Stop
+            }
+            $EventViewerProcesses = @(Get-CimInstance -ClassName Win32_Process -Filter "Name = 'mmc.exe' OR Name = 'eventvwr.exe'" -ErrorAction Stop |
+                Where-Object { $_.Name -eq 'eventvwr.exe' -or $_.CommandLine -match '(?i)\beventvwr\.msc\b' })
+            foreach ($EventViewerProcess in $EventViewerProcesses) {
+                Write-Host "Closing Event Viewer (PID $($EventViewerProcess.ProcessId))" -ForegroundColor DarkGray
+                Stop-Process -Id $EventViewerProcess.ProcessId -Force -ErrorAction Stop
+            }
+            Write-Host "Installing DeployR update: $($DeployRInstaller.Name)"
+            $DeployRInstall = Start-Process -FilePath 'msiexec.exe' -ArgumentList "/i `"$($DeployRInstaller.FullName)`" /qn /norestart MSIRESTARTMANAGERCONTROL=0 MSIRMSHUTDOWN=1 /l*v C:\Windows\Temp\DeployRInstall.log" -Wait -NoNewWindow -PassThru -ErrorAction Stop
+            if ($DeployRInstall.ExitCode -in @(0, 3010, 1641)) {
+                Write-Host "DeployR update installed successfully." -ForegroundColor Green
+                if ($DeployRInstall.ExitCode -ne 0) {
+                    Write-Host "A restart is required to complete the DeployR update." -ForegroundColor Yellow
+                }
+                else {
+                    Set-Service -Name DeployRService -StartupType Automatic -ErrorAction Stop
+                    Start-Service -Name DeployRService -ErrorAction Stop
+                }
+            }
+            else {
+                Write-Host "DeployR update installation failed with exit code: $($DeployRInstall.ExitCode). See C:\Windows\Temp\DeployRInstall.log" -ForegroundColor Red
+            }
+        }
+        catch {
+            Write-Host "DeployR update failed: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+    else {
+        Write-Host "No DeployR zip files found in source folder: $sourceFolder. Skipping update." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "DeployR is not installed. Skipping update."
+}
