@@ -4,13 +4,16 @@
 
 .DESCRIPTION
 	Finds the newest certificate in the LocalMachine\My store issued by
-	CN=YR1, O=Let's Encrypt, C=US and updates the StifleR and DeployR
-	registry settings that reference that certificate thumbprint.
+	Let's Encrypt and updates the StifleR and DeployR registry settings
+	that reference that certificate thumbprint.
 #>
 
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param(
-	[string]$IssuerMatch = 'CN=YR1, O=Let''s Encrypt, C=US'
+	[string[]]$IssuerMatch = @(
+		'CN=YR1, O=Let''s Encrypt, C=US'
+		'CN=YR2, O=Let''s Encrypt, C=US'
+	)
 )
 
 $ErrorActionPreference = 'Stop'
@@ -42,16 +45,18 @@ function Get-RegistryThumbprintTarget {
 function Get-NewestMatchingCertificate {
 	param(
 		[Parameter(Mandatory)]
-		[string]$IssuerFilter
+		[string[]]$IssuerFilters
 	)
 
 	$certificates = Get-ChildItem -Path Cert:\LocalMachine\My | Where-Object {
-		$_.Issuer -like "*$IssuerFilter*" -and
+		$certificateIssuer = $_.Issuer
+		$issuerMatches = $IssuerFilters | Where-Object { $certificateIssuer -like "*$_*" }
+		$issuerMatches -and
 		$_.NotAfter -gt (Get-Date)
 	}
 
 	if (-not $certificates) {
-		throw "No valid certificate was found in Cert:\LocalMachine\My with issuer '$IssuerFilter'."
+		throw "No valid certificate was found in Cert:\LocalMachine\My with issuer '$($IssuerFilters -join "' or '")'."
 	}
 
 	$certificates | Sort-Object NotAfter -Descending | Select-Object -First 1
@@ -218,7 +223,7 @@ function Add-CertificateToRootStore {
 
 try {
 	Write-Host "Searching for renewal certificate..." -ForegroundColor Cyan
-	$certificate = Get-NewestMatchingCertificate -IssuerFilter $IssuerMatch
+	$certificate = Get-NewestMatchingCertificate -IssuerFilters $IssuerMatch
 
 	Write-Host "Using certificate:" -ForegroundColor Cyan
 	Write-Host " Subject:    $($certificate.Subject)" -ForegroundColor DarkGray
