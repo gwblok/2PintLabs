@@ -305,6 +305,22 @@ foreach ($app in $PreReqApps) {
     }
 }
 
+#Close Event Viewer and 2Pint Config Editor before any product installer starts
+$BlockingUiProcesses = @(Get-CimInstance -ClassName Win32_Process -Filter "Name = 'mmc.exe' OR Name = 'eventvwr.exe' OR Name = 'TwoPint.ConfigEditor.Wpf.exe'" -ErrorAction Stop |
+    Where-Object {
+        $_.Name -eq 'eventvwr.exe' -or
+        $_.Name -eq 'TwoPint.ConfigEditor.Wpf.exe' -or
+        $_.CommandLine -match '(?i)\beventvwr\.msc\b'
+    })
+if ($BlockingUiProcesses.Count -gt 0) {
+    Write-Host "Closing Event Viewer and 2Pint Config Editor before installing updates. Unsaved work may be lost." -ForegroundColor Yellow
+    foreach ($BlockingUiProcess in $BlockingUiProcesses) {
+        $ProcessDescription = if ($BlockingUiProcess.Name -eq 'TwoPint.ConfigEditor.Wpf.exe') { '2Pint Config Editor' } else { 'Event Viewer' }
+        Write-Host "Closing $ProcessDescription (PID $($BlockingUiProcess.ProcessId))" -ForegroundColor DarkGray
+        Stop-Process -Id $BlockingUiProcess.ProcessId -Force -ErrorAction Stop
+    }
+}
+
 #Install StifleR
 if ($Installed_2Pint_Software_StifleR_Server -and (Test-InstallNeeded -Title '2Pint Software StifleR Server' -Msi $StiflerRServer -InstalledApps $installedApps)) {
     Write-Host "StifleR Server is installed. Installing StifleR Server update..."
@@ -409,18 +425,17 @@ if ($Installed_2Pint_Software_DeployR) {
             Unblock-File -Path $DeployRInstaller.FullName -ErrorAction Stop
             # Check the version before closing any consoles; only continue when the extracted MSI is newer than what is installed
             if (Test-InstallNeeded -Title '2Pint Software DeployR' -Msi $DeployRInstaller -InstalledApps $installedApps) {
-                Write-Host "Closing other PowerShell consoles and Event Viewer before installing DeployR. Unsaved work may be lost." -ForegroundColor Yellow
+                Write-Host "Closing other PowerShell consoles before installing DeployR. Unsaved work may be lost." -ForegroundColor Yellow
                 $DeployRBlockingProcesses = @(Get-Process -Name 'pwsh', 'powershell' -ErrorAction SilentlyContinue |
                     Where-Object { $_.Id -ne $PID })
                 foreach ($DeployRBlockingProcess in $DeployRBlockingProcesses) {
                     Write-Host "Closing $($DeployRBlockingProcess.ProcessName) (PID $($DeployRBlockingProcess.Id))" -ForegroundColor DarkGray
                     Stop-Process -Id $DeployRBlockingProcess.Id -Force -ErrorAction Stop
                 }
-                $EventViewerProcesses = @(Get-CimInstance -ClassName Win32_Process -Filter "Name = 'mmc.exe' OR Name = 'eventvwr.exe'" -ErrorAction Stop |
-                    Where-Object { $_.Name -eq 'eventvwr.exe' -or $_.CommandLine -match '(?i)\beventvwr\.msc\b' })
-                foreach ($EventViewerProcess in $EventViewerProcesses) {
-                    Write-Host "Closing Event Viewer (PID $($EventViewerProcess.ProcessId))" -ForegroundColor DarkGray
-                    Stop-Process -Id $EventViewerProcess.ProcessId -Force -ErrorAction Stop
+                $DeployRLogViewerProcesses = @(Get-Process -Name 'TwoPint.DeployR.LogViewer' -ErrorAction SilentlyContinue)
+                foreach ($DeployRLogViewerProcess in $DeployRLogViewerProcesses) {
+                    Write-Host "Closing DeployR Log Viewer (PID $($DeployRLogViewerProcess.Id))" -ForegroundColor DarkGray
+                    Stop-Process -Id $DeployRLogViewerProcess.Id -Force -ErrorAction Stop
                 }
                 Write-Host "Installing DeployR update: $($DeployRInstaller.Name)"
                 # /qb! shows the basic progress bar (no Cancel button) so the upgrade can be watched
