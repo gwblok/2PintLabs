@@ -2,10 +2,15 @@
 # Will extract all of the zip files to a new folder named Extracted, then move all of the installers to the Extracted folder and remove any empty folders and zip files
 # Each installed component (StifleR Server, Dashboards, WMI Agent, ActionHub, Beacon, DeployR) is only updated when the
 # extracted MSI ProductVersion is newer than the installed DisplayVersion. Use -Force to install regardless of version.
+# If DeployR itself was upgraded, the boot image is regenerated after a short delay (see -SkipRegenerate / -RegenerateDelaySeconds).
 
 [CmdletBinding()]
 param(
-    [switch]$Force
+    [switch]$Force,
+    [switch]$SkipRegenerate,
+    [string]$BootImageId = '00000003-0000-0000-0000-000000000001',   # Windows PE x64
+    [string]$GenerateScriptPath = 'C:\Program Files\2Pint Software\DeployR\WebServer\Scripts\Generate.ps1',
+    [int]$RegenerateDelaySeconds = 60
 )
 
 $sourceFolder = "$env:USERPROFILE\Downloads\"
@@ -89,6 +94,55 @@ function Test-InstallNeeded
     }
     Write-Host "$Title installed $InstalledVersion, MSI $MsiVersion is not newer. Skipping update." -ForegroundColor Yellow
     return $false
+}
+
+# Imports DeployR.Utility and authenticates with the local client passcode.
+# Connect-DeployR stores the token in $env:DeployRToken, which Generate.ps1 inherits when run as a child process.
+function Connect-ToDeployR
+{
+    $ModulePath = 'C:\Program Files\2Pint Software\DeployR\Client\PSModules\DeployR.Utility'
+    # -Force so the module that was just upgraded is loaded, not a stale copy from this session
+    if (Test-Path -Path $ModulePath) { Import-Module $ModulePath -Force -ErrorAction Stop }
+    elseif (Get-Module -ListAvailable -Name DeployR.Utility) { Import-Module DeployR.Utility -Force -ErrorAction Stop }
+    else { throw 'DeployR.Utility module not found. Ensure the DeployR Client is installed on this machine.' }
+
+    $RegPath = 'HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings'
+    if (Test-Path -Path $RegPath) {
+        $Passcode = (Get-Item -Path $RegPath).GetValue('ClientPasscode')
+    }
+    elseif (Test-Path -Path 'D:\DeployRPasscode.txt') {
+        $Passcode = (Get-Content -Path 'D:\DeployRPasscode.txt' -Raw).Trim()
+    }
+    if ([string]::IsNullOrWhiteSpace($Passcode)) {
+        throw 'Cannot find the DeployR client passcode in the registry or D:\DeployRPasscode.txt.'
+    }
+    Connect-DeployR -Passcode $Passcode -ErrorAction Stop | Out-Null
+}
+
+# Regenerates a DeployR boot image by running DeployR's Generate.ps1 -Id <id> -Regenerate.
+# Generate.ps1 uses relative paths, so it runs from its own folder. Returns $true on success.
+function Invoke-BootImageRegeneration
+{
+    param(
+        [string]$BootImageId,
+        [string]$GenerateScriptPath
+    )
+    try {
+        if (-not (Test-Path -Path $GenerateScriptPath -PathType Leaf)) { throw "Generate.ps1 not found: $GenerateScriptPath" }
+        Write-Host "Connecting to DeployR..." -ForegroundColor Cyan
+        Connect-ToDeployR
+
+        Write-Host "Regenerating boot image $BootImageId..." -ForegroundColor Cyan
+        $GenerateArgs = @('-NoProfile', '-File', "`"$GenerateScriptPath`"", '-Id', $BootImageId, '-Regenerate')
+        $Generate = Start-Process -FilePath (Join-Path -Path $PSHOME -ChildPath 'pwsh.exe') -ArgumentList $GenerateArgs -WorkingDirectory (Split-Path -Path $GenerateScriptPath -Parent) -Wait -NoNewWindow -PassThru -ErrorAction Stop
+        if ($Generate.ExitCode -ne 0) { throw "Generate.ps1 exited with code $($Generate.ExitCode)" }
+        Write-Host "Boot image $BootImageId regenerated." -ForegroundColor Green
+        return $true
+    }
+    catch {
+        Write-Host "Boot image regeneration failed: $($_.Exception.Message)" -ForegroundColor Red
+        return $false
+    }
 }
 
 function Get-InstalledApps
@@ -369,15 +423,27 @@ if ($Installed_2Pint_Software_DeployR) {
                     Stop-Process -Id $EventViewerProcess.ProcessId -Force -ErrorAction Stop
                 }
                 Write-Host "Installing DeployR update: $($DeployRInstaller.Name)"
-                $DeployRInstall = Start-Process -FilePath 'msiexec.exe' -ArgumentList "/i `"$($DeployRInstaller.FullName)`" /qn /norestart MSIRESTARTMANAGERCONTROL=0 MSIRMSHUTDOWN=1 /l*v C:\Windows\Temp\DeployRInstall.log" -Wait -NoNewWindow -PassThru -ErrorAction Stop
+                # /qb! shows the basic progress bar (no Cancel button) so the upgrade can be watched
+                $DeployRInstall = Start-Process -FilePath 'msiexec.exe' -ArgumentList "/i `"$($DeployRInstaller.FullName)`" /qb! /norestart MSIRESTARTMANAGERCONTROL=0 MSIRMSHUTDOWN=1 /l*v C:\Windows\Temp\DeployRInstall.log" -Wait -NoNewWindow -PassThru -ErrorAction Stop
                 if ($DeployRInstall.ExitCode -in @(0, 3010, 1641)) {
                     Write-Host "DeployR update installed successfully." -ForegroundColor Green
                     if ($DeployRInstall.ExitCode -ne 0) {
-                        Write-Host "A restart is required to complete the DeployR update." -ForegroundColor Yellow
+                        # Service is not started until the reboot, so the boot image cannot be regenerated yet
+                        Write-Host "A restart is required to complete the DeployR update. Restart, then regenerate boot image $BootImageId (Generate.ps1 -Id $BootImageId -Regenerate)." -ForegroundColor Yellow
                     }
                     else {
                         Set-Service -Name DeployRService -StartupType Automatic -ErrorAction Stop
                         Start-Service -Name DeployRService -ErrorAction Stop
+
+                        # DeployR was upgraded, so the boot image needs to be rebuilt; give the service time to come up first
+                        if ($SkipRegenerate) {
+                            Write-Host 'SkipRegenerate specified, not regenerating the boot image.' -ForegroundColor Yellow
+                        }
+                        else {
+                            Write-Host "Waiting $RegenerateDelaySeconds seconds for DeployR to settle before regenerating the boot image..." -ForegroundColor Cyan
+                            Start-Sleep -Seconds $RegenerateDelaySeconds
+                            [void](Invoke-BootImageRegeneration -BootImageId $BootImageId -GenerateScriptPath $GenerateScriptPath)
+                        }
                     }
                 }
                 else {
