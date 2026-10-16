@@ -1,11 +1,95 @@
 # Assumes you downloaded the items from the DeployRSuite link and placed in your Downloads folder in a folder named DeployRSuite
 # Will extract all of the zip files to a new folder named Extracted, then move all of the installers to the Extracted folder and remove any empty folders and zip files
+# Each installed component (StifleR Server, Dashboards, WMI Agent, ActionHub, Beacon, DeployR) is only updated when the
+# extracted MSI ProductVersion is newer than the installed DisplayVersion. Use -Force to install regardless of version.
+
+[CmdletBinding()]
+param(
+    [switch]$Force
+)
 
 $sourceFolder = "$env:USERPROFILE\Downloads\"
 $targetFolder = "$env:USERPROFILE\Downloads\StifleR\Extracted"
 
 
 #region Functions
+
+# Reads ProductVersion from the MSI Property table via the Windows Installer COM object.
+# Every COM object is released explicitly: otherwise the MSI stays locked by this session until garbage collection,
+# which breaks overwriting/moving the file when the script is re-run in the same (e.g. dot-sourced) session.
+function Get-MsiProductVersion
+{
+    param([string]$Path)
+    $Installer = $null; $Database = $null; $View = $null; $Record = $null
+    try {
+        $Installer = New-Object -ComObject WindowsInstaller.Installer
+        $Database = $Installer.GetType().InvokeMember('OpenDatabase', 'InvokeMethod', $null, $Installer, @($Path, 0))
+        $View = $Database.GetType().InvokeMember('OpenView', 'InvokeMethod', $null, $Database, @("SELECT Value FROM Property WHERE Property = 'ProductVersion'"))
+        $View.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $View, $null) | Out-Null
+        $Record = $View.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $View, $null)
+        $Version = $Record.GetType().InvokeMember('StringData', 'GetProperty', $null, $Record, 1)
+        $View.GetType().InvokeMember('Close', 'InvokeMethod', $null, $View, $null) | Out-Null
+        return $Version
+    }
+    finally {
+        foreach ($ComObject in @($Record, $View, $Database, $Installer)) {
+            if ($null -ne $ComObject) { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($ComObject) }
+        }
+        [GC]::Collect(); [GC]::WaitForPendingFinalizers()
+    }
+}
+
+# Parses a version string into a 4-part [version] so 3.1.2642 and 3.1.2642.0 compare as equal. Returns $null if unparseable.
+function ConvertTo-NormalizedVersion
+{
+    param([string]$Text)
+    try {
+        $v = [version]$Text
+        return [version]::new($v.Major, $v.Minor, [Math]::Max($v.Build, 0), [Math]::Max($v.Revision, 0))
+    }
+    catch { return $null }
+}
+
+# Returns $true when the MSI should be installed: its ProductVersion is newer than the installed DisplayVersion.
+# Returns $false (and says why) when it is the same/older, or when there is no MSI to install.
+# If either version cannot be determined it returns $true, so a parsing problem never blocks an update.
+function Test-InstallNeeded
+{
+    param(
+        [string]$Title,
+        $Msi,
+        $InstalledApps
+    )
+
+    if (-not $Msi) {
+        Write-Host "No $Title MSI found in the extracted files. Skipping update." -ForegroundColor Yellow
+        return $false
+    }
+
+    # Prefer an exact name match; fall back to a partial match and use the highest installed version
+    $Matched = @($InstalledApps | Where-Object { $_.DisplayName -eq $Title })
+    if ($Matched.Count -eq 0) { $Matched = @($InstalledApps | Where-Object { $_.DisplayName -like "*$Title*" }) }
+    $InstalledVersion = $Matched | ForEach-Object { ConvertTo-NormalizedVersion $_.DisplayVersion } |
+        Where-Object { $_ } | Sort-Object -Descending | Select-Object -First 1
+
+    try { $MsiVersion = ConvertTo-NormalizedVersion (Get-MsiProductVersion -Path $Msi.FullName) }
+    catch { $MsiVersion = $null }
+
+    if (-not $MsiVersion -or -not $InstalledVersion) {
+        Write-Host "Could not compare versions for $Title (MSI: '$MsiVersion', installed: '$InstalledVersion'). Installing anyway." -ForegroundColor Yellow
+        return $true
+    }
+    if ($Force) {
+        Write-Host "$Title installed $InstalledVersion, MSI $MsiVersion. -Force specified, installing." -ForegroundColor Cyan
+        return $true
+    }
+    if ($MsiVersion -gt $InstalledVersion) {
+        Write-Host "$Title installed $InstalledVersion, MSI $MsiVersion is newer. Updating." -ForegroundColor Cyan
+        return $true
+    }
+    Write-Host "$Title installed $InstalledVersion, MSI $MsiVersion is not newer. Skipping update." -ForegroundColor Yellow
+    return $false
+}
 
 function Get-InstalledApps
 {
@@ -168,7 +252,7 @@ foreach ($app in $PreReqApps) {
 }
 
 #Install StifleR
-if ($Installed_2Pint_Software_StifleR_Server) {
+if ($Installed_2Pint_Software_StifleR_Server -and (Test-InstallNeeded -Title '2Pint Software StifleR Server' -Msi $StiflerRServer -InstalledApps $installedApps)) {
     Write-Host "StifleR Server is installed. Installing StifleR Server update..."
     $ServerInstall = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$($StiflerRServer.FullName)`" /qb! /l*v C:\Windows\Temp\StifleRServerInstall.log" -Wait -NoNewWindow -PassThru
     if ($ServerInstall.ExitCode -eq 0) {
@@ -180,12 +264,12 @@ if ($Installed_2Pint_Software_StifleR_Server) {
     }
     
 } else {
-    Write-Host "StifleR Server is not installed. Skipping update."
+    Write-Host "StifleR Server is not installed or is already up to date. Skipping update."
 }
 
 #Install DashBoard
 
-if ($Installed_2Pint_Software_StifleR_Dashboards) {
+if ($Installed_2Pint_Software_StifleR_Dashboards -and (Test-InstallNeeded -Title '2Pint Software StifleR Dashboards' -Msi $Dashboard -InstalledApps $installedApps)) {
     Write-Host "StifleR Dashboard is installed. Installing StifleR Dashboard update..."
     $DashboardInstall = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$($Dashboard.FullName)`" /qb! /l*v C:\Windows\Temp\StifleRDashboardInstall.log" -Wait -NoNewWindow -PassThru
     if ($DashboardInstall.ExitCode -eq 0) {
@@ -195,12 +279,12 @@ if ($Installed_2Pint_Software_StifleR_Dashboards) {
     }
     
 } else {
-    Write-Host "StifleR Dashboard is not installed. Skipping update."
+    Write-Host "StifleR Dashboard is not installed or is already up to date. Skipping update."
 }
 
 #Install WMIAgent
 
-if ($Installed_2Pint_Software_StifleR_WmiAgent) {
+if ($Installed_2Pint_Software_StifleR_WmiAgent -and (Test-InstallNeeded -Title '2Pint Software StifleR WmiAgent' -Msi $WMIAgent -InstalledApps $installedApps)) {
     Write-Host "StifleR WMI Agent is installed. Installing StifleR WMI Agent update..."
     $WMIAgentInstall = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$($WMIAgent.FullName)`" /qb! /l*v C:\Windows\Temp\WMIAgentInstall.log" -Wait -NoNewWindow -PassThru
     if ($WMIAgentInstall.ExitCode -eq 0) {
@@ -212,11 +296,11 @@ if ($Installed_2Pint_Software_StifleR_WmiAgent) {
     }
     
 } else {
-    Write-Host "StifleR WMI Agent is not installed. Skipping update."
+    Write-Host "StifleR WMI Agent is not installed or is already up to date. Skipping update."
 }
 
 #Install ActionHub
-if ($Installed_2Pint_Software_StifleR_ActionHub) {
+if ($Installed_2Pint_Software_StifleR_ActionHub -and (Test-InstallNeeded -Title '2Pint Software StifleR ActionHub' -Msi $ActionHub -InstalledApps $installedApps)) {
     Write-Host "StifleR ActionHub is installed. Installing StifleR ActionHub update..."
     $ActionHubInstall = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$($ActionHub.FullName)`" /qb! /l*v C:\Windows\Temp\StifleRActionHubInstall.log" -Wait -NoNewWindow -PassThru
     if ($ActionHubInstall.ExitCode -eq 0) {
@@ -228,10 +312,10 @@ if ($Installed_2Pint_Software_StifleR_ActionHub) {
     }
     
 } else {
-    Write-Host "StifleR ActionHub is not installed. Skipping update."
+    Write-Host "StifleR ActionHub is not installed or is already up to date. Skipping update."
 }
 #Install Beacon
-if ($Installed_2Pint_Software_StifleR_Beacon) {
+if ($Installed_2Pint_Software_StifleR_Beacon -and (Test-InstallNeeded -Title '2Pint Software StifleR Beacon' -Msi $Beacon -InstalledApps $installedApps)) {
     Write-Host "StifleR Beacon is installed. Installing StifleR Beacon update..."
     $BeaconInstall = Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$($Beacon.FullName)`" /qb! /l*v C:\Windows\Temp\StifleRBeaconInstall.log" -Wait -NoNewWindow -PassThru
     if ($BeaconInstall.ExitCode -eq 0) {
@@ -243,7 +327,7 @@ if ($Installed_2Pint_Software_StifleR_Beacon) {
     }
     
 } else {
-    Write-Host "StifleR Beacon is not installed. Skipping update."
+    Write-Host "StifleR Beacon is not installed or is already up to date. Skipping update."
 }
 
 
@@ -269,33 +353,36 @@ if ($Installed_2Pint_Software_DeployR) {
             }
             $DeployRInstaller = $DeployRInstallers[0]
             Unblock-File -Path $DeployRInstaller.FullName -ErrorAction Stop
-            Write-Host "Closing other PowerShell consoles and Event Viewer before installing DeployR. Unsaved work may be lost." -ForegroundColor Yellow
-            $DeployRBlockingProcesses = @(Get-Process -Name 'pwsh', 'powershell' -ErrorAction SilentlyContinue |
-                Where-Object { $_.Id -ne $PID })
-            foreach ($DeployRBlockingProcess in $DeployRBlockingProcesses) {
-                Write-Host "Closing $($DeployRBlockingProcess.ProcessName) (PID $($DeployRBlockingProcess.Id))" -ForegroundColor DarkGray
-                Stop-Process -Id $DeployRBlockingProcess.Id -Force -ErrorAction Stop
-            }
-            $EventViewerProcesses = @(Get-CimInstance -ClassName Win32_Process -Filter "Name = 'mmc.exe' OR Name = 'eventvwr.exe'" -ErrorAction Stop |
-                Where-Object { $_.Name -eq 'eventvwr.exe' -or $_.CommandLine -match '(?i)\beventvwr\.msc\b' })
-            foreach ($EventViewerProcess in $EventViewerProcesses) {
-                Write-Host "Closing Event Viewer (PID $($EventViewerProcess.ProcessId))" -ForegroundColor DarkGray
-                Stop-Process -Id $EventViewerProcess.ProcessId -Force -ErrorAction Stop
-            }
-            Write-Host "Installing DeployR update: $($DeployRInstaller.Name)"
-            $DeployRInstall = Start-Process -FilePath 'msiexec.exe' -ArgumentList "/i `"$($DeployRInstaller.FullName)`" /qn /norestart MSIRESTARTMANAGERCONTROL=0 MSIRMSHUTDOWN=1 /l*v C:\Windows\Temp\DeployRInstall.log" -Wait -NoNewWindow -PassThru -ErrorAction Stop
-            if ($DeployRInstall.ExitCode -in @(0, 3010, 1641)) {
-                Write-Host "DeployR update installed successfully." -ForegroundColor Green
-                if ($DeployRInstall.ExitCode -ne 0) {
-                    Write-Host "A restart is required to complete the DeployR update." -ForegroundColor Yellow
+            # Check the version before closing any consoles; only continue when the extracted MSI is newer than what is installed
+            if (Test-InstallNeeded -Title '2Pint Software DeployR' -Msi $DeployRInstaller -InstalledApps $installedApps) {
+                Write-Host "Closing other PowerShell consoles and Event Viewer before installing DeployR. Unsaved work may be lost." -ForegroundColor Yellow
+                $DeployRBlockingProcesses = @(Get-Process -Name 'pwsh', 'powershell' -ErrorAction SilentlyContinue |
+                    Where-Object { $_.Id -ne $PID })
+                foreach ($DeployRBlockingProcess in $DeployRBlockingProcesses) {
+                    Write-Host "Closing $($DeployRBlockingProcess.ProcessName) (PID $($DeployRBlockingProcess.Id))" -ForegroundColor DarkGray
+                    Stop-Process -Id $DeployRBlockingProcess.Id -Force -ErrorAction Stop
+                }
+                $EventViewerProcesses = @(Get-CimInstance -ClassName Win32_Process -Filter "Name = 'mmc.exe' OR Name = 'eventvwr.exe'" -ErrorAction Stop |
+                    Where-Object { $_.Name -eq 'eventvwr.exe' -or $_.CommandLine -match '(?i)\beventvwr\.msc\b' })
+                foreach ($EventViewerProcess in $EventViewerProcesses) {
+                    Write-Host "Closing Event Viewer (PID $($EventViewerProcess.ProcessId))" -ForegroundColor DarkGray
+                    Stop-Process -Id $EventViewerProcess.ProcessId -Force -ErrorAction Stop
+                }
+                Write-Host "Installing DeployR update: $($DeployRInstaller.Name)"
+                $DeployRInstall = Start-Process -FilePath 'msiexec.exe' -ArgumentList "/i `"$($DeployRInstaller.FullName)`" /qn /norestart MSIRESTARTMANAGERCONTROL=0 MSIRMSHUTDOWN=1 /l*v C:\Windows\Temp\DeployRInstall.log" -Wait -NoNewWindow -PassThru -ErrorAction Stop
+                if ($DeployRInstall.ExitCode -in @(0, 3010, 1641)) {
+                    Write-Host "DeployR update installed successfully." -ForegroundColor Green
+                    if ($DeployRInstall.ExitCode -ne 0) {
+                        Write-Host "A restart is required to complete the DeployR update." -ForegroundColor Yellow
+                    }
+                    else {
+                        Set-Service -Name DeployRService -StartupType Automatic -ErrorAction Stop
+                        Start-Service -Name DeployRService -ErrorAction Stop
+                    }
                 }
                 else {
-                    Set-Service -Name DeployRService -StartupType Automatic -ErrorAction Stop
-                    Start-Service -Name DeployRService -ErrorAction Stop
+                    Write-Host "DeployR update installation failed with exit code: $($DeployRInstall.ExitCode). See C:\Windows\Temp\DeployRInstall.log" -ForegroundColor Red
                 }
-            }
-            else {
-                Write-Host "DeployR update installation failed with exit code: $($DeployRInstall.ExitCode). See C:\Windows\Temp\DeployRInstall.log" -ForegroundColor Red
             }
         }
         catch {
