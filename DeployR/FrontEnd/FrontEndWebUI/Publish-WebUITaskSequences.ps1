@@ -1,3 +1,16 @@
+<#
+.SYNOPSIS
+Publishes tagged DeployR task sequences to the WebUI task sequence catalog.
+
+.DESCRIPTION
+Looks up task sequences in DeployR and includes only those whose Tags contain
+the value supplied by -Tag (default: FrontEnd). Writes each matching sequence's
+ID and display name as compact JSON to -OutputPath (default: tasksequences.json
+in this script's directory), replacing the existing catalog. The output
+directory must already exist. If DeployR returns no task sequences, the script
+throws and leaves the existing catalog unchanged.
+#>
+
 [CmdletBinding()]
 param(
     [string]$OutputPath = (Join-Path $PSScriptRoot 'tasksequences.json'),
