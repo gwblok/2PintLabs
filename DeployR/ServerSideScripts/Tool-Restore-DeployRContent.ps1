@@ -255,7 +255,8 @@ function Import-ContentItems {
             return
         }
 
-        $contentJson = Get-Content -Path $contentFile.FullName -Raw | ConvertFrom-Json
+        $contentJsonRaw = Get-Content -Path $contentFile.FullName -Raw
+        $contentJson = $contentJsonRaw | ConvertFrom-Json
         $contentId = $contentJson.id
         $contentName = $contentJson.name
 
@@ -277,8 +278,22 @@ function Import-ContentItems {
             }
             else {
                 Write-Host "  Content item not found, importing from backup." -ForegroundColor Green
-                Import-DeployRContentItem -SourceFile $contentFile.FullName -Force -ErrorAction Stop | Out-Null
-                Update-ContentVersions -ContentId $contentId -ItemFolder $itemFolder
+                if ($contentJson.contentItemType -eq 'SingleFile') {
+                    try {
+                        Invoke-DeployRRestMethod -RelativeUri '/v1/ContentItem' -Method POST -Body $contentJsonRaw -ErrorAction Stop | Out-Null
+                    }
+                    catch {
+                        Write-Warning "  Unable to create SingleFile content item $contentId; trying to update its metadata."
+                        Invoke-DeployRRestMethod -RelativeUri "/v1/ContentItem/$contentId" -Method PUT -Body $contentJsonRaw -ErrorAction Stop | Out-Null
+                    }
+
+                    Update-ContentVersions -ContentId $contentId -ItemFolder $itemFolder
+                }
+                else {
+                    Import-DeployRContentItem -SourceFile $contentFile.FullName -Force -ErrorAction Stop | Out-Null
+                    Update-ContentVersions -ContentId $contentId -ItemFolder $itemFolder
+                }
+
                 $action = "Import"
             }
 
