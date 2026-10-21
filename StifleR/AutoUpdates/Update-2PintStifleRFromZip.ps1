@@ -423,15 +423,8 @@ if ($Installed_2Pint_Software_DeployR) {
             }
             $DeployRInstaller = $DeployRInstallers[0]
             Unblock-File -Path $DeployRInstaller.FullName -ErrorAction Stop
-            # Check the version before closing any consoles; only continue when the extracted MSI is newer than what is installed
+            # Check the version before closing the Log Viewer; only continue when the extracted MSI is newer than what is installed
             if (Test-InstallNeeded -Title '2Pint Software DeployR' -Msi $DeployRInstaller -InstalledApps $installedApps) {
-                Write-Host "Closing other PowerShell consoles before installing DeployR. Unsaved work may be lost." -ForegroundColor Yellow
-                $DeployRBlockingProcesses = @(Get-Process -Name 'pwsh', 'powershell' -ErrorAction SilentlyContinue |
-                    Where-Object { $_.Id -ne $PID })
-                foreach ($DeployRBlockingProcess in $DeployRBlockingProcesses) {
-                    Write-Host "Closing $($DeployRBlockingProcess.ProcessName) (PID $($DeployRBlockingProcess.Id))" -ForegroundColor DarkGray
-                    Stop-Process -Id $DeployRBlockingProcess.Id -Force -ErrorAction Stop
-                }
                 $DeployRLogViewerProcesses = @(Get-Process -Name 'TwoPint.DeployR.LogViewer' -ErrorAction SilentlyContinue)
                 foreach ($DeployRLogViewerProcess in $DeployRLogViewerProcesses) {
                     Write-Host "Closing DeployR Log Viewer (PID $($DeployRLogViewerProcess.Id))" -ForegroundColor DarkGray
