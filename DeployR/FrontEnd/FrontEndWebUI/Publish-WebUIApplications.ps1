@@ -1,3 +1,16 @@
+<#
+.SYNOPSIS
+Publishes tagged DeployR applications to the WebUI application catalog.
+
+.DESCRIPTION
+Looks up applications in DeployR and includes only those whose Tags contain
+the value supplied by -Tag (default: FrontEnd). Writes each matching
+application's ID and display name as compact JSON to -OutputPath (default:
+applications.json in this script's directory), replacing the existing catalog.
+The output directory must already exist. If DeployR returns no applications,
+the script throws and leaves the existing catalog unchanged.
+#>
+
 [CmdletBinding()]
 param(
     [string]$OutputPath = (Join-Path $PSScriptRoot 'applications.json'),
