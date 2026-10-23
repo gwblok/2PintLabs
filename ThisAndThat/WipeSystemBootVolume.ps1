@@ -123,8 +123,35 @@ if ($PSCmdlet.ShouldProcess($target, 'Permanently remove ALL files and directori
         throw 'The EFI volume contains a reparse point. Refusing deletion.'
     }
 
-    foreach ($entry in $entries) {
-        Remove-Item -LiteralPath $entry.FullName -Recurse -Force -ErrorAction Stop
+    # Delete files first; a running OS keeps the BCD store open via the HKLM\BCD00000000 hive.
+    $failedFiles = New-Object -TypeName System.Collections.Generic.List[object]
+    foreach ($file in @($allEntries | Where-Object { -not $_.PSIsContainer })) {
+        try {
+            Remove-Item -LiteralPath $file.FullName -Force -ErrorAction Stop
+        }
+        catch {
+            $failedFiles.Add($file)
+        }
+    }
+
+    if ($failedFiles.Count -gt 0) {
+        Write-Warning "$($failedFiles.Count) file(s) are locked (e.g. $($failedFiles[0].FullName)). Trying to unload the BCD registry hive and retry."
+        & reg.exe unload 'HKLM\BCD00000000' *> $null
+        Start-Sleep -Seconds 2
+        foreach ($file in @($failedFiles)) {
+            if (-not (Test-Path -LiteralPath $file.FullName)) { continue }
+            try {
+                Remove-Item -LiteralPath $file.FullName -Force -ErrorAction Stop
+            }
+            catch {
+                throw "Cannot delete locked file '$($file.FullName)': $($_.Exception.Message) The BCD hive is mounted by the running OS; run this from WinPE or another offline environment. The device may be partially emptied."
+            }
+        }
+    }
+
+    # Remove directories deepest-first.
+    foreach ($dir in @($allEntries | Where-Object { $_.PSIsContainer } | Sort-Object -Property { $_.FullName.Length } -Descending)) {
+        Remove-Item -LiteralPath $dir.FullName -Force -ErrorAction Stop
     }
 
     $remainingEntries = @(Get-ChildItem -LiteralPath $volumePath -Force)
