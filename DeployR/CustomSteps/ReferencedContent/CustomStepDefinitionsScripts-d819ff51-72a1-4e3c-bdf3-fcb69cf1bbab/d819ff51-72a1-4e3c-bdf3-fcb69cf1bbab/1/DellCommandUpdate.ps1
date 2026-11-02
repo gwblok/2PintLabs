@@ -415,30 +415,32 @@ function Invoke-DCU {
     Write-Progress -Activity "Running Dell Command Update" -Status "Applying Updates" -CurrentOperation "Running DCU CLI" -PercentComplete 0
     $DCUApply = Start-Process -FilePath "$DCUPath\dcu-cli.exe" -ArgumentList $ArgList -NoNewWindow -PassThru
     $SameLastLine = $null
-    if (Get-Process -Name dcu-cli -ErrorAction SilentlyContinue){
-        Write-Output "Found Process for DCU-CLI"
+    $DCUApply.Refresh()
+    if (!$DCUApply.HasExited){
+        Write-Host "Found Process for DCU-CLI"
         start-sleep -Seconds 1
         if (Test-Path -Path $LogFile){
-            Write-Output "Found Log: $LogFile"
+            Write-Host "Found Log: $LogFile"
         }
         else {
-            Write-Output "Failed to find DCU-CLI log"
+            Write-Host "Failed to find DCU-CLI log"
         }
     }
     else {
-        Write-Output "Failed to find Process for DCU-CLI"
+        Write-Host "DCU-CLI exited before process monitoring started"
     }
-    do {  #Continous loop while DCU-CLI is running
-        Start-Sleep -Milliseconds 300
-        
-        #Read in the DISM Logfile
-        $Content = Get-Content -Path $LogFile -ReadCount 1 -ErrorAction SilentlyContinue
-        $LastLine = $Content | Select-Object -Last 1
-        #$LastLine = ($LastLine.Split(':') | Select-Object -Last 1).Trim()
-        if ($LastLine){
-            if ($SameLastLine -ne $LastLine){ #Only continue if DISM log has changed
-                $SameLastLine = $LastLine
-                Write-Output $LastLine
+    try {
+        do {  #Continous loop while DCU-CLI is running
+            Start-Sleep -Milliseconds 300
+
+            #Read in the DISM Logfile
+            $Content = Get-Content -Path $LogFile -ReadCount 1 -ErrorAction SilentlyContinue
+            $LastLine = $Content | Select-Object -Last 1
+            #$LastLine = ($LastLine.Split(':') | Select-Object -Last 1).Trim()
+            if ($LastLine){
+                if ($SameLastLine -ne $LastLine){ #Only continue if DISM log has changed
+                    $SameLastLine = $LastLine
+                    Write-Host $LastLine
                 if ($LastLine -match "Checking" -or $LastLine -match "Scanning"  -or $LastLine -match "Determining" ){
                     #Write-Output $LastLine
                     $LastLine = ($LastLine.Split(':') | Select-Object -Last 1).Trim()
@@ -458,15 +460,24 @@ function Invoke-DCU {
                     if ($Message){
                         $Message = ($Message.Split(':') | Select-Object -Last 1).trim()
                         $Message = $Message.Replace("...","")
-                        $CounterPart = (($Message -split "of")[0]).Trim()
-                        [int]$Counter = $CounterPart.Substring($CounterPart.Length-1)
-                        if ($Counter -eq "0"){$Counter = 1} #If the counter is 0, set it to 1
-                        #Write-Output $Counter
-                        $Total = ((($Message -split "of")[1]).Trim()).substring(0,1)
-                        [int]$Total = [int]$Total + 1 #So that when it gets to 3 of 3, it doesn't show 100% complete while it is still downloading
-                        #Write-Output $Message
-                        $PercentComplete = [math]::Round(($Counter / $Total) * 100)
-                        Write-Progress -Activity "DCU Downloading" -Status $Message -PercentComplete $PercentComplete
+                        if ($Message -match '\((\d+)\s+of\s+(\d+)\)'){
+                            [int]$Counter = $Matches[1]
+                            if ($Counter -eq "0"){$Counter = 1} #If the counter is 0, set it to 1
+                            #Write-Output $Counter
+                            [int]$Total = $Matches[2]
+                            [int]$ProgressTotal = $Total + 1 #So that when it gets to 3 of 3, it doesn't show 100% complete while it is still downloading
+                            #Write-Output $Message
+                            if ($Total -gt 0){
+                                $PercentComplete = [math]::Min(100, [math]::Max(0, [math]::Round(($Counter / $ProgressTotal) * 100)))
+                                Write-Progress -Activity "DCU Downloading" -Status $Message -PercentComplete $PercentComplete
+                            }
+                            else {
+                                Write-Host "Unable to calculate DCU download progress from: $Message"
+                            }
+                        }
+                        else {
+                            Write-Host "Unable to parse DCU download progress from: $Message"
+                        }
                         #Show-TSActionProgress -Message $Message -Step $Counter -MaxStep $Total -ErrorAction SilentlyContinue
                     }
                 }
@@ -477,35 +488,52 @@ function Invoke-DCU {
                         $ToKeep = $Message.Split(':') | Select-Object -last 2
                         $Message = "$($ToKeep[0]) -$($ToKeep[1])"
                         $Message = $Message.trim()
-                        $CounterPart = (($Message -split "of")[0]).Trim()
-                        [int]$Counter = $CounterPart.Substring($CounterPart.Length-1)
-                        if ($Counter -eq "0"){$Counter = 1} #If the counter is 0, set it to 1
-                        $Total = ((($Message -split "of")[1]).Trim()).substring(0,1)
-                        [int]$Total = [int]$Total + 1 #So that when it gets to 3 of 3, it doesn't show 100% complete while it is still installing
-                        #Write-Output $Message
-                        $PercentComplete = [math]::Round(($Counter / $Total) * 100)
-                        Write-Progress -Activity "DCU Installing" -Status $Message -PercentComplete $PercentComplete
+                        if ($Message -match '\((\d+)\s+of\s+(\d+)\)'){
+                            [int]$Counter = $Matches[1]
+                            if ($Counter -eq "0"){$Counter = 1} #If the counter is 0, set it to 1
+                            [int]$Total = $Matches[2]
+                            [int]$ProgressTotal = $Total + 1 #So that when it gets to 3 of 3, it doesn't show 100% complete while it is still installing
+                            #Write-Output $Message
+                            if ($Total -gt 0){
+                                $PercentComplete = [math]::Min(100, [math]::Max(0, [math]::Round(($Counter / $ProgressTotal) * 100)))
+                                Write-Progress -Activity "DCU Installing" -Status $Message -PercentComplete $PercentComplete
+                            }
+                            else {
+                                Write-Host "Unable to calculate DCU installation progress from: $Message"
+                            }
+                        }
+                        else {
+                            Write-Host "Unable to parse DCU installation progress from: $Message"
+                        }
                         #Show-TSActionProgress -Message $Message -Step $Counter -MaxStep $Total -ErrorAction SilentlyContinue
                     }
                 }
-                elseif ($LastLine -match "Execution completed." -or $LastLine -match "Finished installing the updates."  -or $LastLine -match "successfully installed"){
-                    $LastLine = ($LastLine.Split(':') | Select-Object -Last 1).Trim()
-                    Write-Progress -Activity "DCU Complete" -Status $Message -PercentComplete 100
-                    #Show-TSActionProgress -Message $LastLine -Step 1 -MaxStep 1 -ErrorAction SilentlyContinue
-                    Start-Sleep -Seconds 3
-                }
-                else{
-                    #Show-TSActionProgress -Message $LastLine -Step 1 -MaxStep 100 -ErrorAction SilentlyContinue
+                    elseif ($LastLine -match "Execution completed." -or $LastLine -match "Finished installing the updates."  -or $LastLine -match "successfully installed"){
+                        $LastLine = ($LastLine.Split(':') | Select-Object -Last 1).Trim()
+                        Write-Progress -Activity "DCU Complete" -Status $LastLine -PercentComplete 100
+                        #Show-TSActionProgress -Message $LastLine -Step 1 -MaxStep 1 -ErrorAction SilentlyContinue
+                        Start-Sleep -Seconds 3
+                    }
+                    else{
+                        #Show-TSActionProgress -Message $LastLine -Step 1 -MaxStep 100 -ErrorAction SilentlyContinue
+                    }
                 }
             }
+            $DCUApply.Refresh()
         }
-        
+        until ($DCUApply.HasExited)
     }
-    until (!(Get-Process -Name dcu-cli -ErrorAction SilentlyContinue))
-    
-    
-    
-    
+    finally {
+        if (!$DCUApply.HasExited){
+            $DCUApply.WaitForExit()
+        }
+        $DCUApply.Refresh()
+        Write-Progress -Activity "Running Dell Command Update" -Completed
+        Write-Progress -Activity "DCU" -Completed
+        Write-Progress -Activity "DCU Downloading" -Completed
+        Write-Progress -Activity "DCU Installing" -Completed
+        Write-Progress -Activity "DCU Complete" -Completed
+    }
     
     if ($DCUApply.ExitCode -ne 0){
         $ExitInfo = Get-DCUExitInfo -DCUExit $DCUApply.ExitCode
