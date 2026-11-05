@@ -10,7 +10,7 @@ param(
     [switch]$SkipRegenerate,
     [string]$BootImageId = '00000003-0000-0000-0000-000000000001',   # Windows PE x64
     [string]$GenerateScriptPath = 'C:\Program Files\2Pint Software\DeployR\WebServer\Scripts\Generate.ps1',
-    [int]$RegenerateDelaySeconds = 60
+    [int]$RegenerateDelaySeconds = 180
 )
 
 $sourceFolder = "$env:USERPROFILE\Downloads\"
