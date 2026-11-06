@@ -94,7 +94,7 @@ Function Remove-DefaultWinApps {
     Import-Module DeployR.Utility
     try {
     $PATH = "$(${TSEnv:OSDTARGETSYSTEMDRIVE})\"
-    $LogFolder = ${TSEnv:_DEPLOYRLOGS}
+    $LogFolder = ${TSEnv:_DEPLOYRLOGPATH}
     }
     catch {
         $LogFolder = "C:\Windows\Temp"

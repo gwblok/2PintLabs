@@ -3,7 +3,7 @@ Import-Module DeployR.Utility
 
 # Get the provided variables
 [String]$TargetSystemDrive = ${TSEnv:OSDTARGETSYSTEMDRIVE}
-[String]$LogPath = ${TSEnv:_DEPLOYRLOGS}
+[String]$LogPath = ${TSEnv:_DEPLOYRLOGPATH}
 #>
 
 Function Create-NewHPDriverPackWinPE {

@@ -5,7 +5,7 @@ Import-Module DeployR.Utility
 [String]$IncludeGraphics = ${TSEnv:IncludeGraphics}
 [String]$IncludeAudio = ${TSEnv:IncludeAudio}
 [String]$TargetSystemDrive = ${TSEnv:OSDTARGETSYSTEMDRIVE}
-[String]$LogPath = ${TSEnv:_DEPLOYRLOGS}
+[String]$LogPath = ${TSEnv:_DEPLOYRLOGPATH}
 [String]$UseStandardLenovoDriverPack = ${TSEnv:UseStandardLenovoDriverPack}
 [switch]$ApplyDrivers = $true
 $MakeAlias = ${TSEnv:MakeAlias}

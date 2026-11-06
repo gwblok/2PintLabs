@@ -1739,7 +1739,7 @@ function Get-DeployRFrontEndApps {
 # Start a PowerShell transcription to capture verbose output in a separate file
 try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
-    $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
+    $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGPATH}
 }
 catch {
     Write-Warning "DeployR.Utility module not found. Environment variables will be set in the standard environment."

@@ -1039,7 +1039,7 @@ Function Test-URLExists {
 #Region Script to Run Frontend and gather Info
 try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
-    $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
+    $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGPATH}
 }
 catch {
 }

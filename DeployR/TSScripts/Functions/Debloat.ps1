@@ -1,7 +1,7 @@
 Import-Module DeployR.Utility
 try {
     $PATH = "$(${TSEnv:OSDTARGETSYSTEMDRIVE})\"
-    $LogFolder = ${TSEnv:_DEPLOYRLOGS}
+    $LogFolder = ${TSEnv:_DEPLOYRLOGPATH}
 }
 catch {
     $LogFolder = "$env:Temp"

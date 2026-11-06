@@ -1,5 +1,5 @@
 #Borrowed from https://github.com/hypercube33/SCCM/blob/master/Detect_Report_Remove_1909_G3%20Scrubbed.ps1
-$Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
+$Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGPATH}
 $Global:LogFilePath = "$($Global:LogFolderPath)\DeployRCustomLogging.log"
 $Global:LogFileSize   = "40"
 

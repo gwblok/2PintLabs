@@ -573,7 +573,7 @@ if (-not $formResults.FormSubmitted) {
 $tsEnv = $null
 try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
-    $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
+    $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGPATH}
     write-CMTraceLog -Message "DeployR.Utility module imported. Logs will be written to $Global:LogFolderPath"
     $tsEnv = $true
 }

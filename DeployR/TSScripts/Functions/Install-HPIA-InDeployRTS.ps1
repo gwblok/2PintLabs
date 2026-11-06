@@ -38,7 +38,7 @@ $payloadScriptBlock = {
 
 		if ($moduleImported) {
 			try {
-				$tsLogPath = ${TSEnv:_DEPLOYRLOGS}
+				$tsLogPath = ${TSEnv:_DEPLOYRLOGPATH}
 				if (-not [string]::IsNullOrWhiteSpace($tsLogPath)) {
 					return $tsLogPath
 				}
@@ -410,14 +410,14 @@ function Resolve-DeployRLogDirectory {
 	if ($moduleImported) {
 		try {
 			$tsName = ${TSEnv:DEPLOYRTASKSEQUENCENAME}
-			$tsLogPath = ${TSEnv:_DEPLOYRLOGS}
+			$tsLogPath = ${TSEnv:_DEPLOYRLOGPATH}
 
 			if (-not [string]::IsNullOrWhiteSpace($tsName)) {
 				Write-Host "Running in DeployR TS: $tsName"
 			}
 
 			if (-not [string]::IsNullOrWhiteSpace($tsLogPath)) {
-				Write-Host "Using DeployR TS log folder from _DEPLOYRLOGS: $tsLogPath"
+				Write-Host "Using DeployR TS log folder from _DEPLOYRLOGPATH: $tsLogPath"
 				return $tsLogPath
 			}
 		}

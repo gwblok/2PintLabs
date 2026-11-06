@@ -7,7 +7,7 @@ if (Get-Module -name "DeployR.Utility"){
     # Get the provided variables
 
     [String]$TargetSystemDrive = ${TSEnv:OSDTARGETSYSTEMDRIVE}
-    [String]$LogPath = ${TSEnv:_DEPLOYRLOGS}
+    [String]$LogPath = ${TSEnv:_DEPLOYRLOGPATH}
     [String]$MakeAlias = ${TSEnv:MakeAlias}
     [String]$Make = ${TSEnv:Make}
     [String]$ModelAlias = ${TSEnv:ModelAlias}

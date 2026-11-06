@@ -6,7 +6,7 @@ BEFORE YOU USE THIS SCRIPT IN DEPLOYR
 
 Prerequisites:
 - Run on supported Dell hardware with Dell BIOS WMI namespaces available (generally newer models).
-- Ensure DeployR task sequence environment is available and _DEPLOYRLOGS is set. [AKA, Running in a DeployR Task Sequence]
+- Ensure DeployR task sequence environment is available and _DEPLOYRLOGPATH is set. [AKA, Running in a DeployR Task Sequence]
 - Ensure SecretManagement is configured if using the DeployR vault secret. [DeployR 1.2 & later]
 
 Password source priority:
@@ -17,7 +17,7 @@ Password source priority:
 What this script does:
 - Compares each desired setting in $BIOSSettings to current BIOS state.
 - Skips settings that are missing, read-only, or already compliant.
-- Applies only required changes and writes a CSV log to _DEPLOYRLOGS.
+- Applies only required changes and writes a CSV log to _DEPLOYRLOGPATH.
 
 Important behavior:
 - If BIOS Admin password is set on device, a password must be provided by one of the sources above.
@@ -27,6 +27,7 @@ Important behavior:
 
 Changelog:
  - 26.7.21 - Updated to add $ExitWithError variable to allow for task sequence failure on pre-reqs not met. $false will continue, $true will exit with error code 1 [Causing the TS to Fail].
+ - 26.11.06 - Updated the DeployR log path variable for version 1.4.
 
 #>
 
@@ -42,7 +43,7 @@ Changelog:
 Import-Module DeployR.Utility
 
 #Get Log Path from DeployR Task Sequence Environment Variable
-$LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
+$LogFolderPath = ${TSEnv:_DEPLOYRLOGPATH}
 $LogPath = "$($LogFolderPath)\BIOSSettings_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
 
 #BIOS Password (if you have one configured)

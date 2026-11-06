@@ -48,7 +48,7 @@ Function Install-App {
         # Extract
         $newFile = $originalFile.Replace(".intunewin", ".decoded.zip")
         Write-Host "Extracting from $newFile"
-        $workingDir = "${TSEnv:DeployRContent}\$($contentItem.Id).expanded"
+        $workingDir = "${TSEnv:_DEPLOYRCONTENT}\$($contentItem.Id).expanded"
         MkDir $workingDir -Force | Out-Null
         Expand-Archive -Path $newFile -DestinationPath $workingDir
 

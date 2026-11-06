@@ -10,7 +10,7 @@ if (Get-Module -name "DeployR.Utility"){
     [String]$IncludeGraphicsIntel = ${TSEnv:IncludeGraphicsIntel}
     [String]$Cleanup = ${TSEnv:Cleanup}
     [String]$TargetSystemDrive = ${TSEnv:OSDTARGETSYSTEMDRIVE}
-    [String]$LogPath = ${TSEnv:_DEPLOYRLOGS}
+    [String]$LogPath = ${TSEnv:_DEPLOYRLOGPATH}
     [String]$DriverPackOption = ${TSEnv:DriverPackOption}
     [switch]$ApplyDrivers = $true
     [String]$MakeAlias = ${TSEnv:MakeAlias}

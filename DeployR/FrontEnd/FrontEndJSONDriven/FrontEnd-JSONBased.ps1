@@ -1540,7 +1540,7 @@ $Global:LogFolderPath = $null
 
 # Try to get from DeployR environment variable
 try {
-    $deployRLogs = ${TSEnv:_DEPLOYRLOGS}
+    $deployRLogs = ${TSEnv:_DEPLOYRLOGPATH}
     if ($deployRLogs) {
         $Global:LogFolderPath = $deployRLogs
     }

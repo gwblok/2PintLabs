@@ -22,7 +22,7 @@ Function Test-URLExists {
 
 try {
     Import-Module DeployR.Utility -ErrorAction SilentlyContinue
-    $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGS}
+    $Global:LogFolderPath = ${TSEnv:_DEPLOYRLOGPATH}
 }
 catch {
 }
