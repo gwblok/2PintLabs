@@ -343,6 +343,27 @@ catch {
 }
 #endregion DeployR content item
 
+#region Update JSON file on GitHub
+$JsonFilePath = [IO.Path]::GetFullPath((Join-Path -Path $PSScriptRoot -ChildPath '..\..\GARYTOWN\StifleR-ClientApp.json'))
+if (-not (Test-Path -Path $JsonFilePath -PathType Leaf)) {
+    throw "StifleR client JSON file not found: $JsonFilePath"
+}
+
+$JsonContent = Get-Content -Path $JsonFilePath -Raw | ConvertFrom-Json -AsHashtable
+$ProductMajorVersion = ([version]$MsiVersion).Major
+$MatchingEntries = @($JsonContent | Where-Object { ([version]$_.Version).Major -eq $ProductMajorVersion })
+if ($MatchingEntries.Count -ne 1) {
+    throw "Expected one JSON entry for StifleR major version $ProductMajorVersion, found $($MatchingEntries.Count)."
+}
+
+Write-Host "Current JSON StifleR version: $($MatchingEntries[0].Version)" -ForegroundColor Cyan
+$MatchingEntries[0].Version = $MsiVersion
+$JsonContent | ConvertTo-Json -Depth 3 | Set-Content -Path $JsonFilePath -Encoding utf8
+Write-Host "Updated $JsonFilePath with StifleR version $MsiVersion." -ForegroundColor Green
+#endregion Update JSON file on GitHub
+
+
+
 #region Regenerate boot image
 # Only regenerate when this run actually created or updated the content item
 if (-not $ContentUpdated) {
