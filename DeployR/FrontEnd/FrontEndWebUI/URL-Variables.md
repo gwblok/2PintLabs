@@ -3,7 +3,7 @@
 Host `WebUI.html`, `config.json`, `locale.json`, `Logo.png`, and `DeployR-Icon.png` together over HTTPS. Serve HTML as `text/html`, JSON as `application/json`, and images as `image/png`. Set `CustomWebUrl` in `Bootstrap.json` (or inject it through 2PXE/iPXE). For the current deployment, use:
 
 ```text
-https://deployr.2p.garytown.com/WebUI/WebUI.html?make=%MAKEALIAS%&model=%MODELALIAS%&macaddress=%MACADDRESS001%&serialnumber=%SERIALNUMBER%&stiflerversion=%PA_STIFLERVERSION%&networkdhcp=%PA_NETWORKDHCP%&networkgateway=%PA_NETWORKGATEWAY%&networkdnsservers=%PA_NETWORKDNSSERVERS%&diskmodel=%PA_DISKMODEL%&disktype=%PA_DISKTYPE%&networkmacaddress=%PA_NETWORKMACADDRESS%&hostname=%PA_HOSTNAME%&securebootstatus=%PA_SECUREBOOTSTATUS%&tpmversion=%PA_TPMVERSION%&networkadapter=%PA_NETWORKADAPTER%&networkipaddress=%PA_NETWORKIPADDRESS%&networksubnetmask=%PA_NETWORKSUBNETMASK%&diskcount=%PA_DISKCOUNT%&disksizegb=%PA_DISKSIZEGB%
+https://deployr.2p.garytown.com:7281/Web/WebUI.html?make=%MAKEALIAS%&model=%MODELALIAS%&macaddress=%MACADDRESS001%&serialnumber=%SERIALNUMBER%&stiflerversion=%PA_STIFLERVERSION%&networkdhcp=%PA_NETWORKDHCP%&networkgateway=%PA_NETWORKGATEWAY%&networkdnsservers=%PA_NETWORKDNSSERVERS%&diskmodel=%PA_DISKMODEL%&disktype=%PA_DISKTYPE%&networkmacaddress=%PA_NETWORKMACADDRESS%&hostname=%PA_HOSTNAME%&securebootstatus=%PA_SECUREBOOTSTATUS%&tpmversion=%PA_TPMVERSION%&networkadapter=%PA_NETWORKADAPTER%&networkipaddress=%PA_NETWORKIPADDRESS%&networksubnetmask=%PA_NETWORKSUBNETMASK%&diskcount=%PA_DISKCOUNT%&disksizegb=%PA_DISKSIZEGB%&hypervvmname=%PA_HyperVVMName%&hypervhostname=%PA_HyperVHostName%
 ```
 
 For example, the `Variables` section of `Bootstrap.json` can contain:
@@ -11,7 +11,7 @@ For example, the `Variables` section of `Bootstrap.json` can contain:
 ```json
 {
   "Variables": {
-    "CustomWebUrl": "https://deployr.2p.garytown.com/WebUI/WebUI.html?make=%MAKEALIAS%&model=%MODELALIAS%&macaddress=%MACADDRESS001%&serialnumber=%SERIALNUMBER%&stiflerversion=%PA_STIFLERVERSION%&networkdhcp=%PA_NETWORKDHCP%&networkgateway=%PA_NETWORKGATEWAY%&networkdnsservers=%PA_NETWORKDNSSERVERS%&diskmodel=%PA_DISKMODEL%&disktype=%PA_DISKTYPE%&networkmacaddress=%PA_NETWORKMACADDRESS%&hostname=%PA_HOSTNAME%&securebootstatus=%PA_SECUREBOOTSTATUS%&tpmversion=%PA_TPMVERSION%&networkadapter=%PA_NETWORKADAPTER%&networkipaddress=%PA_NETWORKIPADDRESS%&networksubnetmask=%PA_NETWORKSUBNETMASK%&diskcount=%PA_DISKCOUNT%&disksizegb=%PA_DISKSIZEGB%"
+    "CustomWebUrl": "https://deployr.2p.garytown.com:7281/Web/WebUI.html?make=%MAKEALIAS%&model=%MODELALIAS%&macaddress=%MACADDRESS001%&serialnumber=%SERIALNUMBER%&stiflerversion=%PA_STIFLERVERSION%&networkdhcp=%PA_NETWORKDHCP%&networkgateway=%PA_NETWORKGATEWAY%&networkdnsservers=%PA_NETWORKDNSSERVERS%&diskmodel=%PA_DISKMODEL%&disktype=%PA_DISKTYPE%&networkmacaddress=%PA_NETWORKMACADDRESS%&hostname=%PA_HOSTNAME%&securebootstatus=%PA_SECUREBOOTSTATUS%&tpmversion=%PA_TPMVERSION%&networkadapter=%PA_NETWORKADAPTER%&networkipaddress=%PA_NETWORKIPADDRESS%&networksubnetmask=%PA_NETWORKSUBNETMASK%&diskcount=%PA_DISKCOUNT%&disksizegb=%PA_DISKSIZEGB%&hypervvmname=%PA_HyperVVMName%&hypervhostname=%PA_HyperVHostName%"
   }
 }
 ```
@@ -24,8 +24,10 @@ The page recognizes these query keys. **Only add a `%VARIABLE%` placeholder if y
 
 | Query key | Use |
 | --- | --- |
-| `make`, `model` | Display-only hardware identification from `%MAKEALIAS%` and `%MODELALIAS%`. |
+| `make`, `model` | Hardware identification from `%MAKEALIAS%` and `%MODELALIAS%`. A make of `Microsoft` or `Microsoft Corporation` with model `Virtual Machine` enables the Hyper-V controls (case-insensitive). |
 | `hostname` | WinPE hostname from `%PA_HOSTNAME%`, if populated before the page opens. Also updates the Keep existing name preview. With no usable value, that preview says "Current name unavailable"; no replacement `ComputerName` is posted. |
+| `hypervvmname` | VM name from `%PA_HyperVVMName%`. On Microsoft Virtual Machines, selects **Use HyperV Machine Name** by default and supplies the actual preview, review, and posted `ComputerName`. Missing, `NA`, or unexpanded values disable the option. Names must contain 1 to 15 letters, numbers, or hyphens. |
+| `hypervhostname` | Hyper-V host name from `%PA_HyperVHostName%`. Appends the host name after the model on Microsoft Virtual Machines, for example **Running on HV01**. Missing, `NA`, or unexpanded values omit the label. This value is not the VM's own computer name. |
 | `macaddress` | Valid 12-digit MAC (with or without colon/hyphen separators) pre-fills Enter a name as `PC-` plus the MAC and enables MAC-based naming. |
 | `serialnumber` | Enables serial-based naming. Hardware-generated names default to prefix `PC` and keep the rightmost characters of the identifier within the 15-character name limit. |
 | `stiflerversion`, `tpmversion`, `securebootstatus` | Read-only System details from `PA_STIFLERVERSION`, `PA_TPMVERSION`, and `PA_SECUREBOOTSTATUS`. |
@@ -42,7 +44,19 @@ For an environment that also supplies the optional P2P and task-sequence values,
 
 Verify each `%VARIABLE%` substitution in your DeployR build, and omit keys whose values are unavailable. All the configuration choices below are **POST variables**, not URL parameters; no credentials should be placed in either URL or client-side configuration.
 
-Browser JavaScript cannot read the client computer name or hardware from Windows or WinPE. `location.hostname` is the web server's host, not the device's. The sidebar displays URL values as text only and shows `NA` for missing or unexpanded placeholders. The inventory URL parameters are not posted back by the form.
+Browser JavaScript cannot read the client computer name or hardware from Windows or WinPE. `location.hostname` is the web server's host, not the device's. The sidebar displays URL values as text only and shows `NA` for missing or unexpanded placeholders. Inventory query keys are not posted back under their URL names; choosing Hyper-V naming uses the supplied `hypervvmname` as the posted `ComputerName`.
+
+## Hyper-V inventory prerequisites
+
+1. Place the updated [`postauth.ps1` and `Create-ExtraVariables.ps1`](https://github.com/2pintsoftware/2Pint-DeployR/tree/main/WinPE) together in the root of the WinPE Extra Files content item. DeployR calls `postauth.ps1` after authentication to populate inventory before opening the WebUI.
+2. The inventory script creates `PA_HyperVVMName` and `PA_HyperVHostName` only when `Win32_ComputerSystem` reports manufacturer `Microsoft Corporation` and model `Virtual Machine`. It reads `VirtualMachineName` and `HostName` from `HKLM:\SOFTWARE\Microsoft\Virtual Machine\Guest\Parameters`; unavailable values are recorded as `NA`.
+3. Ensure both variables exist before `CustomWebUrl` substitution. Running inventory later in the selected task sequence cannot update an already-open page. If extending an existing URL, append:
+
+  ```text
+  &hypervvmname=%PA_HyperVVMName%&hypervhostname=%PA_HyperVHostName%
+  ```
+
+Validate with a Microsoft VM: the preview should show its VM name and the model strip should show its host. On physical hardware, neither addition should appear. If the VM option is disabled or the host is missing, inspect the inventory transcript, the guest registry key, and the expanded URL. Hyper-V guest parameters may be unavailable in WinPE; missing host data does not prevent using an available VM name. Invalid VM names block continuation rather than being truncated.
 
 ## Posted TS variables
 
@@ -50,8 +64,8 @@ The form submits by native `POST` to `deployr://submit`, the mechanism in the de
 
 | Variable | When / value |
 | --- | --- |
-| `NamingStrategy` | Always: `None` (keep existing, the default), `Manual`, or `HardwareBased`. |
-| `ComputerName` | Manual or hardware-based name, at most 15 characters; not posted when keeping the existing name. |
+| `NamingStrategy` | Always: `None` (keep existing), `Manual`, `HardwareBased`, or `HyperVVMName`. Defaults to `HyperVVMName` on Microsoft Virtual Machines with a supplied VM name; otherwise `None`. |
+| `ComputerName` | Manual, hardware-based, or supplied Hyper-V VM name, at most 15 characters; not posted when keeping the existing name. |
 | `HardwareIdType` | Hardware-based naming only: `Serial` or `MAC`. |
 | `DomainSuffix` | If provided. |
 | `WorkplaceJoin` | Always: `Workgroup`, `EntraID`, `Autopilot`, or `ODJ`. |

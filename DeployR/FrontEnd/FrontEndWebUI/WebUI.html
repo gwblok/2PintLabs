@@ -145,9 +145,10 @@
       <form id="setup-form" class="content" method="post" action="deployr://submit">
         <section class="panel" data-panel="0" aria-labelledby="device-heading">
           <div class="intro"><h2 id="device-heading">Device</h2><p class="muted">Choose a name and network settings.</p></div>
-          <div class="facts"><span><strong>Make</strong><span id="make">Not supplied</span></span><span><strong>Model</strong><span id="model">Not supplied</span></span></div>
+          <div class="facts"><span><strong>Make</strong><span id="make">Not supplied</span></span><span><strong>Model</strong><span id="model">Not supplied</span></span><span id="hyperv-host" hidden></span></div>
           <div class="device-grid">
             <fieldset class="choice-group"><legend>Computer name</legend>
+              <label class="choice" id="hyperv-choice" hidden><input type="radio" name="naming-choice" value="HyperVVMName"> Use HyperV Machine Name</label>
               <label class="choice"><input type="radio" name="naming-choice" value="None" checked> Keep existing name</label>
               <label class="choice"><input type="radio" name="naming-choice" value="Manual"> Enter a name</label>
               <label class="choice" id="hardware-choice" hidden><input type="radio" name="naming-choice" value="HardwareBased"> Generate from hardware</label>
@@ -217,6 +218,12 @@
         return value && !/^%[^%]+%$/.test(value) ? value : '';
       };
       const hostname = queryValue('hostname');
+      const hyperVValue = (key) => {
+        const value = queryValue(key);
+        return value.toUpperCase() === 'NA' ? '' : value;
+      };
+      const hyperVVMName = hyperVValue('hypervvmname');
+      const hyperVHostName = hyperVValue('hypervhostname');
       let config;
       let step = 0;
       let apps = [];
@@ -250,6 +257,7 @@
         $('manual-fields').hidden = mode !== 'Manual';
         $('hardware-fields').hidden = mode !== 'HardwareBased';
         let name = '';
+        if (mode === 'HyperVVMName') name = hyperVVMName;
         if (mode === 'Manual') name = field('computer-name').toUpperCase();
         if (mode === 'HardwareBased') {
           const prefix = field('name-prefix').toUpperCase();
@@ -278,7 +286,7 @@
         const mode = selected('naming-choice');
         const join = selected('join-choice');
         const result = { NamingStrategy: mode, WorkplaceJoin: join, FINISHACTION: field('finish-action'), Peering: $('peering').checked ? 'True' : 'False' };
-        if (mode !== 'None') result.ComputerName = updateName();
+        if (mode === 'Manual' || mode === 'HardwareBased' || mode === 'HyperVVMName') result.ComputerName = updateName();
         if (mode === 'HardwareBased') result.HardwareIdType = $('hardware-id').selectedOptions[0]?.dataset.type;
         if (field('domain-suffix')) result.DomainSuffix = field('domain-suffix');
         if (join === 'EntraID' && field('upn')) { result.EntraIDUserUPN = field('upn'); result.ENTRAUPN = field('upn'); }
@@ -298,6 +306,7 @@
       function validate(index) {
         if (index === 0) {
           const mode = selected('naming-choice');
+          if (mode === 'HyperVVMName' && !/^[a-z0-9-]{1,15}$/i.test(hyperVVMName)) return 'The HyperV machine name must contain 1 to 15 letters, numbers, or hyphens. Choose another naming option.';
           if (mode === 'Manual' && !/^[a-z0-9-]{1,15}$/i.test(field('computer-name'))) return 'Enter a computer name of 1 to 15 letters, numbers, or hyphens.';
           if (mode === 'HardwareBased') {
             if (!/^[a-z0-9-]{0,10}$/i.test(field('name-prefix')) || field('name-prefix').endsWith('-')) return 'Use a prefix of up to 10 letters, numbers, or hyphens.';
@@ -322,7 +331,7 @@
       function review() {
         const labels = { NamingStrategy: 'Naming', ComputerName: 'Computer name', DomainSuffix: 'Domain suffix', HardwareIdType: 'Hardware ID', WorkplaceJoin: 'Join', EntraIDUserUPN: 'Primary user', DomainJoinOU: 'Domain join OU', AutopilotGroupTag: 'Group tag', SelectedUserRole: 'Role', FINISHACTION: 'Finish action', Peering: 'P2P', SelectedApplicationIds: 'Applications' };
         const displayValues = {
-          NamingStrategy: { None: 'Keep existing name', Manual: 'Enter a name', HardwareBased: 'Generate from hardware' },
+          NamingStrategy: { None: 'Keep existing name', Manual: 'Enter a name', HardwareBased: 'Generate from hardware', HyperVVMName: 'Use HyperV Machine Name' },
           WorkplaceJoin: { Workgroup: 'Local workgroup', EntraID: 'Entra ID', Autopilot: 'Autopilot registration', ODJ: 'Offline domain join' },
           Peering: { True: 'Enabled', False: 'Disabled' }
         };
@@ -480,6 +489,13 @@
         $('make').textContent = query.get('make') || 'Not supplied';
         $('model').textContent = query.get('model') || 'Not supplied';
         $('device-title').textContent = [query.get('make'), query.get('model')].filter(Boolean).join(' / ') || 'Device preparation';
+        const isHyperV = ['microsoft', 'microsoft corporation'].includes(queryValue('make').toLowerCase()) && queryValue('model').toLowerCase() === 'virtual machine';
+        $('hyperv-host').hidden = !isHyperV || !hyperVHostName;
+        $('hyperv-host').textContent = isHyperV && hyperVHostName ? `Running on ${hyperVHostName}` : '';
+        $('hyperv-choice').hidden = !isHyperV;
+        $('hyperv-choice').querySelector('input').disabled = !isHyperV || !hyperVVMName;
+        $('hyperv-choice').title = hyperVVMName ? '' : 'HyperV machine name unavailable';
+        if (isHyperV && hyperVVMName) $('hyperv-choice').querySelector('input').checked = true;
         if (query.has('peering')) $('peering').checked = query.get('peering').toLowerCase() !== 'false';
         const mac = macAddress();
         if (mac) $('computer-name').value = `PC-${mac}`;

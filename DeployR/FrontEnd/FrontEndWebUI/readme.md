@@ -31,9 +31,24 @@ The generated `applications.json` and `tasksequences.json` files are not checked
    Each script writes its JSON file beside itself by default. If stored elsewhere, pass `-OutputPath 'C:\inetpub\wwwroot\WebUI\applications.json'` or the corresponding task-sequence path. `-Tag` defaults to `FrontEnd`. Run both once before opening the page; schedule them on the server if the tagged catalogs change. They do not set task-sequence variables.
 4. Set `CustomWebUrl` in DeployR's `Bootstrap.json` (or supply it through 2PXE/iPXE) using the full example in [URL-Variables.md](URL-Variables.md). If you want the System and Network sidebar to show WinPE inventory, add both [`postauth.ps1` and `Create-ExtraVariables.ps1` from the DeployR WinPE folder](https://github.com/2pintsoftware/2Pint-DeployR/tree/main/WinPE) to the root of the WinPE Extra Files content item. DeployR calls `postauth.ps1` during post-authentication; it loads `Create-ExtraVariables.ps1` from the same directory to populate the `PA_` variables before the URL is expanded. Verify substitutions on your build and URL-encode values when needed. The page cannot read hardware identifiers or the client hostname directly from Windows/WinPE.
 
+## Hyper-V naming and host inventory
+
+Microsoft Virtual Machines now offer **Use HyperV Machine Name** on the Device page. When a VM name is supplied, this option is selected by default, displays the actual name in the preview and review, and posts it as `ComputerName` with `NamingStrategy=HyperVVMName`. The make/model strip also appends the host name, for example **Running on HV01**, when available.
+
+1. Use the updated `postauth.ps1` and `Create-ExtraVariables.ps1` described in Setup. Inventory must run before `CustomWebUrl` is expanded, not later in the selected task sequence. The inventory script creates `PA_HyperVVMName` and `PA_HyperVHostName` only on Microsoft Virtual Machines, reading `VirtualMachineName` and `HostName` from `HKLM:\SOFTWARE\Microsoft\Virtual Machine\Guest\Parameters`.
+2. Append these parameters to your existing `CustomWebUrl`, preserving the other inventory inputs:
+
+   ```text
+   &hypervvmname=%PA_HyperVVMName%&hypervhostname=%PA_HyperVHostName%
+   ```
+
+3. Verify that `make` is `Microsoft` or `Microsoft Corporation` and `model` is `Virtual Machine`. The page uses these URL values to show the Hyper-V controls; the browser cannot detect the hypervisor directly.
+
+Missing, `NA`, or unexpanded VM-name values leave the option visible but disabled on a Microsoft VM. Missing host values omit the "Running on" text. The two values are independent: an available VM name can still be used without the host name. VM names must contain 1 to 15 letters, numbers, or hyphens; invalid names block continuation until another naming option is chosen. Neither Hyper-V element appears on other hardware.
+
 ## Wizard and task-sequence handoff
 
-- **Device:** Keep the existing computer name (default), enter a name, or generate one from a MAC address or serial number provided in the URL. Manual naming starts with a MAC-based suggestion when available. Hardware naming keeps the rightmost identifier characters so the resulting `PC-...` name fits the 15-character limit. The System and Network sidebar displays read-only `PA_` inventory passed in the URL, using `NA` for missing values. A populated `hostname` also updates the current-name preview; without it, the page says "Current name unavailable" and does not post a replacement `ComputerName` when keeping the name.
+- **Device:** Keep the existing computer name (default unless a Hyper-V VM name is supplied), enter a name, generate one from a MAC address or serial number provided in the URL, or use the supplied Hyper-V VM name on Microsoft Virtual Machines. Manual naming starts with a MAC-based suggestion when available. Hardware naming keeps the rightmost identifier characters so the resulting `PC-...` name fits the 15-character limit. The System and Network sidebar displays read-only `PA_` inventory passed in the URL, using `NA` for missing values; click an inventory value to view its full text. A populated `hostname` also updates the current-name preview; without it, the page says "Current name unavailable" and does not post a replacement `ComputerName` when keeping the name.
 - **Join:** Choose workgroup, Entra ID, Autopilot, or offline domain join. The page shows relevant UPN, group-tag, or OU inputs and limits finish actions by join type. It also collects the optional role and P2P setting.
 - **Locale:** Choose time zone, system locale, user locale, UI language, and input locale. Defaults are Central Standard Time and en-US with the English `0409:00000409` keyboard. Edit `locale.json` to change defaults or restrict options; `defaultDisplayName` disambiguates keyboard entries sharing the same code. The five selections are posted as `TimeZone`, `SystemLocale`, `UserLocale`, `UILanguage`, and `InputLocale`. No progress timeout is added. A missing or invalid locale catalog blocks submission rather than silently applying unspecified settings.
 - **Software:** Choose from the published `FrontEnd`-tagged application catalog. If it cannot be fetched, the page warns and uses the `applications` fallback in `config.json` (empty by default).
@@ -47,9 +62,16 @@ Locale output names follow the existing `Set-InitialVariables.ps1` mapping, rath
 
 If using software selections, add `Set-WebUIApplications.ps1` as a PowerShell step in the task sequence **after the web wizard and before Install Multiple Applications**. It reads `SelectedApplicationIds`, queries tagged DeployR apps for their current versions, and sets `TSENVLIST:Applications`. It does nothing when no apps were selected. Confirm that `DeployR.Utility`, its authentication, and the posted variable are available in that task-sequence context.
 
+## Validation and troubleshooting
+
+1. Open the hosted page with `?make=Microsoft&model=Virtual%20Machine&hypervvmname=Client&hypervhostname=HV01`. Confirm **Use HyperV Machine Name** is selected, the preview and review show `Client`, and the make/model strip ends with **Running on HV01**. On a test deployment, verify `ComputerName=Client` and `NamingStrategy=HyperVVMName` after the handoff.
+2. Test `hypervvmname=NA` and `hypervhostname=NA`: the naming option should be disabled and the host label absent. If real inventory produces this result, check the Create-ExtraVariables transcript and Hyper-V guest registry values in WinPE. Guest parameters may not be available in every WinPE environment.
+3. Test a non-Microsoft make or a model other than `Virtual Machine`; neither Hyper-V element should appear, even if Hyper-V URL values are supplied.
+4. If `%PA_HyperVVMName%` or `%PA_HyperVHostName%` reaches the browser unchanged, check post-authentication script placement and URL-substitution timing. If a VM name is too long or contains unsupported characters, use manual or hardware-based naming instead; the page does not silently truncate the VM name.
+
 ## Demo
 
-These screenshots show the earlier four-step layout; the current wizard also includes Locale between Join and Software.
+These screenshots show the earlier four-step layout; the current wizard also includes Locale between Join and Software, the inventory sidebar, and conditional Hyper-V naming and host details.
 
 **1. Device:** A MAC-suggested manual computer name, name preview, domain suffix, and P2P option.
 
