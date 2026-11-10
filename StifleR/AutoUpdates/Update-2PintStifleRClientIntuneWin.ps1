@@ -15,7 +15,7 @@ $settingsConfigURL = 'https://raw.githubusercontent.com/gwblok/2PintLabs/refs/he
 $CMD = @"
 msiexec /i StifleR-ClientApp-x64.msi AUTOSTART=1 OPTIONS="settings.2psImport" /quiet /l*v "C:\Windows\Temp\StifleRClientInstall.log"
 "@
-$StifleR30 = $JSONContent | Where-Object {$_.Version -like "3.0*"} | Select-Object -First 1
+$StifleR30 = $JSONContent | Where-Object {$_.Version -like "3.*"} | Select-Object -First 1
 $StifleR30URL = $StifleR30.URL
 $OutputAppPath = "D:\SourceRepo\Applications\2PintSoftware\StifleRClientIntuneWin"
 $IntuneUtilFolderPath = "$IntuneAppRootPath\Microsoft-Win32-Content-Prep-Tool"
