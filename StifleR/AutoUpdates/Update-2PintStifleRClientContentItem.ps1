@@ -24,6 +24,11 @@ rebuilt on every run from the JSON embedded in this script, so edit it here, not
 6. Only if step 5 created or updated the item, regenerates the boot image by running DeployR's
 Generate.ps1 -Id <BootImageId> -Regenerate. If the item was already current, no
 regeneration is triggered.
+7. On dr only, rebuilds C:\inetpub\wwwroot\3.0\StifleR-ClientApp.zip from the copied MSI
+before updating the client JSON version. The ZIP contains only the MSI at its root.
+The IIS folder must already exist and be writable. A verified temporary ZIP replaces the
+existing download without deleting it first, preserving its permissions. This runs even
+when the DeployR content item is current, but not with -SkipDeployR.
 
 DeployR content item layout (matches the existing StifleR Client item in the console):
 Item Description    : MSI ProductVersion (also used to decide whether the item is current)
@@ -87,6 +92,11 @@ Updates an existing, differently named item without regenerating the boot image.
 Re-uploads the content and regenerates the boot image even though the version has not changed.
 
 .NOTES
+Author: Not specified
+Created: Not specified
+Change History:
+    2026-11-10 - Publish a verified IIS client ZIP before updating the JSON version.
+
 Requires: PowerShell 7 (Set-DeployRMetadata fails on Windows PowerShell), the DeployR Client
 module (DeployR.Utility) on this machine, and the DeployR client passcode (read from
 HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings, or D:\DeployRPasscode.txt as a fallback).
@@ -360,6 +370,56 @@ If ($env:COMPUTERNAME -eq 'dr') {
     if ($MatchingEntries.Count -ne 1) {
         throw "Expected one JSON entry for StifleR major version $ProductMajorVersion, found $($MatchingEntries.Count)."
     }
+
+    #region Update IIS client ZIP
+    $IISZipPath = 'C:\inetpub\wwwroot\3.0\StifleR-ClientApp.zip'
+    $IISFolder = Split-Path -Path $IISZipPath -Parent
+    if (-not (Test-Path -LiteralPath $IISFolder -PathType Container)) {
+        throw "IIS client download folder not found: $IISFolder"
+    }
+
+    # Stage beside the download so a failed build leaves the published ZIP intact.
+    $TemporaryZipPath = Join-Path -Path $IISFolder -ChildPath ("StifleR-ClientApp.{0}.zip" -f [guid]::NewGuid())
+    try {
+        Compress-Archive -LiteralPath $DestinationMsi -DestinationPath $TemporaryZipPath -CompressionLevel Optimal
+        $Archive = [IO.Compression.ZipFile]::OpenRead($TemporaryZipPath)
+        try {
+            if ($Archive.Entries.Count -ne 1 -or $Archive.Entries[0].FullName -cne $MsiFile.Name) {
+                throw 'Client ZIP must contain only the MSI at the archive root.'
+            }
+            $EntryStream = $Archive.Entries[0].Open()
+            try {
+                $ArchivedHash = (Get-FileHash -InputStream $EntryStream -Algorithm SHA256).Hash
+            }
+            finally {
+                $EntryStream.Dispose()
+            }
+            if ($ArchivedHash -ne (Get-FileHash -LiteralPath $DestinationMsi -Algorithm SHA256).Hash) {
+                throw 'Client ZIP verification failed: archived MSI does not match the source MSI.'
+            }
+        }
+        finally {
+            $Archive.Dispose()
+        }
+
+        if (Test-Path -LiteralPath $IISZipPath -PathType Leaf) {
+            # Replace atomically and retain the existing download's ACL, including IIS access.
+            [IO.File]::Replace($TemporaryZipPath, $IISZipPath, [System.Management.Automation.Language.NullString]::Value)
+        }
+        else {
+            [IO.File]::Move($TemporaryZipPath, $IISZipPath)
+        }
+        Write-Host "Updated $IISZipPath with StifleR version $MsiVersion." -ForegroundColor Green
+    }
+    catch {
+        throw "IIS client ZIP update failed: $($_.Exception.Message)"
+    }
+    finally {
+        if (Test-Path -LiteralPath $TemporaryZipPath -PathType Leaf) {
+            Remove-Item -LiteralPath $TemporaryZipPath -Force
+        }
+    }
+    #endregion Update IIS client ZIP
     
     Write-Host "Current JSON StifleR version: $($MatchingEntries[0].Version)" -ForegroundColor Cyan
     $MatchingEntries[0].Version = $MsiVersion
@@ -399,4 +459,3 @@ catch {
     exit 1
 }
 Write-Host "Boot image $BootImageId regenerated." -ForegroundColor Green
-
