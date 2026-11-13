@@ -1,108 +1,118 @@
 <#
 .SYNOPSIS
-    Publishes the latest StifleR Client MSI into DeployR: copies it to the content source folder,
-    creates/updates the DeployR content item, and regenerates the boot image when something changed.
+Publishes the latest StifleR Client MSI into DeployR: copies it to the content source folder,
+creates/updates the DeployR content item, and regenerates the boot image when something changed.
 
 .DESCRIPTION
-    Builds off Update-2PintStifleRFromZip.ps1, which extracts the StifleR Client MSI to
-    $env:USERPROFILE\Downloads\StifleR\Extracted. It is kept separate for now and is intended to be
-    merged into that script later.
+Builds off Update-2PintStifleRFromZip.ps1, which extracts the StifleR Client MSI to
+$env:USERPROFILE\Downloads\StifleR\Extracted. It is kept separate for now and is intended to be
+merged into that script later.
 
-    Run it on the DeployR server, from PowerShell 7, in an elevated session (elevation is only
-    needed for the boot image regeneration; see -SkipRegenerate).
+Run it on the DeployR server, from PowerShell 7, in an elevated session (elevation is only
+needed for the boot image regeneration; see -SkipRegenerate).
 
-    What it does, in order:
-      1. Validates the MSI and source paths (creates the source folder if only the folder is missing).
-      2. Copies the MSI to the source folder and verifies the copy.
-      3. Writes the embedded settings file (dr-2pintlabs.2psImport) next to the MSI. The file is
-         rebuilt on every run from the JSON embedded in this script, so edit it here, not on disk.
-      4. Reads the MSI ProductVersion and connects to the local DeployR server.
-      5. Looks up the content item by name:
-           - missing                      -> creates it (Folder / Application) with version 1
-           - present, MSI version differs -> overwrites the current version (no new version is added)
-           - present and already current  -> does nothing (unless -Force)
-      6. Only if step 5 created or updated the item, regenerates the boot image by running DeployR's
-         Generate.ps1 -Id <BootImageId> -Regenerate. If the item was already current, no
-         regeneration is triggered.
+What it does, in order:
+1. Validates the MSI and source paths (creates the source folder if only the folder is missing).
+2. Copies the MSI to the source folder and verifies the copy.
+3. Writes the embedded settings file (dr-2pintlabs.2psImport) next to the MSI. The file is
+rebuilt on every run from the JSON embedded in this script, so edit it here, not on disk.
+4. Reads the MSI ProductVersion and connects to the local DeployR server.
+5. Looks up the content item by name:
+- missing                      -> creates it (Folder / Application) with version 1
+- present, MSI version differs -> overwrites the current version (no new version is added)
+- present and already current  -> does nothing (unless -Force)
+6. Only if step 5 created or updated the item, regenerates the boot image by running DeployR's
+Generate.ps1 -Id <BootImageId> -Regenerate. If the item was already current, no
+regeneration is triggered.
+7. On dr only, rebuilds C:\inetpub\wwwroot\3.0\StifleR-ClientApp.zip from the copied MSI
+before updating the client JSON version. The ZIP contains only the MSI at its root.
+The IIS folder must already exist and be writable. A verified temporary ZIP replaces the
+existing download without deleting it first, preserving its permissions. This runs even
+when the DeployR content item is current, but not with -SkipDeployR.
 
-    DeployR content item layout (matches the existing StifleR Client item in the console):
-      Item Description    : MSI ProductVersion (also used to decide whether the item is current)
-      Version Description : UNC path of the source folder (falls back to the local path)
-      Install command line: msiexec /i <msi> AUTOSTART=1 REBOOT=ReallySuppress
-                            OPTIONS="%WorkingDir%\dr-2pintlabs.2psImport" /qn /l*v "C:\Windows\Temp\StifleRClientInstall.log"
-      Version status      : Active
+DeployR content item layout (matches the existing StifleR Client item in the console):
+Item Description    : MSI ProductVersion (also used to decide whether the item is current)
+Version Description : UNC path of the source folder (falls back to the local path)
+Install command line: msiexec /i <msi> AUTOSTART=1 REBOOT=ReallySuppress
+OPTIONS="%WorkingDir%\dr-2pintlabs.2psImport" /qn /l*v "C:\Windows\Temp\StifleRClientInstall.log"
+Version status      : Active
 
-    "Current" only compares the MSI version. If you change the embedded .2psImport settings without a
-    new MSI version, run with -Force. Likewise, if a previous run updated the item but the
-    regeneration failed, re-run with -Force (or run Generate.ps1 yourself), because the item will
-    look current.
+"Current" only compares the MSI version. If you change the embedded .2psImport settings without a
+new MSI version, run with -Force. Likewise, if a previous run updated the item but the
+regeneration failed, re-run with -Force (or run Generate.ps1 yourself), because the item will
+look current.
 
-    Exit codes: 0 = success or nothing to do, 1 = a check, the DeployR update or the regeneration failed.
+Exit codes: 0 = success or nothing to do, 1 = a check, the DeployR update or the regeneration failed.
 
 .PARAMETER SourceLocation
-    Content source folder for the StifleR Client application (MSI and .2psImport live here and the
-    whole folder is uploaded as the content item).
-    Default: D:\SourceRepo\Applications\2PintSoftware\StifleRClient
+Content source folder for the StifleR Client application (MSI and .2psImport live here and the
+whole folder is uploaded as the content item).
+Default: D:\SourceRepo\Applications\2PintSoftware\StifleRClient
 
 .PARAMETER ExtractedMsiPath
-    Full path to the extracted StifleR Client MSI produced by Update-2PintStifleRFromZip.ps1.
-    Default: $env:USERPROFILE\Downloads\StifleR\Extracted\StifleR-ClientApp-x64.msi
+Full path to the extracted StifleR Client MSI produced by Update-2PintStifleRFromZip.ps1.
+Default: $env:USERPROFILE\Downloads\StifleR\Extracted\StifleR-ClientApp-x64.msi
 
 .PARAMETER ContentItemName
-    Name of the DeployR content item to create or update. Pass the name of an existing item to update
-    it instead of creating a new one. Default: '2Pint StifleR Client'
+Name of the DeployR content item to create or update. Pass the name of an existing item to update
+it instead of creating a new one. Default: '2Pint StifleR Client'
 
 .PARAMETER SourceUncPath
-    UNC path stored in the version description. If omitted, it is derived from a local SMB share
-    covering SourceLocation, falling back to the local SourceLocation path.
+UNC path stored in the version description. If omitted, it is derived from a local SMB share
+covering SourceLocation, falling back to the local SourceLocation path.
 
 .PARAMETER SkipDeployR
-    Only copy the MSI and create the .2psImport file; do not touch DeployR at all.
+Only copy the MSI and create the .2psImport file; do not touch DeployR at all.
 
 .PARAMETER Force
-    Update the content item even if it already has the current MSI version. This also triggers the
-    boot image regeneration, since the item was updated.
+Update the content item even if it already has the current MSI version. This also triggers the
+boot image regeneration, since the item was updated.
 
 .PARAMETER BootImageId
-    DeployR boot image to regenerate after the content item is created or updated.
-    Default: 00000003-0000-0000-0000-000000000001 (Windows PE x64).
+DeployR boot image to regenerate after the content item is created or updated.
+Default: 00000003-0000-0000-0000-000000000001 (Windows PE x64).
 
 .PARAMETER GenerateScriptPath
-    Path to DeployR's Generate.ps1.
-    Default: C:\Program Files\2Pint Software\DeployR\WebServer\Scripts\Generate.ps1
+Path to DeployR's Generate.ps1.
+Default: C:\Program Files\2Pint Software\DeployR\WebServer\Scripts\Generate.ps1
 
 .PARAMETER SkipRegenerate
-    Do not regenerate the boot image (also skips the elevation and Generate.ps1 checks).
+Do not regenerate the boot image (also skips the elevation and Generate.ps1 checks).
 
 .EXAMPLE
-    .\Update-2PintStifleRClientContentItem.ps1
-    Normal run: publishes the MSI and regenerates the Windows PE x64 boot image only if the content item changed.
+.\Update-2PintStifleRClientContentItem.ps1
+Normal run: publishes the MSI and regenerates the Windows PE x64 boot image only if the content item changed.
 
 .EXAMPLE
-    .\Update-2PintStifleRClientContentItem.ps1 -ContentItemName '2Pint Software StifleR Client 3.1' -SkipRegenerate
-    Updates an existing, differently named item without regenerating the boot image.
+.\Update-2PintStifleRClientContentItem.ps1 -ContentItemName '2Pint Software StifleR Client 3.1' -SkipRegenerate
+Updates an existing, differently named item without regenerating the boot image.
 
 .EXAMPLE
-    .\Update-2PintStifleRClientContentItem.ps1 -Force
-    Re-uploads the content and regenerates the boot image even though the version has not changed.
+.\Update-2PintStifleRClientContentItem.ps1 -Force
+Re-uploads the content and regenerates the boot image even though the version has not changed.
 
 .NOTES
-    Requires: PowerShell 7 (Set-DeployRMetadata fails on Windows PowerShell), the DeployR Client
-    module (DeployR.Utility) on this machine, and the DeployR client passcode (read from
-    HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings, or D:\DeployRPasscode.txt as a fallback).
+Author: Not specified
+Created: Not specified
+Change History:
+    2026-11-10 - Publish a verified IIS client ZIP before updating the JSON version.
+
+Requires: PowerShell 7 (Set-DeployRMetadata fails on Windows PowerShell), the DeployR Client
+module (DeployR.Utility) on this machine, and the DeployR client passcode (read from
+HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings, or D:\DeployRPasscode.txt as a fallback).
 #>
 #Requires -Version 7.0
 [CmdletBinding()]
 param(
-    [string]$SourceLocation = 'D:\SourceRepo\Applications\2PintSoftware\StifleRClient',
-    [string]$ExtractedMsiPath = (Join-Path -Path $env:USERPROFILE -ChildPath 'Downloads\StifleR\Extracted\StifleR-ClientApp-x64.msi'),
-    [string]$ContentItemName = '2Pint StifleR Client',
-    [string]$SourceUncPath,
-    [switch]$SkipDeployR,
-    [switch]$Force,
-    [string]$BootImageId = '00000003-0000-0000-0000-000000000001',
-    [string]$GenerateScriptPath = 'C:\Program Files\2Pint Software\DeployR\WebServer\Scripts\Generate.ps1',
-    [switch]$SkipRegenerate
+[string]$SourceLocation = 'D:\SourceRepo\Applications\2PintSoftware\StifleRClient',
+[string]$ExtractedMsiPath = (Join-Path -Path $env:USERPROFILE -ChildPath 'Downloads\StifleR\Extracted\StifleR-ClientApp-x64.msi'),
+[string]$ContentItemName = '2Pint StifleR Client',
+[string]$SourceUncPath,
+[switch]$SkipDeployR,
+[switch]$Force,
+[string]$BootImageId = '00000003-0000-0000-0000-000000000001',
+[string]$GenerateScriptPath = 'C:\Program Files\2Pint Software\DeployR\WebServer\Scripts\Generate.ps1',
+[switch]$SkipRegenerate
 )
 
 $ErrorActionPreference = 'Stop'
@@ -146,8 +156,8 @@ function Get-SourceUncPath {
         $Full = (Resolve-Path -Path $Path).ProviderPath.TrimEnd('\')
         # Match on a path boundary so D:\Source does not match D:\SourceRepo; longest share path wins
         $Share = Get-SmbShare -ErrorAction Stop |
-            Where-Object { $_.Path -and $_.Name -notmatch '\$$' -and ($Full -eq $_.Path.TrimEnd('\') -or $Full.StartsWith($_.Path.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) } |
-            Sort-Object { $_.Path.Length } -Descending | Select-Object -First 1
+        Where-Object { $_.Path -and $_.Name -notmatch '\$$' -and ($Full -eq $_.Path.TrimEnd('\') -or $Full.StartsWith($_.Path.TrimEnd('\') + '\', [StringComparison]::OrdinalIgnoreCase)) } |
+        Sort-Object { $_.Path.Length } -Descending | Select-Object -First 1
         if ($Share) {
             $Rest = $Full.Substring($Share.Path.TrimEnd('\').Length)
             $HostName = [Net.Dns]::GetHostEntry('').HostName
@@ -165,7 +175,7 @@ function Connect-ToDeployR {
     if (Test-Path -Path $ModulePath) { Import-Module $ModulePath -ErrorAction Stop }
     elseif (Get-Module -ListAvailable -Name DeployR.Utility) { Import-Module DeployR.Utility -ErrorAction Stop }
     else { throw 'DeployR.Utility module not found. Ensure the DeployR Client is installed on this machine.' }
-
+    
     $RegPath = 'HKLM:\SOFTWARE\2Pint Software\DeployR\GeneralSettings'
     if (Test-Path -Path $RegPath) {
         $Passcode = (Get-Item -Path $RegPath).GetValue('ClientPasscode')
@@ -255,16 +265,16 @@ try {
     if (-not $SourceUncPath) { $SourceUncPath = Get-SourceUncPath -Path $SourceLocation }
     # %WorkingDir% is expanded by DeployR at install time to the folder the content is applied to
     $InstallCommandLine = "msiexec /i $($MsiFile.Name) AUTOSTART=1 REBOOT=ReallySuppress OPTIONS=`"%WorkingDir%\$ImportFileName`" /qn /l*v `"C:\Windows\Temp\StifleRClientInstall.log`""
-
+    
     Write-Host "Connecting to DeployR..." -ForegroundColor Cyan
     Connect-ToDeployR
-
+    
     # Get-DeployRApplication only returns Application-purpose items, matched here by exact name
     $FoundItems = @(Get-DeployRApplication | Where-Object { $_.Name -eq $ContentItemName })
     if ($FoundItems.Count -gt 1) {
         Write-Warning "Found $($FoundItems.Count) content items named '$ContentItemName', using the first one ($($FoundItems[0].id))."
     }
-
+    
     # Current = same MSI version in the item description and the latest version has content.
     # $ContentUpdated is what later gates the boot image regeneration.
     $ContentUpdated = $false
@@ -273,7 +283,7 @@ try {
         $ExistingVersion = $FoundItems[0].versions | Sort-Object versionNo -Descending | Select-Object -First 1
         $IsCurrent = ($FoundItems[0].description -eq $MsiVersion) -and $ExistingVersion -and ([int64]$ExistingVersion.contentSize -gt 0)
     }
-
+    
     if ($IsCurrent) {
         Write-Host "Content item '$ContentItemName' is already at version $MsiVersion, nothing to update (use -Force to overwrite)." -ForegroundColor Yellow
         $ItemId = $FoundItems[0].id
@@ -288,7 +298,7 @@ try {
             }
         }
         $ContentUpdated = $true
-
+        
         if ($FoundItems.Count -eq 0) {
             Write-Host "Creating content item '$ContentItemName' (version $MsiVersion)..." -ForegroundColor Cyan
             $NewItem = New-DeployRContentItem -Type Folder -Name $ContentItemName -Description $MsiVersion -Purpose Application
@@ -298,12 +308,12 @@ try {
         else {
             $ItemId = $FoundItems[0].id
             Write-Host "Updating existing content item '$ContentItemName' (version $MsiVersion), overwriting the current version..." -ForegroundColor Cyan
-
+            
             # Item metadata first: it carries the versions array, so do it before the version/content changes
             $Item = Get-DeployRMetadata -Type ContentItem | Where-Object { $_.id -eq $ItemId }
             $Item.description = $MsiVersion
             Set-DeployRMetadata -Type ContentItem -Object $Item | Out-Null
-
+            
             # Overwrite the latest version in place (metadata first, then re-upload the content) rather than adding a new version
             $Current = (Get-DeployRApplication | Where-Object { $_.id -eq $ItemId }).versions | Sort-Object versionNo -Descending | Select-Object -First 1
             if ($Current) {
@@ -316,7 +326,7 @@ try {
                 Write-Warning 'Content item has no versions, adding one.'
                 New-DeployRContentItemVersion -ContentItemId $ItemId -SourceFolder $SourceLocation -InstallationCommandLine $InstallCommandLine -Description $SourceUncPath -Status Active | Out-Null
             }
-
+            
             # Re-fetch after the content upload and make sure the version is Active
             $Final = (Get-DeployRApplication | Where-Object { $_.id -eq $ItemId }).versions | Sort-Object versionNo -Descending | Select-Object -First 1
             if ($Final -and $Final.status -ne 'Active') {
@@ -325,7 +335,7 @@ try {
             }
         }
     }
-
+    
     # Show the final state as read back from DeployR
     $Result = Get-DeployRApplication | Where-Object { $_.id -eq $ItemId }
     $ResultVersion = $Result.versions | Sort-Object versionNo -Descending | Select-Object -First 1
@@ -342,6 +352,89 @@ catch {
     exit 1
 }
 #endregion DeployR content item
+
+#Run if this script is running on dr.2pintlabs.com ONly
+If ($env:COMPUTERNAME -eq 'dr') {
+    Write-Host "Running on dr.2pintlabs.com, proceeding with updates. to JSON and Client Zip File" -ForegroundColor Green
+    
+    
+    #region Update JSON file on GitHub
+    $JsonFilePath = [IO.Path]::GetFullPath((Join-Path -Path $PSScriptRoot -ChildPath '..\..\GARYTOWN\StifleR-ClientApp.json'))
+    if (-not (Test-Path -Path $JsonFilePath -PathType Leaf)) {
+        throw "StifleR client JSON file not found: $JsonFilePath"
+    }
+    
+    $JsonContent = Get-Content -Path $JsonFilePath -Raw | ConvertFrom-Json -AsHashtable
+    $ProductMajorVersion = ([version]$MsiVersion).Major
+    $MatchingEntries = @($JsonContent | Where-Object { ([version]$_.Version).Major -eq $ProductMajorVersion })
+    if ($MatchingEntries.Count -ne 1) {
+        throw "Expected one JSON entry for StifleR major version $ProductMajorVersion, found $($MatchingEntries.Count)."
+    }
+
+    #region Update IIS client ZIP
+    $IISZipPath = 'C:\inetpub\wwwroot\3.0\StifleR-ClientApp.zip'
+    $IISFolder = Split-Path -Path $IISZipPath -Parent
+    if (-not (Test-Path -LiteralPath $IISFolder -PathType Container)) {
+        throw "IIS client download folder not found: $IISFolder"
+    }
+
+    # Stage beside the download so a failed build leaves the published ZIP intact.
+    $TemporaryZipPath = Join-Path -Path $IISFolder -ChildPath ("StifleR-ClientApp.{0}.zip" -f [guid]::NewGuid())
+    try {
+        Compress-Archive -LiteralPath $DestinationMsi -DestinationPath $TemporaryZipPath -CompressionLevel Optimal
+        $Archive = [IO.Compression.ZipFile]::OpenRead($TemporaryZipPath)
+        try {
+            if ($Archive.Entries.Count -ne 1 -or $Archive.Entries[0].FullName -cne $MsiFile.Name) {
+                throw 'Client ZIP must contain only the MSI at the archive root.'
+            }
+            $EntryStream = $Archive.Entries[0].Open()
+            try {
+                $ArchivedHash = (Get-FileHash -InputStream $EntryStream -Algorithm SHA256).Hash
+            }
+            finally {
+                $EntryStream.Dispose()
+            }
+            if ($ArchivedHash -ne (Get-FileHash -LiteralPath $DestinationMsi -Algorithm SHA256).Hash) {
+                throw 'Client ZIP verification failed: archived MSI does not match the source MSI.'
+            }
+        }
+        finally {
+            $Archive.Dispose()
+        }
+
+        if (Test-Path -LiteralPath $IISZipPath -PathType Leaf) {
+            # Replace atomically and retain the existing download's ACL, including IIS access.
+            [IO.File]::Replace($TemporaryZipPath, $IISZipPath, [System.Management.Automation.Language.NullString]::Value)
+        }
+        else {
+            [IO.File]::Move($TemporaryZipPath, $IISZipPath)
+        }
+        Write-Host "Updated $IISZipPath with StifleR version $MsiVersion." -ForegroundColor Green
+    }
+    catch {
+        throw "IIS client ZIP update failed: $($_.Exception.Message)"
+    }
+    finally {
+        if (Test-Path -LiteralPath $TemporaryZipPath -PathType Leaf) {
+            Remove-Item -LiteralPath $TemporaryZipPath -Force
+        }
+    }
+    #endregion Update IIS client ZIP
+    
+    Write-Host "Current JSON StifleR version: $($MatchingEntries[0].Version)" -ForegroundColor Cyan
+    $MatchingEntries[0].Version = $MsiVersion
+    $JsonContent | ConvertTo-Json -Depth 3 | Set-Content -Path $JsonFilePath -Encoding utf8
+    Write-Host "Updated $JsonFilePath with StifleR version $MsiVersion." -ForegroundColor Green
+    #endregion Update JSON file on GitHub
+    
+    
+}
+else {
+    Write-Host "Not running on dr.2pintlabs.com, exiting." -ForegroundColor Yellow
+    exit 0
+}
+
+
 
 #region Regenerate boot image
 # Only regenerate when this run actually created or updated the content item
@@ -366,4 +459,3 @@ catch {
     exit 1
 }
 Write-Host "Boot image $BootImageId regenerated." -ForegroundColor Green
-
