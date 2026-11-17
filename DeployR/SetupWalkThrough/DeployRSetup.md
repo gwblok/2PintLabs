@@ -111,6 +111,10 @@ The following configuration screenshots are shown in order. Select an image to o
 [![2PXE iPXE WebService and PowerShell configuration](media/2PXEConfig02.png)](media/2PXEConfig02.png)  
 [![2PXE infrastructure configuration](media/2PXEConfig03.png)](media/2PXEConfig03.png)
 
+There are many more settings to configure once things are confirmed working, here is an example of managing the branding, add your own files and update the values:
+
+[![2PXE infrastructure configuration](media/2PXE-CustomBranding.png)](media/2PXE-CustomBranding.png)
+
 ### Configured 2PXE Settings
 
 Note, I know not all of the other applications are installed yet, but we're going to configure 2PXE like they, so once we get them installed, we don't need to come back here and update it.
