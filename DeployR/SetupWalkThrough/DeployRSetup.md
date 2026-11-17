@@ -254,6 +254,15 @@ The process can be monitored via the log:
 
 [![DeployR Content Path](media/BootMediaGenLog.png)](media/BootMediaGenLog6..png)
 
+## Optional Clean Setup Scripts
+
+For a clean setup, I like to run these scripts:
+
+- [Set up the DeployR folder structure](https://github.com/2pintsoftware/2Pint-DeployR/blob/main/Installs/2PintSoftware/Setup-DeployRFolderStructure.ps1) to create folders for source files.
+- [Generate application content items](https://github.com/2pintsoftware/2Pint-DeployR/blob/main/Automation/Generate-AppContentItems.ps1) to pre-populate application content.
+
+
+
 ## Troubleshooting Pointers
 
 - If a setup page or service is unreachable, first confirm that the DNS name resolves to the expected server and that you are using the address and port configured during installation.
