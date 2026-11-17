@@ -147,7 +147,7 @@ The following configuration screenshots are shown in order. Select an image to o
 
 - **Licensing:** Enter the iPXE WebService license key in the configuration before saving.
 - **General:** External FQDN override is `dr.2p.garytown.com`, and the deploy label is `DeployR`.
-- **Database:** (DEFAULT) SQL Server configuration method is `ServerInstanceAndDB`; the server instance is `.`, and the database is `iPXEAnywhere`.
+- **Database:** (DEFAULT) SQL Server configuration method is `ServerInstanceAndDB`; the server instance is `.\sqlexpress`, and the database is `iPXEAnywhere`.
 - **HTTPS:** (DEFAULT) HTTPS is enabled, and the certificate location mechanism is set to `Auto` (DEFAULT).
 - **Infrastructure:** Infrastructure is enabled, and the StifleR Server API URL is `https://dr.2p.garytown.com:9000`.
 
@@ -212,9 +212,47 @@ Dashboard walkthrough screenshots. Select an image to open it at full size.
 
 Follow the [official DeployR Server installation guide](https://documentation.2pintsoftware.com/deployr/deployr-enterprise/deployr-server-installation) to install and configure DeployR.
 
-> Screenshot to add: DeployR Server installation and configuration.
+The following installation screenshots are shown in order. Select an image to open it at full size.
 
-Complete the verification steps in the guide and confirm the DeployR interface is reachable using the configured server name and address.
+| | | |
+| --- | --- | --- |
+| [![DeployR setup screenshot 1](media/DR01.png)](media/DR01.png) | [![DeployR setup screenshot 2](media/DR02.png)](media/DR02.png) | [![DeployR setup screenshot 3](media/DR03.png)](media/DR03.png) |
+| [![DeployR setup screenshot 4](media/DR04.png)](media/DR04.png) | [![DeployR setup screenshot 5](media/DR05.png)](media/DR05.png) | [![DeployR setup screenshot 6](media/DR06.png)](media/DR06.png) |
+
+The following configuration screenshots are shown in order. Select an image to open it at full size.  
+[![DeployR certificate and general settings](media/DRConfig01.png)](media/DRConfig01.png)  
+[![DeployR infrastructure and security settings](media/DRConfig02.png)](media/DRConfig02.png)
+
+### Configured DeployR Settings
+
+- **Certificate:** Store location is `LocalMachine`, store name is `My`, and certificate lookup uses `CertificateSubjectName` with subject `dr.2p.garytown.com`.
+- **Database and content:** Database connection method is `SQLite`; the DeployR content path is `D:\DeployRCIs`.
+- **Client URL:** `https://dr.2p.garytown.com:7281`.
+- **StifleR integration:** StifleR Server API URL is `https://dr.2p.garytown.com:9000`.
+- **Security:** Bypass authentication, bypass local authentication, and Windows authentication are disabled; the Windows group is `Administrators`.
+
+Now head back into Infrastructure Services and Approve the DeployR Server in the Dashboard
+[![DeployR infrastructure Approval](media/ApproveDR.png)](media/ApproveDR.png)
+
+Now wait awhile, grab some coffee as the DeployR service starts to build out a few things.  Looking at the DeployR Content Path, based on what was configured in the config editor, the database, as well as other folder sturctures are built out:
+
+[![DeployR Content Path](media/DRContentPath.png)](media/DRContentPath.png)
+
+Several Content Items required before generated boot media are also downloaded and DeployR Content Items generated, the process can be monitored from the logs\sync.log file:
+
+[![DeployR Content Path](media/SyncLog.png)](media/SyncLog.png)
+
+Wait for that to successfully complete before moving on.
+
+## DeployR Initial Setup
+
+The next step is to Generate a simple Boot image to text PXE, from the Dashboard, in the boot images blade, click "Generate image", it will then be queued.
+
+[![DeployR Content Path](media/BootMediaGen.png)](media/BootMediaGen.png)
+
+The process can be monitored via the log:
+
+[![DeployR Content Path](media/BootMediaGenLog.png)](media/BootMediaGenLog6..png)
 
 ## Troubleshooting Pointers
 
