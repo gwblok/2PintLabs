@@ -16,6 +16,8 @@ Here is my test machine and network setup for this walkthrough.
 | Data drive | `D:` 140 GB |
 | IP Address | `192.168.6.187` |
 
+Network Notes, this is a dedicated VLAN for this lab, it does not get any DHCP / IP Helpers for PXE booting.  Machines will automatically repsond to PXE on it's own subnet once 2PXE is installed.
+
 These are bare-bones lab specifications, not production recommendations. Allocate more memory and storage for a larger or production deployment.
 
 The server is named `DR` and remains in a workgroup. DNS should resolve `DR.2P.GARYTOWN.COM` to the server's address. So please note, where ever you see `DR.2P.GARYTOWN.COM` in the configuration or installs below, update to your FQDN of the server you're setting up.  ProTip, sometimes adding your FQDN into your local host file on the server helps resolves some DNS issues. 
@@ -192,6 +194,8 @@ The following installation screenshots are shown in order. Select an image to op
 | **Update the host in both URLs to match your server FQDN.** | [![StifleR Dashboard URL configuration](media/Dashboard04.png)](media/Dashboard04.png) | **Use HTTPS for both URLs.** |
 | [![StifleR Dashboard setup screenshot 5](media/Dashboard05.png)](media/Dashboard05.png) | [![StifleR Dashboard setup screenshot 6](media/Dashboard06.png)](media/Dashboard06.png) | [![StifleR Dashboard setup screenshot 7](media/Dashboard07.png)](media/Dashboard07.png) |
 
+**After you complete the Dashboard install, restart the StifleR Server Service to have it register the Dashboard.**
+
 The StifleR Dashboard installer has no separate configuration editor. During installation, enter these two StifleR Server URLs:
 
 - **SignalR:** `https://DR.2p.garytown.com:1414`
@@ -226,7 +230,7 @@ The following configuration screenshots are shown in order. Select an image to o
 ### Configured DeployR Settings
 
 - **Certificate:** Store location is `LocalMachine`, store name is `My`, and certificate lookup uses `CertificateSubjectName` with subject `dr.2p.garytown.com`.
-- **Database and content:** Database connection method is `SQLite`; the DeployR content path is `D:\DeployRCIs`.
+- **Database and content:** Database connection method is `SQLite`; the DeployR content path is `D:\2Pint Software\DeployR`.
 - **Client URL:** `https://dr.2p.garytown.com:7281`.
 - **StifleR integration:** StifleR Server API URL is `https://dr.2p.garytown.com:9000`.
 - **Security:** Bypass authentication, bypass local authentication, and Windows authentication are disabled; the Windows group is `Administrators`.
@@ -250,7 +254,7 @@ The next step is to Generate a simple Boot image to text PXE, from the Dashboard
 
 [![DeployR Content Path](media/BootMediaGen.png)](media/BootMediaGen.png)
 
-The process can be monitored via the log:
+The process can be monitored via the log, the name of the log will match the GUID of the content item for the boot media:
 
 [![DeployR Content Path](media/BootMediaGenLog.png)](media/BootMediaGenLog6..png)
 
@@ -258,9 +262,45 @@ The process can be monitored via the log:
 
 For a clean setup, I like to run these scripts:
 
-- [Set up the DeployR folder structure](https://github.com/2pintsoftware/2Pint-DeployR/blob/main/Installs/2PintSoftware/Setup-DeployRFolderStructure.ps1) to create folders for source files.
+- [Set up the DeployR folder structure](https://github.com/2pintsoftware/2Pint-DeployR/blob/main/Installs/2PintSoftware/Setup-DeployRFolderStructure.ps1) to create folders for source files.  Helps to stay organized on where the content is kept for if the content items need to be modified or updated.
+[![DeployR Source Repo](media/SourceRepo.png)](media/SourceRepo..png)
 - [Generate application content items](https://github.com/2pintsoftware/2Pint-DeployR/blob/main/Automation/Generate-AppContentItems.ps1) to pre-populate application content.
 
+## 2PXE Testing
+
+Now that everything is installed, does it work.
+
+PXE boot test screenshots. Select an image to open it at full size.
+
+| | |
+| --- | --- |
+| [![PXE boot test screenshot 00](media/PXEBoot00.png)](media/PXEBoot00.png) | [![PXE boot test screenshot 01](media/PXEBoot01.png)](media/PXEBoot01.png) |
+| [![PXE boot test screenshot 02](media/PXEBoot02.png)](media/PXEBoot02.png) | [![PXE boot test screenshot 03](media/PXEBoot03.png)](media/PXEBoot03.png) |
+| [![PXE boot test screenshot 04](media/PXEBoot04.png)](media/PXEBoot04.png) | [![PXE boot test screenshot 05](media/PXEBoot05.png)](media/PXEBoot05.png) |
+| [![PXE boot test screenshot 06](media/PXEBoot06.png)](media/PXEBoot06.png) | [![PXE boot test screenshot 07](media/PXEBoot07.png)](media/PXEBoot07.png) |
+
+## Now What?
+
+The server is setup, time to create task sequences, customize iPXE, do the fun things.  Recommendations:
+
+- For more guides and demos, visit the [2Pint Software YouTube channel](https://www.youtube.com/@2PintSoftware/videos).
+
+### Getting started and installation
+
+- [Getting started with DeployR: all you need to know](https://www.youtube.com/watch?v=3_AOYJJ3mwk)
+- [DeployR getting started guide](https://www.youtube.com/watch?v=M1rv_KcgsFI)
+
+### Building and managing content
+
+- [DeployR: Creating your own content items](https://www.youtube.com/watch?v=HUEHAZgzBZQ)
+- [Scripting DeployR and content items](https://www.youtube.com/watch?v=b6yrmHrdXzU)
+- [Advanced step definitions in DeployR](https://www.youtube.com/watch?v=QjfYwQeaSyE)
+- [Deployment scenarios and DeployR](https://www.youtube.com/watch?v=fQcXq_mkDnc)
+- [Drivers and DeployR](https://www.youtube.com/watch?v=a2ObydIBzfY)
+
+### Troubleshooting and updates
+
+- [Troubleshooting OSD with DeployR](https://www.youtube.com/watch?v=x2-nYv7oQVQ)
 
 
 ## Troubleshooting Pointers
