@@ -18,6 +18,7 @@ Uses the registry method because the downloaded Dell Update Package is not
 the extracted DCU_Setup installer required for the IGNOREOOBE MSI argument.
 .NOTES
 Change History:
+2026-11-20 - Fixed multi-digit update counts and capped in-progress reporting at 99 percent.
 2026-11-20 - Added DCUDownloadURL override and catalog fallback version reporting.
 2026-11-20 - Added IgnoreOOBE configuration for DCU 5.7.1 or later.
 2026-11-20 - Added IGNOREOOBE=1 to the silent installer command.
@@ -338,7 +339,7 @@ Function Get-DCUAppUpdates {
                     do {
                         
                         Start-Sleep -Seconds 5
-                        $PercentComplete += 2
+                        $PercentComplete = [math]::Min(99, $PercentComplete + 2)
                         Write-Progress -Activity "Installing Dell Command Update" -Status "Installing $TargetFileName" -PercentComplete $PercentComplete
                     }
                     until ($Process.HasExited)
@@ -501,14 +502,14 @@ function Invoke-DCU {
                     if ($Message){
                         $Message = ($Message.Split(':') | Select-Object -Last 1).trim()
                         $Message = $Message.Replace("...","")
-                        $CounterPart = (($Message -split "of")[0]).Trim()
-                        [int]$Counter = $CounterPart.Substring($CounterPart.Length-1)
-                        if ($Counter -eq "0"){$Counter = 1} #If the counter is 0, set it to 1
-                        #Write-Output $Counter
-                        $Total = ((($Message -split "of")[1]).Trim()).substring(0,1)
-                        [int]$Total = [int]$Total + 1 #So that when it gets to 3 of 3, it doesn't show 100% complete while it is still downloading
-                        #Write-Output $Message
-                        $PercentComplete = [math]::Round(($Counter / $Total) * 100)
+                        $UpdateCounts = [regex]::Match($Message, '\b(\d+)\s+of\s+(\d+)\b')
+                        if (-not $UpdateCounts.Success) {
+                            Write-Warning "Unable to read DCU download progress counts: $Message"
+                            continue
+                        }
+                        [double]$Counter = [math]::Max(1, [double]$UpdateCounts.Groups[1].Value)
+                        [double]$Total = [double]$UpdateCounts.Groups[2].Value + 1
+                        $PercentComplete = [math]::Min(99, [math]::Round(($Counter / $Total) * 100))
                         Write-Progress -Activity "DCU Downloading" -Status $Message -PercentComplete $PercentComplete
                         #Show-TSActionProgress -Message $Message -Step $Counter -MaxStep $Total -ErrorAction SilentlyContinue
                     }
@@ -520,13 +521,14 @@ function Invoke-DCU {
                         $ToKeep = $Message.Split(':') | Select-Object -last 2
                         $Message = "$($ToKeep[0]) -$($ToKeep[1])"
                         $Message = $Message.trim()
-                        $CounterPart = (($Message -split "of")[0]).Trim()
-                        [int]$Counter = $CounterPart.Substring($CounterPart.Length-1)
-                        if ($Counter -eq "0"){$Counter = 1} #If the counter is 0, set it to 1
-                        $Total = ((($Message -split "of")[1]).Trim()).substring(0,1)
-                        [int]$Total = [int]$Total + 1 #So that when it gets to 3 of 3, it doesn't show 100% complete while it is still installing
-                        #Write-Output $Message
-                        $PercentComplete = [math]::Round(($Counter / $Total) * 100)
+                        $UpdateCounts = [regex]::Match($Message, '\b(\d+)\s+of\s+(\d+)\b')
+                        if (-not $UpdateCounts.Success) {
+                            Write-Warning "Unable to read DCU installation progress counts: $Message"
+                            continue
+                        }
+                        [double]$Counter = [math]::Max(1, [double]$UpdateCounts.Groups[1].Value)
+                        [double]$Total = [double]$UpdateCounts.Groups[2].Value + 1
+                        $PercentComplete = [math]::Min(99, [math]::Round(($Counter / $Total) * 100))
                         Write-Progress -Activity "DCU Installing" -Status $Message -PercentComplete $PercentComplete
                         #Show-TSActionProgress -Message $Message -Step $Counter -MaxStep $Total -ErrorAction SilentlyContinue
                     }
