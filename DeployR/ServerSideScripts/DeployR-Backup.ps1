@@ -132,7 +132,7 @@ $DeployRServerNameFromRegistry = (Get-ItemProperty -Path "HKLM:\SOFTWARE\2Pint S
 $ComputerFQDN = $DeployRServerNameFromRegistry -replace "https?://","" -replace ":.*$",""
 
 #Only Do SYnc Backups from the OnPrem DeployR Server
-if ($ComputerFQDN -eq "214-DEPLOYR.2p.garytown.com") {
+if ($ComputerFQDN -eq "DEPLOYR.2p.garytown.com") {
     $EnableBackup2GitHub = $true
     $EnableBackup2GitHubTS = $true
     $EnableBackup2GitHubStepDefs = $true
@@ -298,7 +298,12 @@ if ($EnableBackup2GitHub -and $GitHubCustomSteps -and $GitHubCustomStepsReferenc
             $versions = $stepDef.versions
             foreach ($version in $versions) {
                 $Options = $version.options
-                $ContentID = (($Options | Where-Object {$_.type -eq "Content"}).defaultValue).split(':') | Select-Object -first 1
+                $ContentOption = $Options | Where-Object {$_.type -eq "Content"} | Select-Object -First 1
+                if (-not $ContentOption -or [string]::IsNullOrWhiteSpace([string]$ContentOption.defaultValue)) {
+                    Write-Warning "Step definition '$($stepDef.name)' has no populated Content option in one of its versions; skipping referenced-content backup for that version."
+                    continue
+                }
+                $ContentID = ($ContentOption.defaultValue -split ':')[0]
                 $ContentItemInfo = Get-DeployRContentItem | Where-Object {$_.id -eq $ContentID}
                 write-host "Backing up content item: $($ContentItemInfo.name) | $($ContentItemInfo.id)" -ForegroundColor Cyan
                 $ExportContentFolderName = "$($ContentItemInfo.name)-$($ContentItemInfo.id)"
