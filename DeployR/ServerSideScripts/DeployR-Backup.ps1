@@ -24,6 +24,7 @@
        - All custom step definitions (excludes built-in steps with ID starting with '0000*')
        - Includes all versions of each step definition
        - Associated content items referenced by the step definition options
+    - Preserves CustomSteps\Readme.md and the entire CustomSteps\media directory
        
        Exclusion Rules (GitHub only):
        - Step definitions with "Delete" in the name are excluded from GitHub sync
@@ -132,7 +133,7 @@ $DeployRServerNameFromRegistry = (Get-ItemProperty -Path "HKLM:\SOFTWARE\2Pint S
 $ComputerFQDN = $DeployRServerNameFromRegistry -replace "https?://","" -replace ":.*$",""
 
 #Only Do SYnc Backups from the OnPrem DeployR Server
-if ($ComputerFQDN -eq "214-DEPLOYR.2p.garytown.com") {
+if ($ComputerFQDN -eq "DEPLOYR.2p.garytown.com") {
     $EnableBackup2GitHub = $true
     $EnableBackup2GitHubTS = $true
     $EnableBackup2GitHubStepDefs = $true
@@ -273,7 +274,9 @@ if ($EnableBackup2GitHub -and $GitHubCustomSteps -and $GitHubCustomStepsReferenc
         write-host "Cleanup $GitHubCustomSteps and $GitHubCustomStepsReferencedContent first" -ForegroundColor Yellow
         if (Test-Path -Path $GitHubCustomSteps) {
             Write-Host "Removing existing folder: $GitHubCustomSteps" -ForegroundColor Yellow
-            Remove-Item -Path "$GitHubCustomSteps\*" -Recurse -Force
+            Get-ChildItem -LiteralPath $GitHubCustomSteps -Force | Where-Object {
+                $_.Name -notin @('Readme.md', 'media')
+            } | Remove-Item -Recurse -Force
             Start-Sleep -Milliseconds 200
         }
         if (Test-Path -Path $GitHubCustomStepsReferencedContent) {
@@ -298,7 +301,12 @@ if ($EnableBackup2GitHub -and $GitHubCustomSteps -and $GitHubCustomStepsReferenc
             $versions = $stepDef.versions
             foreach ($version in $versions) {
                 $Options = $version.options
-                $ContentID = (($Options | Where-Object {$_.type -eq "Content"}).defaultValue).split(':') | Select-Object -first 1
+                $ContentOption = $Options | Where-Object {$_.type -eq "Content"} | Select-Object -First 1
+                if (-not $ContentOption -or [string]::IsNullOrWhiteSpace([string]$ContentOption.defaultValue)) {
+                    Write-Warning "Step definition '$($stepDef.name)' has no populated Content option in one of its versions; skipping referenced-content backup for that version."
+                    continue
+                }
+                $ContentID = ($ContentOption.defaultValue -split ':')[0]
                 $ContentItemInfo = Get-DeployRContentItem | Where-Object {$_.id -eq $ContentID}
                 write-host "Backing up content item: $($ContentItemInfo.name) | $($ContentItemInfo.id)" -ForegroundColor Cyan
                 $ExportContentFolderName = "$($ContentItemInfo.name)-$($ContentItemInfo.id)"
