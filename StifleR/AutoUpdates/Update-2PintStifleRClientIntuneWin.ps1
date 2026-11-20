@@ -1,19 +1,26 @@
 <#
 .SYNOPSIS
-Builds the StifleR Client Intune package after validating the MSI version.
+Builds separate Demo and Labs StifleR Client Intune packages after validating the MSI version.
 
 .DESCRIPTION
 Reads the StifleR 3.x version from the published client JSON and requires exactly one
 local MSI whose ProductVersion matches it before invoking IntuneWinAppUtil.
 Requires Windows, Windows Installer COM, internet access to the JSON and (if missing)
 the packaging utility, and write access to the configured source and output folders.
-Creates missing folders, downloads the packaging utility if needed, and writes the Intune package.
-Packages are written beneath the output folder in a subfolder named for the validated MSI
-ProductVersion (for example, StifleRClientIntuneWin\3.1.2645.1019).
+Requires settings.2psImport in both Configs-2PintDemo and Configs-2PintLabs beneath
+D:\SourceRepo\Applications\2PintSoftware\StifleRClientIntuneWin.
+Creates missing folders and downloads the packaging utility if needed. Each build uses an
+isolated staging folder containing only the validated MSI, the variant's settings, and its
+generated install command. Temporary staging is removed on success or failure.
+Packages are written beneath StifleRClientIntuneWin\2PintDemo\<ProductVersion> and
+StifleRClientIntuneWin\2PintLabs\<ProductVersion>, replacing the same variant/version package
+when rerun. Other source files and existing packages for other versions are not changed.
+The final summary lists both package filenames and output folders, the MSI version, and
+the MSI ProductCode.
 
 .EXAMPLE
 .\Update-2PintStifleRClientIntuneWin.ps1
-Validates the local MSI against the published JSON version and builds the Intune package.
+Validates the local MSI against JSON and builds both Demo and Labs Intune packages.
 
 .NOTES
 Author: Gary Blok
@@ -21,9 +28,11 @@ Created: Not specified
 Change History:
     2026-11-10 - Capture MSI ProductVersion and block packaging when it differs from JSON.
     2026-11-10 - Write each Intune package to its MSI version subfolder.
+    2026-11-10 - Build isolated Demo and Labs packages with variant-specific settings.
+    2026-11-10 - Summarize created packages, output folders, MSI version, and ProductCode.
 #>
 
-
+$ErrorActionPreference = 'Stop'
 
 #Build App Intune Installer
 $IntuneAppRootPath = "D:\SourceRepo\IntuneWin\AppUtil"
@@ -31,16 +40,13 @@ $IntuneAppRootPath = "D:\SourceRepo\IntuneWin\AppUtil"
 #Path to App Folder you want to Convert
 $SourceAppPathRoot = "D:\SourceRepo\Applications\2PintSoftware"
 $SourceAppPath = "$SourceAppPathRoot\StifleRClient"
+$StagingTempPath = "D:\SourceRepo\Applications\2PintSoftware\StifleRClientIntuneWin\StagingTemp"
 
 
 $JSONContent = Invoke-RestMethod -Uri "https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/GARYTOWN/StifleR-ClientApp.json"
-$settingsConfigURL = 'https://raw.githubusercontent.com/gwblok/2PintLabs/refs/heads/main/GARYTOWN/30/dr2pintlabs.2psImport'
-$CMD = @"
-msiexec /i StifleR-ClientApp-x64.msi AUTOSTART=1 OPTIONS="settings.2psImport" /quiet /l*v "C:\Windows\Temp\StifleRClientInstall.log"
-"@
 $StifleR30 = $JSONContent | Where-Object {$_.Version -like "3.*"} | Select-Object -First 1
-$StifleR30URL = $StifleR30.URL
 $OutputAppRootPath = "D:\SourceRepo\Applications\2PintSoftware\StifleRClientIntuneWin"
+$PackageVariants = @('2PintDemo', '2PintLabs')
 $IntuneUtilFolderPath = "$IntuneAppRootPath\Microsoft-Win32-Content-Prep-Tool"
 $IntuneUtilPath = "$IntuneUtilFolderPath\IntuneWinAppUtil.exe"
 $IntuneUtilURL = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/raw/master/IntuneWinAppUtil.exe"
@@ -73,18 +79,6 @@ if (!(Test-Path -Path $IntuneUtilPath)){
 else{
     Write-Host "Using IntuneWinAppUtil: $IntuneUtilPath" -ForegroundColor Green
 }
-
-<#Do Stuff
-Write-Host "Downloading StifleR 3.0 from $StifleR30URL" -ForegroundColor Green
-Invoke-WebRequest -Uri $StifleR30URL -OutFile "$SourceAppPathRoot\StifleR-ClientApp.zip"
-#Download settings.2psImport
-Invoke-WebRequest -Uri $settingsConfigURL -OutFile "$SourceAppPathRoot\settings.2psImport"
-#Create the CMD file for install
-$CMDPath = "$SourceAppPath\Install.cmd"
-$CMD | Out-File -FilePath $CMDPath -Encoding ASCII
-#Extract ZIP
-Expand-Archive -Path "$SourceAppPathRoot\StifleR-ClientApp.zip" -DestinationPath $SourceAppPath -Force
-#>
 
 # Read both MSI properties and reject stale source content before packaging.
 $MsiFiles = @(Get-ChildItem -LiteralPath $SourceAppPath -Filter *.msi -File -ErrorAction Stop)
@@ -141,30 +135,65 @@ if ([version]$MsiVersion -ne [version]$StifleR30.Version) {
 }
 Write-Host 'MSI version matches JSON version.' -ForegroundColor Green
 
-# Keep packages for different MSI versions in separate output folders.
-$OutputAppPath = Join-Path -Path $OutputAppRootPath -ChildPath $MsiVersion
-if (-not (Test-Path -LiteralPath $OutputAppPath -PathType Container)) {
-    New-Item -Path $OutputAppPath -ItemType Directory -Force -ErrorAction Stop | Out-Null
-    Write-Host "Created $OutputAppPath" -ForegroundColor Green
-}
-else {
-    Write-Host "Using Output: $OutputAppPath" -ForegroundColor Green
+# Validate both configurations before creating either package.
+foreach ($Variant in $PackageVariants) {
+    $SettingsPath = Join-Path -Path $OutputAppRootPath -ChildPath "Configs-$Variant\settings.2psImport"
+    if (-not (Test-Path -LiteralPath $SettingsPath -PathType Leaf)) {
+        throw "Settings file for $Variant not found: $SettingsPath"
+    }
 }
 
-$App = get-item -Path $SourceAppPath
-$SetupCMD = Get-ChildItem -Path $App.FullName -Filter *.cmd
-if (!($SetupCMD)){
-    $SetupEXE = Get-ChildItem -Path $App.FullName -Filter *.exe
-    if (!($SetupEXE)){$SetupEXE = Get-ChildItem -Path $App.FullName -Filter *.msi}
-}
-else {
-    $SetupEXE = $SetupCMD
-}
-$SetupFolder = $App.FullName
-#$CreateIntuneApp = Start-Process -FilePath $IntuneUtilPath -ArgumentList "-c $SetupFolder -s $SetupEXEPath -o $OutPutPath -q" -Wait -PassThru
-Write-Host "Starting Intune Package Creation" -ForegroundColor Green
-write-Host "& $IntuneUtilPath -c $SetupFolder -s $($SetupEXE.FullName) -o $OutputAppPath -q"
-& $IntuneUtilPath -c $SetupFolder -s $SetupEXE.FullName -o $OutputAppPath -q
+$CreatedPackages = @()
+$RunStagingPath = Join-Path -Path $StagingTempPath -ChildPath ([guid]::NewGuid().ToString())
+try {
+    foreach ($Variant in $PackageVariants) {
+        $SettingsPath = Join-Path -Path $OutputAppRootPath -ChildPath "Configs-$Variant\settings.2psImport"
+        $SetupFolder = Join-Path -Path $RunStagingPath -ChildPath "$Variant\Source"
+        $BuildOutputPath = Join-Path -Path $RunStagingPath -ChildPath "$Variant\Output"
+        $OutputAppPath = Join-Path -Path $OutputAppRootPath -ChildPath "$Variant\$MsiVersion"
+        New-Item -Path $SetupFolder, $BuildOutputPath, $OutputAppPath -ItemType Directory -Force | Out-Null
+        Copy-Item -LiteralPath $MSI.FullName -Destination $SetupFolder
+        Copy-Item -LiteralPath $SettingsPath -Destination (Join-Path $SetupFolder 'settings.2psImport')
 
-Write-Host "Finished App for Intune: $OutputAppPath" -ForegroundColor Green
-if ($MSI){Write-Output "Product Code: $ProductCode"}
+        # Distinct setup names also give the resulting packages distinct filenames.
+        $SetupFileName = "Install-$Variant.cmd"
+        $SetupPath = Join-Path -Path $SetupFolder -ChildPath $SetupFileName
+        $InstallCommand = @"
+@echo off
+msiexec /i "%~dp0$($MSI.Name)" AUTOSTART=1 OPTIONS="%~dp0settings.2psImport" /quiet /l*v "C:\Windows\Temp\StifleRClientInstall.log"
+exit /b %errorlevel%
+"@
+        Set-Content -LiteralPath $SetupPath -Value $InstallCommand -Encoding ASCII
+
+        Write-Host "Creating $Variant Intune package for MSI version $MsiVersion..." -ForegroundColor Green
+        & $IntuneUtilPath -c $SetupFolder -s $SetupPath -o $BuildOutputPath -q
+        if ($LASTEXITCODE -ne 0) {
+            throw "IntuneWinAppUtil failed for $Variant with exit code $LASTEXITCODE."
+        }
+        $PackagePath = Join-Path -Path $BuildOutputPath -ChildPath "Install-$Variant.intunewin"
+        if (-not (Test-Path -LiteralPath $PackagePath -PathType Leaf) -or (Get-Item -LiteralPath $PackagePath).Length -eq 0) {
+            throw "IntuneWinAppUtil did not create a nonempty package for $Variant."
+        }
+        Move-Item -LiteralPath $PackagePath -Destination $OutputAppPath -Force
+        $CreatedPackages += [pscustomobject]@{
+            Variant = $Variant
+            FileName = "Install-$Variant.intunewin"
+            Folder = $OutputAppPath
+        }
+        Write-Host "Finished $Variant package: $OutputAppPath\Install-$Variant.intunewin" -ForegroundColor Green
+    }
+}
+finally {
+    if (Test-Path -LiteralPath $RunStagingPath -PathType Container) {
+        Remove-Item -LiteralPath $RunStagingPath -Recurse -Force
+    }
+}
+
+Write-Output ''
+Write-Output 'Intune package creation summary'
+foreach ($Package in $CreatedPackages) {
+    Write-Output "$($Package.Variant): $($Package.FileName)"
+    Write-Output "  Folder: $($Package.Folder)"
+}
+Write-Output "MSI Version: $MsiVersion"
+Write-Output "MSI Product Code: $ProductCode"
