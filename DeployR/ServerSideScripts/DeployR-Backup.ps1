@@ -24,6 +24,7 @@
        - All custom step definitions (excludes built-in steps with ID starting with '0000*')
        - Includes all versions of each step definition
        - Associated content items referenced by the step definition options
+    - Preserves CustomSteps\Readme.md and the entire CustomSteps\media directory
        
        Exclusion Rules (GitHub only):
        - Step definitions with "Delete" in the name are excluded from GitHub sync
@@ -273,7 +274,9 @@ if ($EnableBackup2GitHub -and $GitHubCustomSteps -and $GitHubCustomStepsReferenc
         write-host "Cleanup $GitHubCustomSteps and $GitHubCustomStepsReferencedContent first" -ForegroundColor Yellow
         if (Test-Path -Path $GitHubCustomSteps) {
             Write-Host "Removing existing folder: $GitHubCustomSteps" -ForegroundColor Yellow
-            Remove-Item -Path "$GitHubCustomSteps\*" -Recurse -Force
+            Get-ChildItem -LiteralPath $GitHubCustomSteps -Force | Where-Object {
+                $_.Name -notin @('Readme.md', 'media')
+            } | Remove-Item -Recurse -Force
             Start-Sleep -Milliseconds 200
         }
         if (Test-Path -Path $GitHubCustomStepsReferencedContent) {
