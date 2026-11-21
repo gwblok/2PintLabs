@@ -10,6 +10,8 @@ catalog-selected DCU installer URL. When DCU is not installed, the script also
 reports the catalog version it would otherwise install. An empty value retains
 catalog-based installation. A failed catalog lookup does not block a supplied
 URL. Existing DCU installations are left unchanged.
+Provided URLs using dl.dell.com are normalized to downloads.dell.com to avoid
+access-denied responses, preserving the scheme, port, path, query, and fragment.
 Before running DCU 5.7.1 or later, sets and verifies the Dell UpdateScheduler
 IgnoreOOBE registry value as DWORD 1 to allow execution during Windows OOBE.
 Restarts Dell Client Management Service afterward and waits up to 30 seconds
@@ -18,6 +20,7 @@ Uses the registry method because the downloaded Dell Update Package is not
 the extracted DCU_Setup installer required for the IGNOREOOBE MSI argument.
 .NOTES
 Change History:
+2026-11-21 - Automatically normalized dl.dell.com DCU override URLs to downloads.dell.com.
 2026-11-20 - Fixed multi-digit update counts and capped in-progress reporting at 99 percent.
 2026-11-20 - Added DCUDownloadURL override and catalog fallback version reporting.
 2026-11-20 - Added IgnoreOOBE configuration for DCU 5.7.1 or later.
@@ -57,6 +60,11 @@ else {
     $updateSeverityRating = "All"
     $ScanOnly = "False"
     $DCUDownloadURL = "https://downloads.dell.com/FOLDER15013620M/1/Dell-Command-Update-Windows-Universal-Application_M9H5F_WIN64_5.7.2_A00.EXE"
+}
+
+if ($DCUDownloadURL -match '^(https?://)dl\.dell\.com(?=[:/?#]|$)') {
+    $DCUDownloadURL = $DCUDownloadURL -replace '^(https?://)dl\.dell\.com(?=[:/?#]|$)', '${1}downloads.dell.com'
+    Write-Host "Changed DCU download hostname from dl.dell.com to downloads.dell.com to avoid access-denied responses."
 }
 
 $LogPath = "$env:SystemDrive\_2P\Logs"
