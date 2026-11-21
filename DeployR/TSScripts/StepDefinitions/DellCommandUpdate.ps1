@@ -4,6 +4,26 @@ DISCLAIMER: THIS IS NOT AN OFFICIAL DELL SCRIPT. I DO NOT WORK FOR DELL.
 USE AT YOUR OWN RISK. I TAKE NO RESPONSIBILITY FOR ANYTHING THIS SCRIPT DOES. TEST IN A LAB FIRST.
 ALL INFORMATION IS PUBLICLY AVAILABLE ON THE INTERNET. I JUST CONSOLIDATED IT INTO ONE SCRIPT.
 
+.DESCRIPTION
+The optional DeployR task sequence variable DCUDownloadURL overrides the
+catalog-selected DCU installer URL. When DCU is not installed, the script also
+reports the catalog version it would otherwise install. An empty value retains
+catalog-based installation. A failed catalog lookup does not block a supplied
+URL. Existing DCU installations are left unchanged.
+Before running DCU 5.7.1 or later, sets and verifies the Dell UpdateScheduler
+IgnoreOOBE registry value as DWORD 1 to allow execution during Windows OOBE.
+Restarts Dell Client Management Service afterward and waits up to 30 seconds
+for it to be running before invoking DCU.
+Uses the registry method because the downloaded Dell Update Package is not
+the extracted DCU_Setup installer required for the IGNOREOOBE MSI argument.
+.NOTES
+Change History:
+2026-11-20 - Fixed multi-digit update counts and capped in-progress reporting at 99 percent.
+2026-11-20 - Added DCUDownloadURL override and catalog fallback version reporting.
+2026-11-20 - Added IgnoreOOBE configuration for DCU 5.7.1 or later.
+2026-11-20 - Added IGNOREOOBE=1 to the silent installer command.
+2026-11-20 - Restarted Dell Client Management Service after setting IgnoreOOBE.
+2026-11-20 - Restored Dell Update Package install switches; uses registry configuration for OOBE.
 
 #https://dl.dell.com/content/manual13608255-dell-command-update-version-5-x-reference-guide.pdf?language=en-us
 
@@ -27,6 +47,7 @@ if (Get-Module -name "DeployR.Utility"){
     $updateTypeApplications = ${TSEnv:updateTypeApplications}
     $updateSeverityRating = ${TSEnv:updateSeverityRating}
     $ScanOnly = ${TSEnv:ScanOnly}
+    $DCUDownloadURL = ${TSEnv:DCUDownloadURL}
 }
 else {
     #Testing outside of DeployR
@@ -35,6 +56,7 @@ else {
     $updateTypeApplications = "False"
     $updateSeverityRating = "All"
     $ScanOnly = "False"
+    $DCUDownloadURL = "https://downloads.dell.com/FOLDER15013620M/1/Dell-Command-Update-Windows-Universal-Application_M9H5F_WIN64_5.7.2_A00.EXE"
 }
 
 $LogPath = "$env:SystemDrive\_2P\Logs"
@@ -210,6 +232,7 @@ Function Get-DCUExitInfo {
     @{ExitCode = 3003; Description = "The Dell Client Management Service is busy."; Resolution = "Wait until the service is available to process new requests."}
     @{ExitCode = 3004; Description = "The Dell Client Management Service has initiated a self-update install of the application."; Resolution = "Wait until the service is available to process new requests."}
     @{ExitCode = 3005; Description = "The Dell Client Management Service is installing pending updates."; Resolution = "Wait until the service is available to process new requests."}
+    @{ExitCode = 3006; Description = "Currently the system is in Windows Out of Box Experience (OOBE) State"; Resolution = "Please try again after sometime."}
     )
     $DCUExitInfo | Where-Object {$_.ExitCode -eq $DCUExit}
 }
@@ -245,66 +268,87 @@ Function Get-DCUAppUpdates {
     [string]$SystemSKUNumber,
     [switch]$Latest,
     [switch]$Install,
-    [switch]$UseWebRequest
+    [switch]$UseWebRequest,
+    [string]$DownloadURL
     )
     
-    $Manufacturer = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufacturer
-    if (!($SystemSKUNumber)) {
-        if ($Manufacturer -notmatch "Dell"){return "This Function is only for Dell Systems"}
-        $SystemSKUNumber = (Get-CimInstance -ClassName Win32_ComputerSystem).SystemSKUNumber
-    }
+    $UseProvidedURL = -not [string]::IsNullOrWhiteSpace($DownloadURL)
     $temproot = "$env:windir\temp"
     $DellCabExtractPath = "$temproot\DellCabDownloads\DellCabExtract"
     
-    $Apps = Get-DCUUpdateList -SystemSKUNumber $SystemSKUNumber -updateType application | Select-Object -Property PackageID, Name, ReleaseDate, DellVersion, VendorVersion, Path
-    $CommandUpdateApps = $Apps | Where-Object {$_.Name -like "*Command | Update*"} | Sort-Object -Property VendorVersion
-    $CommandUpdateAppsLatest = $CommandUpdateApps | Select-Object -Last 1
+    if ($UseProvidedURL) {
+        [uri]$DownloadUri = $null
+        if (-not [uri]::TryCreate($DownloadURL, [UriKind]::Absolute, [ref]$DownloadUri) -or $DownloadUri.Scheme -notin @('https', 'http')) {
+            throw "DCUDownloadURL must be an absolute HTTP or HTTPS URL."
+        }
+        $CommandUpdateAppsLatest = [PSCustomObject]@{
+            Path = $DownloadURL
+        }
+    }
+    else {
+        $Manufacturer = (Get-CimInstance -ClassName Win32_ComputerSystem).Manufacturer
+        if (!($SystemSKUNumber)) {
+            if ($Manufacturer -notmatch "Dell"){return "This Function is only for Dell Systems"}
+            $SystemSKUNumber = (Get-CimInstance -ClassName Win32_ComputerSystem).SystemSKUNumber
+        }
+        $Apps = Get-DCUUpdateList -SystemSKUNumber $SystemSKUNumber -updateType application | Select-Object -Property PackageID, Name, ReleaseDate, DellVersion, VendorVersion, Path
+        $CommandUpdateApps = $Apps | Where-Object {$_.Name -like "*Command | Update*"} | Sort-Object -Property VendorVersion
+        $CommandUpdateAppsLatest = $CommandUpdateApps | Select-Object -Last 1
+    }
     if ($CommandUpdateAppsLatest){
         if ($Install){
-            [Version]$DCUVersion = $CommandUpdateAppsLatest.vendorVersion
-            Write-Output "Found DCU Version $DCUVersion"
-            $DCUVersionInstalled = Get-DCUVersion
-            If ($DCUVersionInstalled -ne $false){[Version]$CurrentVersion = $DCUVersionInstalled}
-            Else {[Version]$CurrentVersion = 0.0.0.0}
-            if ($DCUVersion -gt $CurrentVersion){
+            if (-not $UseProvidedURL) {
+                [Version]$DCUVersion = $CommandUpdateAppsLatest.vendorVersion
+                Write-Output "Found DCU Version $DCUVersion"
+                $DCUVersionInstalled = Get-DCUVersion
+                If ($DCUVersionInstalled -ne $false){[Version]$CurrentVersion = $DCUVersionInstalled}
+                Else {[Version]$CurrentVersion = 0.0.0.0}
+            }
+            if ($UseProvidedURL -or $DCUVersion -gt $CurrentVersion){
                 $temproot = "$env:windir\temp"
                 $DellCabDownloadsPath = "$temproot\DellCabDownloads"
                 if (!(Test-Path $DellCabExtractPath)){$null = New-Item -Path $DellCabExtractPath -ItemType Directory -Force}
                 $LogFilePath = "$env:ProgramData\EMPS\Logs"
                 $TargetFileName = ($CommandUpdateAppsLatest.path).Split("/") | Select-Object -Last 1
+                if ($UseProvidedURL) {
+                    $TargetFileName = 'DCU-ProvidedURL.exe'
+                }
                 $TargetLink = $CommandUpdateAppsLatest.path
                 $TargetFilePathName = "$($DellCabDownloadsPath)\$($TargetFileName)"
                 if ($UseWebRequest){
                     Write-Output "Using WebRequest to download the file"
-                    Invoke-WebRequest -Uri $TargetLink -OutFile $TargetFilePathName -UseBasicParsing -Verbose
+                    Invoke-WebRequest -Uri $TargetLink -OutFile $TargetFilePathName -UseBasicParsing -Verbose -ErrorAction Stop
                 }
                 else{
                     Write-Output "Using BITS to download the file"
-                    Start-BitsTransfer -Source $TargetLink -Destination $TargetFilePathName -DisplayName $TargetFileName -Description "Downloading Dell Command Update" -ErrorAction SilentlyContinue
+                    Start-BitsTransfer -Source $TargetLink -Destination $TargetFilePathName -DisplayName $TargetFileName -Description "Downloading Dell Command Update" -ErrorAction Stop
                 }
                 
                 if (!(Test-Path $TargetFilePathName)){
-                    Invoke-WebRequest -Uri $TargetLink -OutFile $TargetFilePathName -UseBasicParsing -Verbose
+                    Invoke-WebRequest -Uri $TargetLink -OutFile $TargetFilePathName -UseBasicParsing -Verbose -ErrorAction Stop
                 }
                 #Confirm Download
                 if (Test-Path $TargetFilePathName){
                     $LogFileName = ($TargetFilePathName.replace(".exe",".log")).Replace(".EXE",".log")
-                    $Arguments = "/s /l=$LogFileName"
+                    $Arguments = '/s /l="{0}"' -f $LogFileName
                     Write-Output "Starting DCU Install"
                     Write-Progress -Activity "Installing Dell Command Update" -Status "Installing $TargetFileName" -PercentComplete 10
                     write-output "Log file = $LogFileName"
                     [int]$PercentComplete = 10
-                    $Process = Start-Process "$TargetFilePathName" $Arguments -PassThru
+                    $Process = Start-Process "$TargetFilePathName" $Arguments -PassThru -ErrorAction Stop
                     do {
                         
                         Start-Sleep -Seconds 5
-                        $PercentComplete += 2
+                        $PercentComplete = [math]::Min(99, $PercentComplete + 2)
                         Write-Progress -Activity "Installing Dell Command Update" -Status "Installing $TargetFileName" -PercentComplete $PercentComplete
                     }
                     until ($Process.HasExited)
                     
                     write-output "Update Complete with Exitcode: $($Process.ExitCode)"
                     Write-Progress -Activity "Installing Dell Command Update" -Status "Installing $TargetFileName" -PercentComplete 100
+                    if ($UseProvidedURL -and $Process.ExitCode -notin @(0, 2, 3010)) {
+                        throw "The provided DCU installer failed with exit code $($Process.ExitCode)."
+                    }
                     If($Process -ne $null -and $Process.ExitCode -eq '2'){
                         Write-Verbose "Reboot Required"
                     }
@@ -458,14 +502,14 @@ function Invoke-DCU {
                     if ($Message){
                         $Message = ($Message.Split(':') | Select-Object -Last 1).trim()
                         $Message = $Message.Replace("...","")
-                        $CounterPart = (($Message -split "of")[0]).Trim()
-                        [int]$Counter = $CounterPart.Substring($CounterPart.Length-1)
-                        if ($Counter -eq "0"){$Counter = 1} #If the counter is 0, set it to 1
-                        #Write-Output $Counter
-                        $Total = ((($Message -split "of")[1]).Trim()).substring(0,1)
-                        [int]$Total = [int]$Total + 1 #So that when it gets to 3 of 3, it doesn't show 100% complete while it is still downloading
-                        #Write-Output $Message
-                        $PercentComplete = [math]::Round(($Counter / $Total) * 100)
+                        $UpdateCounts = [regex]::Match($Message, '\b(\d+)\s+of\s+(\d+)\b')
+                        if (-not $UpdateCounts.Success) {
+                            Write-Warning "Unable to read DCU download progress counts: $Message"
+                            continue
+                        }
+                        [double]$Counter = [math]::Max(1, [double]$UpdateCounts.Groups[1].Value)
+                        [double]$Total = [double]$UpdateCounts.Groups[2].Value + 1
+                        $PercentComplete = [math]::Min(99, [math]::Round(($Counter / $Total) * 100))
                         Write-Progress -Activity "DCU Downloading" -Status $Message -PercentComplete $PercentComplete
                         #Show-TSActionProgress -Message $Message -Step $Counter -MaxStep $Total -ErrorAction SilentlyContinue
                     }
@@ -477,13 +521,14 @@ function Invoke-DCU {
                         $ToKeep = $Message.Split(':') | Select-Object -last 2
                         $Message = "$($ToKeep[0]) -$($ToKeep[1])"
                         $Message = $Message.trim()
-                        $CounterPart = (($Message -split "of")[0]).Trim()
-                        [int]$Counter = $CounterPart.Substring($CounterPart.Length-1)
-                        if ($Counter -eq "0"){$Counter = 1} #If the counter is 0, set it to 1
-                        $Total = ((($Message -split "of")[1]).Trim()).substring(0,1)
-                        [int]$Total = [int]$Total + 1 #So that when it gets to 3 of 3, it doesn't show 100% complete while it is still installing
-                        #Write-Output $Message
-                        $PercentComplete = [math]::Round(($Counter / $Total) * 100)
+                        $UpdateCounts = [regex]::Match($Message, '\b(\d+)\s+of\s+(\d+)\b')
+                        if (-not $UpdateCounts.Success) {
+                            Write-Warning "Unable to read DCU installation progress counts: $Message"
+                            continue
+                        }
+                        [double]$Counter = [math]::Max(1, [double]$UpdateCounts.Groups[1].Value)
+                        [double]$Total = [double]$UpdateCounts.Groups[2].Value + 1
+                        $PercentComplete = [math]::Min(99, [math]::Round(($Counter / $Total) * 100))
                         Write-Progress -Activity "DCU Installing" -Status $Message -PercentComplete $PercentComplete
                         #Show-TSActionProgress -Message $Message -Step $Counter -MaxStep $Total -ErrorAction SilentlyContinue
                     }
@@ -861,7 +906,26 @@ if ($IntelMCInstaller) {
 if ((Get-DCUVersion) -match "False"){
     # Do the Stuff
     write-host "Checking for Dell Command Update Latest Version"
-    $DCU = Get-DCUAppUpdates -Latest
+    $DCUInstallParameters = @{}
+    if (-not [string]::IsNullOrWhiteSpace($DCUDownloadURL)) {
+        $DCUInstallParameters.DownloadURL = $DCUDownloadURL
+        $DCU = $null
+        try {
+            $DCU = Get-DCUAppUpdates -Latest -ErrorAction Stop
+            if ($DCU.VendorVersion) {
+                Write-Host "Using URL provided to install DCU, fallback would have been DCU Version $($DCU.VendorVersion)"
+            }
+            else {
+                Write-Warning "Using URL provided to install DCU; no DCU version was found in the fallback catalog."
+            }
+        }
+        catch {
+            Write-Warning "Using URL provided to install DCU; unable to determine the fallback catalog version: $($_.Exception.Message)"
+        }
+    }
+    else {
+        $DCU = Get-DCUAppUpdates -Latest
+    }
     
     #Write-Host "=============================================================================="
     Write-Host "Check for Desktop Runtime Dependencies"
@@ -875,14 +939,14 @@ if ((Get-DCUVersion) -match "False"){
     Write-Host "Installing Dell Command Update"
     $DCU
     try {
-        Get-DCUAppUpdates -Install
+        Get-DCUAppUpdates -Install @DCUInstallParameters
         Write-Host "Dell Command Update Installed Successfully"
         $DCUVersion = Get-DCUVersion
         Write-Host "Dell Command Update Version: $DCUVersion"
     }
     catch {
         Write-Host "One More Try to Install Dell Command Update"
-        Get-DCUAppUpdates -Install -UseWebRequest
+        Get-DCUAppUpdates -Install -UseWebRequest @DCUInstallParameters
     }
 }
 else {
@@ -892,10 +956,39 @@ else {
 
 if ((Get-DCUVersion) -match "False"){
     Write-Host "Dell Command Update is not getting installed, do some extra testing.."
+    if ($DCUInstallParameters.DownloadURL) {
+        exit 1
+    }
     exit ($DCU.VendorVersion).replace(".","")
 }
 else {
     
+    # Use the installed version, including URL overrides and existing installations.
+    [version]$InstalledDCUVersion = Get-DCUVersion
+    if ($InstalledDCUVersion -ge [version]'5.7.1') {
+        $IgnoreOOBEKey = 'HKLM:\SOFTWARE\DELL\UpdateService\Service\UpdateScheduler'
+        Write-Host "DCU $InstalledDCUVersion supports OOBE deployment; setting UpdateScheduler\IgnoreOOBE to DWORD 1."
+        $null = New-Item -Path $IgnoreOOBEKey -Force -ErrorAction Stop
+        $null = New-ItemProperty -LiteralPath $IgnoreOOBEKey -Name 'IgnoreOOBE' -Value 1 -PropertyType DWord -Force -ErrorAction Stop
+
+        $VerifiedIgnoreOOBEValue = Get-ItemPropertyValue -LiteralPath $IgnoreOOBEKey -Name 'IgnoreOOBE' -ErrorAction Stop
+        $VerifiedIgnoreOOBEKind = (Get-Item -LiteralPath $IgnoreOOBEKey -ErrorAction Stop).GetValueKind('IgnoreOOBE')
+        if ($VerifiedIgnoreOOBEValue -ne 1 -or $VerifiedIgnoreOOBEKind -ne [Microsoft.Win32.RegistryValueKind]::DWord) {
+            throw 'Dell UpdateScheduler\IgnoreOOBE registry verification failed.'
+        }
+        Write-Host 'Verified Dell UpdateScheduler\IgnoreOOBE is DWORD 1.'
+
+        Write-Host 'Restarting Dell Client Management Service to apply IgnoreOOBE.'
+        $DellService = Get-Service -Name 'DellClientManagementService' -ErrorAction Stop
+        Restart-Service -InputObject $DellService -ErrorAction Stop
+        $DellService.WaitForStatus([System.ServiceProcess.ServiceControllerStatus]::Running, [TimeSpan]::FromSeconds(30))
+        $DellService.Refresh()
+        if ($DellService.Status -ne [System.ServiceProcess.ServiceControllerStatus]::Running) {
+            throw 'Dell Client Management Service is not running after the restart.'
+        }
+        Write-Host 'Dell Client Management Service is running.'
+    }
+
     Write-Host "=============================================================================="
     Write-Host "Invoke Dell Command Update"
     write-host "Invoke-DCU -updateTypeBIOSFirmware:$updateTypeBIOSFirmware -updateTypeDrivers:$updateTypeDrivers -updateTypeApplications:$updateTypeApplications -ScanOnly:$ScanOnly -updateSeverity $updateSeverityRating -LogPath $LogPath"

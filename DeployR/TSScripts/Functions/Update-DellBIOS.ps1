@@ -2,21 +2,60 @@
 This Script will Detect and Update BIOS on the Dell Device - FULL OS ONLY - NOT WINPE
 This is only going to work on NEWER Dell Devices, typically 2018 and newer, with BIOS that support native WMI BIOS Management.  
 If you have an older Dell Device, this script will not work for you, it could be modified to be more simple, removing the checks for a BIOS password, and just running the BIOS update.
+
+Password source priority:
+1) Secret Vault: DeployR/DellBIOSPassword (requires configured SecretManagement)
+2) Task Sequence variable: DellBIOSPassword (requires DeployR.Utility)
+3) Empty password (only valid when no BIOS Admin password is set on device)
+
+Change History:
+2026-11-20 - Replaced the hardcoded BIOS password with vault and task sequence lookup.
 #>
 
-#Set Variables (Just BIOS Password)
-$BIOSPassword = 'P@ssw0rd'
-
-#If you want to pull the BIOS Password from a TS Variable, use this section below after you've created a TS Variable called SECRETBIOSPASSWORD and set it to the BIOS Password you want to use.  
-#This is not really any moresecure than hardcoding the password in this script.
-<#
+# Resolve the password without logging its value.
+$BIOSPassword = ""
+$PasswordSource = "None"
 try {
-    Import-Module DeployR.Utility -ErrorAction SilentlyContinue
-    $Global:BIOSPassword = ${TSEnv:SECRETBIOSPASSWORD}
+    Import-Module DeployR.Utility -ErrorAction Stop
 }
 catch {
+    Write-Warning "DeployR.Utility could not be imported. The task sequence password fallback may be unavailable."
 }
-#>
+
+try {
+    $SecretPassword = Get-Secret -Vault DeployR -Name "DellBIOSPassword" -ErrorAction Stop |
+        ConvertFrom-SecureString -AsPlainText -ErrorAction Stop
+    if (-not [string]::IsNullOrEmpty($SecretPassword)) {
+        $BIOSPassword = $SecretPassword
+        $PasswordSource = "Secret Vault (DeployR/DellBIOSPassword)"
+    }
+    else {
+        Write-Warning "DellBIOSPassword secret is empty. Checking task sequence environment variable fallback."
+    }
+}
+catch {
+    Write-Warning "DellBIOSPassword secret could not be retrieved. Checking task sequence environment variable fallback."
+}
+
+if ([string]::IsNullOrEmpty($BIOSPassword)) {
+    if (Get-PSDrive -Name TSEnv -ErrorAction SilentlyContinue) {
+        $BIOSPassword = ${TSEnv:DellBIOSPassword}
+        if (-not [string]::IsNullOrEmpty($BIOSPassword)) {
+            $PasswordSource = "Task Sequence variable (DellBIOSPassword)"
+        }
+    }
+    if ([string]::IsNullOrEmpty($BIOSPassword)) {
+        Write-Warning "DellBIOSPassword task sequence environment variable is not set or unavailable."
+        $BIOSPassword = ""
+    }
+}
+
+if (-not [string]::IsNullOrEmpty($BIOSPassword)) {
+    Write-Host "BIOS password retrieved from: $PasswordSource"
+}
+else {
+    Write-Host "BIOS password not found in Secret Vault or task sequence variable. Using empty password."
+}
 
 #Region Functions
 function Test-DellBIOSPassword {
