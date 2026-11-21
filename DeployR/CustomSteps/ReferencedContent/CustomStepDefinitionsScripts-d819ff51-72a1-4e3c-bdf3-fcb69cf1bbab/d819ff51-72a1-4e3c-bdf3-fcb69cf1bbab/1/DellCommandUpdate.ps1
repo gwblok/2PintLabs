@@ -10,6 +10,8 @@ catalog-selected DCU installer URL. When DCU is not installed, the script also
 reports the catalog version it would otherwise install. An empty value retains
 catalog-based installation. A failed catalog lookup does not block a supplied
 URL. Existing DCU installations are left unchanged.
+The supplied URL must include a valid executable filename in its path; query
+strings are not included in the downloaded filename.
 Before running DCU 5.7.1 or later, sets and verifies the Dell UpdateScheduler
 IgnoreOOBE registry value as DWORD 1 to allow execution during Windows OOBE.
 Restarts Dell Client Management Service afterward and waits up to 30 seconds
@@ -18,6 +20,7 @@ Uses the registry method because the downloaded Dell Update Package is not
 the extracted DCU_Setup installer required for the IGNOREOOBE MSI argument.
 .NOTES
 Change History:
+2026-11-20 - Preserve the executable filename from DCUDownloadURL.
 2026-11-20 - Fixed multi-digit update counts and capped in-progress reporting at 99 percent.
 2026-11-20 - Added DCUDownloadURL override and catalog fallback version reporting.
 2026-11-20 - Added IgnoreOOBE configuration for DCU 5.7.1 or later.
@@ -311,7 +314,14 @@ Function Get-DCUAppUpdates {
                 $LogFilePath = "$env:ProgramData\EMPS\Logs"
                 $TargetFileName = ($CommandUpdateAppsLatest.path).Split("/") | Select-Object -Last 1
                 if ($UseProvidedURL) {
-                    $TargetFileName = 'DCU-ProvidedURL.exe'
+                    # Use the URL path rather than its query string for the local installer name.
+                    $TargetFileName = [uri]::UnescapeDataString(($DownloadUri.AbsolutePath.Split('/') | Select-Object -Last 1))
+                    if ([string]::IsNullOrWhiteSpace($TargetFileName) -or
+                        $TargetFileName.IndexOfAny([System.IO.Path]::GetInvalidFileNameChars()) -ge 0 -or
+                        $TargetFileName -notmatch '\.exe$' -or
+                        $TargetFileName -match '^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)') {
+                        throw "DCUDownloadURL must contain a valid executable filename in its URL path."
+                    }
                 }
                 $TargetLink = $CommandUpdateAppsLatest.path
                 $TargetFilePathName = "$($DellCabDownloadsPath)\$($TargetFileName)"
